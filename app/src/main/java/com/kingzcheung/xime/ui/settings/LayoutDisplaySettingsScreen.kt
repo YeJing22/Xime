@@ -122,6 +122,36 @@ fun LayoutDisplaySettingsContent(
                             }
                         )
                     }
+
+                    var autoPairSymbolsEnabled by remember {
+                        mutableStateOf(SettingsPreferences.isAutoPairSymbolsEnabled(context))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "符号自动成对",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "输入左符号（如（、[、{）时自动补全右符号并把光标移到中间",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = autoPairSymbolsEnabled,
+                            onCheckedChange = { enabled ->
+                                autoPairSymbolsEnabled = enabled
+                                SettingsPreferences.setAutoPairSymbolsEnabled(context, enabled)
+                            }
+                        )
+                    }
                 })
             }
 
@@ -152,8 +182,55 @@ fun LayoutDisplaySettingsContent(
                             onValueChangeFinished = {
                                 SettingsPreferences.setCandidateTextSize(context, candidateTextSize.toInt())
                             },
-                            valueRange = 12f..22f,
-                            steps = 9
+                            valueRange = 12f..32f,
+                            steps = 19
+                        )
+                    }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    val candidateCellWidthPref = SettingsPreferences.getCandidateCellWidthPercent(context)
+                    var candidateCellWidth by remember(candidateCellWidthPref) {
+                        mutableStateOf(candidateCellWidthPref.toFloat())
+                    }
+
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "候选格宽度",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${candidateCellWidth.toInt()} %",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Slider(
+                            value = candidateCellWidth,
+                            onValueChange = { candidateCellWidth = it },
+                            onValueChangeFinished = {
+                                SettingsPreferences.setCandidateCellWidthPercent(context, candidateCellWidth.toInt())
+                            },
+                            valueRange = 8f..50f,
+                            steps = 41
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "每个候选项格子占屏幕宽度的百分比，调大后候选更宽",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
 

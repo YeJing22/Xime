@@ -73,6 +73,17 @@ object SettingsPreferences {
         getPrefs(context).edit().putBoolean(KEY_MODE_CHANGE_TARGET, isNumber).apply()
     }
 
+    private const val KEY_AUTO_PAIR_SYMBOLS = "auto_pair_symbols"
+
+    /** 符号自动成对：输入左符号时自动补右符号并把光标移到符号中间，默认开启。 */
+    fun isAutoPairSymbolsEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_AUTO_PAIR_SYMBOLS, true)
+    }
+
+    fun setAutoPairSymbolsEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_AUTO_PAIR_SYMBOLS, enabled).apply()
+    }
+
     private const val KEY_AUTO_NUMBER_KEYBOARD = "auto_number_keyboard_for_number_fields"
 
     /** 进入纯数字输入框（号码/验证码等）时自动弹出数字键盘，默认开启。 */
@@ -120,6 +131,7 @@ object SettingsPreferences {
     private const val KEY_INPUT_TEXT_LOCATION = "input_text_location"
     private const val KEY_PAGE_SIZE = "page_size"
     private const val KEY_CANDIDATE_TEXT_SIZE = "candidate_text_size"
+    private const val KEY_CANDIDATE_CELL_WIDTH_PERCENT = "candidate_cell_width_percent"
     const val INPUT_TEXT_INPUT_BOX = "input_box"
     const val INPUT_TEXT_CANDIDATE_BAR = "candidate_bar"
     const val DEFAULT_PAGE_SIZE = 20 // 手机候选栏每页候选词数；schema 里的 page_size 来自 PC 版（5），太短，默认用 20
@@ -772,6 +784,16 @@ object SettingsPreferences {
 
     fun setCandidateTextSize(context: Context, size: Int) {
         getPrefs(context).edit().putInt(KEY_CANDIDATE_TEXT_SIZE, size).apply()
+    }
+
+    const val DEFAULT_CANDIDATE_CELL_WIDTH_PERCENT = 12
+
+    fun getCandidateCellWidthPercent(context: Context): Int {
+        return getPrefs(context).getInt(KEY_CANDIDATE_CELL_WIDTH_PERCENT, DEFAULT_CANDIDATE_CELL_WIDTH_PERCENT)
+    }
+
+    fun setCandidateCellWidthPercent(context: Context, percent: Int) {
+        getPrefs(context).edit().putInt(KEY_CANDIDATE_CELL_WIDTH_PERCENT, percent).apply()
     }
 
     // ── 方案市场「已安装」的持久记录 ──
