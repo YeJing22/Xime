@@ -3,6 +3,8 @@ package com.kingzcheung.xime.ui.keyboard
 import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -680,7 +682,9 @@ internal fun resolveKeyboardPalette(themeId: String, isDarkTheme: Boolean): Keyb
         ?: if (isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
     val keyTextColor = KeyboardThemes.getKeyTextColorOverride(themeId, isDarkTheme)
         ?: if (isDarkTheme) longToColor(kbColors.keyTextColorDark) else longToColor(kbColors.keyTextColor)
-    val specialKeyBackgroundColor = if (isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
+    val keyTransparent = themeScheme.keyBackground?.transparent == true
+    val specialKeyBackgroundColor = if (keyTransparent) Color.Transparent
+        else if (isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
         ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
     val specialKeyTextColor = KeyboardThemes.getSpecialKeyTextColorForBackground(
         specialKeyBackgroundColor, keyTextColor
@@ -726,7 +730,10 @@ internal fun buildUiGestureHandler(
 ): (GestureAction, String) -> Unit = { action, value ->
     when (action) {
         // 面板切换映射的唯一实现（三处 UI 手势入口共用，含 clipboard）
-        GestureAction.SWITCH_ROUTE -> switchRouteOverlay(value)?.let { viewModel.showOverlay(it) }
+        GestureAction.SWITCH_ROUTE -> when (value) {
+            "number" -> viewModel.enterPanel(com.kingzcheung.xime.keyboard.PanelType.NUMBER)
+            else -> switchRouteOverlay(value)?.let { viewModel.showOverlay(it) }
+        }
         // command 的值统一走按键路由（tap/上滑与手势分发同一条解析；命令名白名单见 dispatchCommandAction）
         GestureAction.COMMAND -> dispatchCommandAction(value, onKeyPress)
         GestureAction.TOGGLE_ASCII -> {
@@ -892,8 +899,16 @@ internal fun FunctionKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier) 
         "space" -> SpaceCell(env, modifier)
         "earth" -> EarthCell(env, modifier)
         "enter" -> EnterCell(env, modifier, env.ctrlFontSize)
-        "symbol" -> PanelActionCell(
-            "symbol", GestureAction.TOGGLE_SYMBOLS, "", rememberVectorPainter(Icons.TwoTone.KeyboardAlt), env, modifier,
+        "symbol" -> KeyButton(
+            text = "符",
+            onClick = { env.onGestureAction?.invoke(GestureAction.SWITCH_ROUTE, "symbol") },
+            backgroundColor = env.specialKeyBackgroundColor,
+            textColor = env.specialKeyTextColor,
+            modifier = modifier,
+            onPress = { env.onKeyPressDown?.invoke("symbol") },
+            shadowEnabled = env.shadowEnabled,
+            shadowElevation = env.shadowElevation,
+            shadowShapeRadius = env.shadowShapeRadius,
         )
         "emoji" -> PanelActionCell(
             "emoji", GestureAction.SWITCH_ROUTE, "emoji", rememberVectorPainter(Icons.Filled.EmojiEmotions), env, modifier,
@@ -909,7 +924,17 @@ internal fun FunctionKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier) 
         // 面板专用功能键（数字/常用符号键盘；行为内置，与旧硬编码面板一致）
         "back" -> PanelBackCell(env, modifier)
         "back_right" -> PanelBackCell(env, modifier, id = "back_right")
-        "number" -> PanelTextCell("number", "123", "number", special = true, env, modifier)
+        "number" -> KeyButton(
+            text = "123",
+            onClick = { env.onGestureAction?.invoke(GestureAction.SWITCH_ROUTE, "number") },
+            backgroundColor = env.keyBackgroundColor,
+            textColor = env.keyTextColor,
+            modifier = modifier,
+            onPress = { env.onKeyPressDown?.invoke("number") },
+            shadowEnabled = env.shadowEnabled,
+            shadowElevation = env.shadowElevation,
+            shadowShapeRadius = env.shadowShapeRadius,
+        )
         "open_symbols" -> PanelTextCell("open_symbols", "符号", "symbol", special = true, env, modifier)
         "space_bar" -> PanelTextCell("space_bar", "空格", "space", special = true, env, modifier)
         "space_key" -> PanelTextCell("space_key", "空格", "space", special = false, env, modifier)
@@ -1952,6 +1977,7 @@ private fun ShiftCapsKeyButton(
                 else if (shiftMode == ShiftMode.SINGLE) darkenColor(backgroundColor, 0.1f)
                 else backgroundColor
             )
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape)
             .keySemantics(
                 "大小写切换",
                 when (shiftMode) {
@@ -2329,6 +2355,8 @@ private fun SpaceKey(
             .then(shadowModifier)
             .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(keyBackgroundColor)
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent),
+                RoundedCornerShape(LocalKeyCornerRadius.current))
             .keySemantics(
                 when {
                     voiceSticky -> "轻触结束语音"

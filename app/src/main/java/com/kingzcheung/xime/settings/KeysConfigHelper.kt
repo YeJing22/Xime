@@ -419,6 +419,13 @@ data class BackgroundConfig(
     val color: Long? = null,
     @SerialName("color_dark")
     val colorDark: Long? = null,
+    // transparent: true → 按键完全透明（Long 编码不了 alpha=0）
+    @SerialName("transparent")
+    val transparent: Boolean = false,
+    @SerialName("border_color")
+    val borderColor: String? = null,
+    @SerialName("border_width")
+    val borderWidthDp: Float? = null,
     // gradient
     val colors: List<Long>? = null,
     @SerialName("colors_dark")
@@ -762,6 +769,7 @@ object KeysConfigHelper {
         return if (hasTablet) tabletSection else section
     }    /** 笔画键盘左侧符号列内置默认（与历史硬编码一致）。 */
     val DEFAULT_STROKE_SIDE_SYMBOLS: List<String> = listOf("。", "？", "！", "~")
+    val DEFAULT_NUMBER_SIDE_SYMBOLS: List<String> = listOf(":", "-", "·", "#")
     
     private val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
     
@@ -791,6 +799,7 @@ object KeysConfigHelper {
     // 九键（T9）键盘配置缓存
     private var keyboardT9Config: KeyboardT9Config = KeyboardT9Config(sideSymbols = DEFAULT_T9_SIDE_SYMBOLS)
     private var keyboardStrokeConfig: KeyboardStrokeConfig = KeyboardStrokeConfig(sideSymbols = DEFAULT_STROKE_SIDE_SYMBOLS)
+    private var numberSideSymbols: List<String> = DEFAULT_NUMBER_SIDE_SYMBOLS
 
     // 面板段（数字/常用符号）配置缓存：keyboard.<section> 独立解析（布局 + 手势），custom 键级覆盖，
     // 支持 <section>_tablet 设备档变体（同 qwerty 机制）。布局缺失的段不入表，渲染层走内置兜底。
@@ -1121,6 +1130,7 @@ object KeysConfigHelper {
             keyboardT9Config = t9LayoutsBySection[SECTION_TYPE_T9] ?: keyboardT9Config
             _t9GestureConfigs = t9GestureConfigsBySection[SECTION_TYPE_T9] ?: emptyMap()
             keyboardStrokeConfig = strokeLayoutsBySection[SECTION_TYPE_STROKE] ?: keyboardStrokeConfig
+            numberSideSymbols = parseNumberSideSymbolsFromAssets(context)
             _strokeGestureConfigs = strokeGestureConfigsBySection[SECTION_TYPE_STROKE] ?: emptyMap()
             _activeT9Section = SECTION_TYPE_T9
             _activeStrokeSection = SECTION_TYPE_STROKE
@@ -2253,6 +2263,34 @@ object KeysConfigHelper {
     /** 获取九键左侧快捷符号栏配置（xime.custom.yaml → xime.yaml → 内置默认值）。 */
     fun getT9SideSymbols(): List<String> =
         keyboardT9Config.sideSymbols ?: DEFAULT_T9_SIDE_SYMBOLS
+
+    /** ?123 数字键盘左侧快捷符号栏（keyboard.number.side_symbols，custom → builtIn → 默认）。 */
+    fun getNumberSideSymbols(): List<String> = numberSideSymbols
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析 ?123 数字键盘左侧符号栏。 */
+    private fun parseNumberSideSymbolsFromAssets(context: Context): List<String> {
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
+            ?.let { parseNumberSideSymbolsYaml(it) }
+        val custom = readCustomText(context)?.let { parseNumberSideSymbolsYaml(it) }
+        return custom?.takeIf { it.isNotEmpty() }
+            ?: builtIn?.takeIf { it.isNotEmpty() }
+            ?: DEFAULT_NUMBER_SIDE_SYMBOLS
+    }
+
+    internal fun parseNumberSideSymbolsYaml(yamlText: String): List<String>? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val numberNode = keyboardNode.opt<YamlMap>("number") ?: return null
+            numberNode.opt<YamlList>("side_symbols")
+                ?.items?.mapNotNull { (it as? YamlScalar)?.content }
+                ?.filter { it.isNotBlank() }
+                ?.ifEmpty { null }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse number side symbols", e)
+            null
+        }
+    }
 
     /** 获取九键布局配置（keyboard.t9.layout，custom → builtIn → 内置默认，字段级 fallback）。 */
     fun getT9Layout(): KeyboardT9LayoutConfig = keyboardT9Config.layout
