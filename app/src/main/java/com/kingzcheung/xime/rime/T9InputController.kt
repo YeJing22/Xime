@@ -341,6 +341,12 @@ class T9InputController(
             false
         }
         updateFromRime()
+        // workaround: C++ t9_processor 对 nv/lv 等两键单音节词误判为 partial commit，残留 1 位数字。
+        // 选单字后如果只剩 1 位残留，说明是误判，强制清空。
+        if (!isFullCommit && cachedInput.length == 1) {
+            clearAll()
+            return true
+        }
         return isFullCommit
     }
 

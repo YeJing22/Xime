@@ -32,6 +32,11 @@ data class KeyboardCallbacks(
      */
     val onClipboardImageSelect: ((com.kingzcheung.xime.clipboard.ClipboardItem) -> Unit)? = null,
     val onCommitText: ((String) -> Unit)? = null,
+    /**
+     * 直接上屏并走 service.commitText 统一入口（符号自动成对拦截在内）：
+     * 与 onCommitText（剪贴板性质、不配对）的区别——符号键盘点符号用这条。
+     */
+    val onCommitTextDirect: ((String) -> Unit)? = null,
     val onDeleteText: ((Int) -> Unit)? = null,
     val onQuickSend: (() -> Unit)? = null,
     val onKeyboardResize: (() -> Unit)? = null,
@@ -112,6 +117,8 @@ data class KeyboardCallbacks(
      * @return 过滤后的 (候选词列表, 注释列表)
      */
     var onFilterT9Candidates: ((List<String>, List<String>) -> Pair<List<String>, List<String>>)? = null,
+    /** 退格键按下时退出单字模式 */
+    var onExitSingleCharFilter: (() -> Unit)? = null,
     /**
      * T9 键盘状态变更后通知服务层刷新 UI（候选区、preedit 等）。
      * 携带 flush 后一次取回的 composition，服务层直接应用，避免内部重复 getComposition。

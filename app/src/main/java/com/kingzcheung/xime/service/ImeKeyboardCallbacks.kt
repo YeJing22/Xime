@@ -120,6 +120,8 @@ internal fun rememberImeKeyboardCallbacks(
             onClipboardImageSelect = { item -> service.textCommit.selectClipboardImage(item) },
             onClipboardPullRemote = { service.clipboardSyncBridge?.pullOnce() },
             onCommitText = { text -> service.textCommit.commitClipboardText(text) },
+            // 符号键盘点符号：直接上屏，且走 service.commitText 统一入口（符号自动成对拦截）
+            onCommitTextDirect = { text -> service.commitText(text) },
             onDeleteText = { count -> service.textCommit.deleteClipboardChars(count) },
             onHandwritingAutoCommit = { newTail, expectedTail ->
                 if (expectedTail.isEmpty()) {
@@ -343,11 +345,9 @@ internal fun rememberImeKeyboardCallbacks(
                 // 宿主回报的候选区间已失效，会被误判为用户移动光标，进而丢弃本次撤销
                 // （编码被定稿成字面文本上屏）。交由随后的 applyComposition 原地重写组合区：
                 // 有组合区时 setComposingText 只替换该区间，光标仍落在编码内。
-                if (SettingsPreferences.getInputTextLocation(service)
-                    != SettingsPreferences.INPUT_TEXT_INPUT_BOX
-                ) {
-                    service.deleteBeforeCursor(count)
-                }
+                // 候选栏模式：半提交文本显示在候选栏、并未写入输入框，撤销后 T9
+                // 控制器会用 fetchAll 结果刷新组合与候选栏，因此不能调用
+                // deleteBeforeCursor，否则会误删输入框内已上屏的文字。
                 // undo 联动：撤销 right commit 段时回滚用户词典调频。
                 val undone = service.t9PartialSegments.removeLastOrNull()
                 if (undone != null) {

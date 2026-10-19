@@ -249,6 +249,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         // 长按退格以固定频率重复派发，走合并路径，避免 keyJobs 堆积导致候选栏抖动
         if (key == "delete") {
             // 删除会话开始（下滑撤回删除）：按下态已开账时为空操作；数字/符号等只发
+            // 退格也自动退出单字模式
+            service.keyboardViewModel.setSingleCharFilter(false)
             // key、无按下态回调的键盘在此兜底开账（会话由后续按键/撤回请求结算）。
             service.beginDeleteSession()
             handleDeleteKey()
@@ -269,6 +271,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     // 只清输入态（预编辑/候选/联想/partial 累积/计算器/左栏），不动已上屏文本。
                     // 清理逻辑见 clearInputStateForKeys()（与 clear_all 输入态分支共用）。
                     clearInputStateForKeys()
+                    // 清空输入态后自动退出单字模式
+                    service.keyboardViewModel.setSingleCharFilter(false)
                     needsUIUpdate = true
                 }
                 // command: show_ime_picker 的值同样走按键路由；弹选择器要在主线程
