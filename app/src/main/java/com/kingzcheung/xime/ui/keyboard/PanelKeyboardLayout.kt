@@ -1,6 +1,10 @@
 package com.kingzcheung.xime.ui.keyboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -45,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.PanelLayoutConfig
+import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.ui.isTablet
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
@@ -121,7 +129,7 @@ fun PanelKeyboardLayout(
 
     val layout = KeysConfigHelper.getPanelLayout(section)
     // 值键字号：数字键盘 = KeyButton 默认（与旧版 keyFontSize Unspecified 一致）；常用符号 = 20sp
-    val valueFontSize: TextUnit = if (section == "number") TextUnit.Unspecified else 20.sp
+    val valueFontSize: TextUnit = if (section == "number") 22.sp else 20.sp
     val env = QwertyRowEnv(
         isAsciiMode = isAsciiMode,
         isShifted = false,
@@ -154,11 +162,23 @@ fun PanelKeyboardLayout(
         section = section,
     )
 
+    val themeScheme = KeyboardThemes.getThemeById(uiState.themeId)
+    val keyBorderStroke = themeScheme.keyBackground?.borderColor?.let { bc ->
+        val bw = (themeScheme.keyBackground.borderWidthDp ?: 0.5f).dp
+        val c = runCatching {
+            val hex = bc.trim().removePrefix("0x").removePrefix("#")
+            val long = java.lang.Long.parseLong(hex, 16)
+            if (long > 0xFFFFFFL) Color(long) else Color(0xFF000000L or long)
+        }.getOrElse { Color.White }
+        BorderStroke(bw, c)
+    }
     CompositionLocalProvider(
         LocalKeyCornerRadius provides keyCornerRadius,
         // 键面提示（退格的「清空」等）与主键盘同一档：横屏/平板画到键角，平板放大加深
         LocalSwipeHintCorner provides swipeHintCornerFor(isLandscape, isTablet()),
         LocalHintExtraScale provides hintExtraScaleFor(isTablet()),
+        // 描边：数字 / 常用符号面板与主键盘一致（来自 key_background.border_color / border_width）
+        LocalKeyBorder provides keyBorderStroke,
     ) {
     Box(
         modifier = modifier
@@ -354,30 +374,71 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
         ) {
             val pillarItems = layout.left.dropLast(1)
             val bottomKey = layout.left.lastOrNull()?.singleOrNull()
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(3f)
-                    .padding(LocalKeyVisualPadding.current),
-            ) {
-                pillarItems.forEachIndexed { itemIdx, item ->
-                    Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                        item.forEachIndexed { keyIdx, keyId ->
-                            OperatorPillarKey(
-                                text = keyId,
-                                onClick = { env.onKeyPress(keyId) },
-                                backgroundColor = env.keyBackgroundColor,
-                                textColor = env.keyTextColor,
-                                modifier = Modifier.weight(1f),
-                                onPress = { env.onKeyPressDown?.invoke(keyId) },
-                                isFirst = itemIdx == 0 && keyIdx == 0,
-                                isLast = itemIdx == pillarItems.lastIndex && keyIdx == item.lastIndex,
-                                fontSize = 18.sp,
-                                shadowEnabled = env.shadowEnabled,
-                                shadowElevation = env.shadowElevation,
-                                shadowShapeRadius = env.shadowShapeRadius,
-                            )
-                        }
+            // 左侧符号栏：优先 keyboard.number.side_symbols（custom → builtIn → 默认值），
+            // 未配置时回退到 layout.left 键柱列表；≤4 均分固定高度，>4 固定单格高度（父高 25%）可上下滑动。
+            val configVersion by KeysConfigHelper.configVersion.collectAsState()
+            val sideSymbols = remember(configVersion) {
+                KeysConfigHelper.getNumberSideSymbols().takeIf { it.isNotEmpty() } ?: pillarItems.flatten()
+            }
+            val pillarSymbols = sideSymbols
+            if (pillarSymbols.size <= 4) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(3f)
+                        .padding(LocalKeyVisualPadding.current)
+                        .border(
+                            LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent),
+                            RoundedCornerShape(LocalKeyCornerRadius.current)
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
+                    pillarSymbols.forEach { sym ->
+                        PanelSymbolKey(
+                            text = sym,
+                            onClick = { env.onKeyPress(sym) },
+                            backgroundColor = env.keyBackgroundColor,
+                            textColor = env.keyTextColor,
+                            modifier = Modifier.weight(1f),
+                            onPress = { env.onKeyPressDown?.invoke(sym) },
+                            isFirst = sym == pillarSymbols.first(),
+                            isLast = sym == pillarSymbols.last(),
+                            fontSize = 18.sp,
+                            shadowEnabled = env.shadowEnabled,
+                            shadowElevation = env.shadowElevation,
+                            shadowShapeRadius = env.shadowShapeRadius,
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(3f)
+                        .padding(LocalKeyVisualPadding.current)
+                        .border(
+                            LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent),
+                            RoundedCornerShape(LocalKeyCornerRadius.current)
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
+                    itemsIndexed(pillarSymbols) { _, sym ->
+                        PanelSymbolKey(
+                            text = sym,
+                            onClick = { env.onKeyPress(sym) },
+                            backgroundColor = env.keyBackgroundColor,
+                            textColor = env.keyTextColor,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillParentMaxHeight(0.25f),
+                            onPress = { env.onKeyPressDown?.invoke(sym) },
+                            isFirst = sym == pillarSymbols.first(),
+                            isLast = sym == pillarSymbols.last(),
+                            fontSize = 18.sp,
+                            shadowEnabled = env.shadowEnabled,
+                            shadowElevation = env.shadowElevation,
+                            shadowShapeRadius = env.shadowShapeRadius,
+                        )
                     }
                 }
             }
@@ -475,6 +536,80 @@ internal fun PanelBackCell(env: QwertyRowEnv, modifier: Modifier = Modifier, id:
  */
 @Composable
 private fun OperatorPillarKey(
+    text: String,
+    onClick: () -> Unit,
+    backgroundColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+    onPress: (() -> Unit)? = null,
+    isFirst: Boolean = false,
+    isLast: Boolean = false,
+    fontSize: TextUnit = 18.sp,
+    shadowEnabled: Boolean = true,
+    shadowElevation: Dp = 1.dp,
+    shadowShapeRadius: Dp = 8.dp,
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnPress by rememberUpdatedState(onPress)
+    val cornerRadius = LocalKeyCornerRadius.current
+    val shape = RoundedCornerShape(
+        topStart = if (isFirst) cornerRadius else 0.dp,
+        topEnd = if (isFirst) cornerRadius else 0.dp,
+        bottomStart = if (isLast) cornerRadius else 0.dp,
+        bottomEnd = if (isLast) cornerRadius else 0.dp,
+    )
+    val density = LocalDensity.current
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
+        if (shadowEnabled) {
+            val offsetPx = with(density) { shadowElevation.toPx() }
+            val cornerPx = with(density) { shadowShapeRadius.toPx() }
+            val color = crispShadowColor(backgroundColor)
+            Modifier.drawBehind {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(0f, offsetPx),
+                    size = size,
+                    cornerRadius = CornerRadius(cornerPx),
+                )
+            }
+        } else Modifier
+    }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(shadowModifier)
+            .clip(shape)
+            .background(if (isPressed) backgroundColor.copy(alpha = 0.7f) else backgroundColor)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        currentOnPress?.invoke()
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { currentOnClick() },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier.padding(vertical = 2.dp),
+            fontFamily = AppFonts.keyFontFamily,
+        )
+    }
+}
+
+/** 数字键盘左侧符号栏单键：首键上圆角、末键下圆角、其余方角，柱内无间隙；
+ *  自身不描边（内部无分隔横线），描边由外层符号栏容器承担（复刻 fork 数字键盘符号栏）。
+ */
+@Composable
+private fun PanelSymbolKey(
     text: String,
     onClick: () -> Unit,
     backgroundColor: Color,
