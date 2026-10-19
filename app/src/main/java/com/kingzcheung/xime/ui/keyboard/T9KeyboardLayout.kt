@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -91,6 +93,11 @@ import kotlinx.coroutines.launch
  *   第3行：PQRS(7) | TUV(8) | WXYZ(9) | 0
  *   第4行：符 | 123 | 空格(显示方案名) | 中/En(地球图标) | 发送
  */
+// 长按退格周期标记（文件级）：删空拼音即停；onPress（新按键周期开始）/onRelease（松手）时
+// 重置，使下一次长按直接可删上屏文字，无需先单击一次。用文件级而非 remember——
+// Compose 编译器不允许 @Composable lambda 捕获外层 remember 局部变量。
+private var t9BackspaceDeletedInput = false
+
 @Composable
 fun T9KeyboardLayout(
     onKeyPress: (String) -> Unit,
@@ -115,29 +122,51 @@ fun T9KeyboardLayout(
     specialKeyTextColor: Color = Color.White,
     candidateState: State<CandidateState> = remember { mutableStateOf(CandidateState()) },
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
+    singleCharFilter: Boolean = false,
+    /** 按键描边颜色（来自 key_background.border_color），null = 不描边。 */
+    keyBorderColor: Color? = null,
+    /** 描边宽度 dp（来自 key_background.border_width）。 */
+    keyBorderWidthDp: Float = 0.5f,
 ) {
     val controller = t9Controller
     val configuration = LocalConfiguration.current
     val isLandscape = !isFloatingMode && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    fun handleDelete() {
+    fun handleDelete(longPress: Boolean = false) {
+        // 退格也自动退出单字模式
+        callbacks.onExitSingleCharFilter?.invoke()
+        if (!longPress) {
+            // 单击：完整原行为（删拼音，删空后继续删上屏文字）
+            t9BackspaceDeletedInput = false
+        }
         // onDeleted 在后台队列中处理（flush 不阻塞 UI），结果通过回调返回（Main 线程）。
         controller.onDeleted { result ->
             when (result) {
                 T9InputController.DeleteResult.UNDO_COMMIT -> {
                     controller.clearRimeAndResend()
+                    if (longPress) t9BackspaceDeletedInput = true
                 }
 
                 T9InputController.DeleteResult.NOT_CONSUMED -> {
-                    onKeyPress("delete")
+                    // 长按：拼音串删空后停止，不接着删已上屏文字；
+                    // 但本长按周期从未删过拼音（空闲态长按）保持连续删上屏文字
+                    if (!longPress || !t9BackspaceDeletedInput) {
+                        onKeyPress("delete")
+                    }
                 }
 
                 T9InputController.DeleteResult.DELETED, T9InputController.DeleteResult.UNDO_CHOICE -> {
+                    // 长按期间删除过拼音：标记，删空后即停
+                    if (longPress) {
+                        t9BackspaceDeletedInput = true
+                    }
                 }
             }
         }
     }
 
+    val keyBorderStroke = keyBorderColor?.let { BorderStroke(keyBorderWidthDp.dp, it) }
+    CompositionLocalProvider(LocalKeyBorder provides keyBorderStroke) {
     T9KeyboardSwipeOverlay(
         modifier = modifier,
         keyboardBackgroundColor = keyboardBackgroundColor,
@@ -158,12 +187,14 @@ fun T9KeyboardLayout(
         shadowShapeRadius = shadowShapeRadius,
         onKeyPressDown = onKeyPressDown,
         onDelete = ::handleDelete,
+        singleCharFilter = singleCharFilter,
         specialKeyTextColor = specialKeyTextColor,
         candidateState = candidateState,
         keySpacingX = keySpacingX,
         keySpacingY = keySpacingY,
         onGestureAction = onGestureAction,
     )
+    }
 }
 
 
@@ -212,12 +243,13 @@ private fun T9KeyboardSwipeOverlay(
     shadowElevation: Dp,
     shadowShapeRadius: Dp,
     onKeyPressDown: ((String) -> Unit)?,
-    onDelete: () -> Unit,
+    onDelete: (Boolean) -> Unit,
     specialKeyTextColor: Color = Color.White,
     candidateState: State<CandidateState> = remember { mutableStateOf(CandidateState()) },
     keySpacingX: Dp? = null,
     keySpacingY: Dp? = null,
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
+    singleCharFilter: Boolean = false,
 ) {
     val swipeBubble = rememberSwipeBubbleController()
     var keyboardBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
@@ -307,6 +339,7 @@ private fun T9KeyboardSwipeOverlay(
                         compactMode = true,
                         candidateState = candidateState,
                         onGestureAction = onGestureAction,
+                        singleCharFilter = singleCharFilter,
                     )
                 }
             }
@@ -341,6 +374,7 @@ private fun T9KeyboardSwipeOverlay(
                         compactMode = false,
                         candidateState = candidateState,
                         onGestureAction = onGestureAction,
+                        singleCharFilter = singleCharFilter,
                     )
                 }
             }
@@ -367,10 +401,11 @@ private fun T9KeyboardContent(
     shadowShapeRadius: Dp,
     onKeyPressDown: ((String) -> Unit)?,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)?,
-    onDelete: () -> Unit,
+    onDelete: (Boolean) -> Unit,
     compactMode: Boolean = false,
     candidateState: State<CandidateState> = remember { mutableStateOf(CandidateState()) },
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
+    singleCharFilter: Boolean = false,
 ) {
     val t9DigitFontSize = if (compactMode) 13.sp else 16.sp
     val ctrlFontSize = if (compactMode) 11.sp else androidx.compose.ui.unit.TextUnit.Unspecified
@@ -452,12 +487,14 @@ private fun T9KeyboardContent(
     val t9Layout = remember(configVersion) { KeysConfigHelper.getT9Layout() }
 
     /** 布局项相对权重：keys.<id>.width 优先，否则功能键默认（候选面板 3、空格 1.8、回车 2，其余 1）。 */
-    fun keyWeight(id: String): Float {
+    fun keyWeight(id: String, inRightColumn: Boolean = false): Float {
         KeysConfigHelper.getT9KeyGesture(id)?.width?.takeIf { it > 0f }?.let { return it }
         return when (id) {
             "candidates" -> 3f
             "space" -> 1.8f
-            "enter" -> 2f
+            // 右列（垂直功能键列）：回车默认 1f 均分高度（width 配置优先可自定义）；
+            // 主区/左列（水平行）里回车保持 2f 宽度
+            "enter" -> if (inRightColumn) 1f else 2f
             else -> 1f
         }
     }
@@ -481,6 +518,10 @@ private fun T9KeyboardContent(
                 .then(candidateShadowModifier)
                 .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
                 .background(keyBackgroundColor)
+                .border(
+                    LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent),
+                    RoundedCornerShape(LocalKeyCornerRadius.current)
+                )
         ) {
             val showCandidates = controller.leftPanelState != T9InputController.LeftPanelState.IDLE
             val currentFirstOptions = controller.firstOptions
@@ -519,7 +560,10 @@ private fun T9KeyboardContent(
                         } else {
                             CandidateItem(
                                 text = item,
-                                onClick = { onKeyPress(item) },
+                                // 符号栏=用户自选符号，直接上屏（剪贴板通道），
+                                // 不经 Rime processKey——半角符号如 @ ! : 会被 rime punctuator
+                                // 拦截成标点候选列表（1 @ ! : 、…），无法直接上屏
+                                onClick = { callbacks.onCommitTextDirect?.invoke(item) ?: onKeyPress(item) },
                                 onPress = { onKeyPressDown?.invoke(item) },
                                 textColor = keyTextColor,
                                 backgroundColor = keyBackgroundColor,
@@ -555,12 +599,15 @@ private fun T9KeyboardContent(
                                 isSelected = isSelected,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(if (compactMode) 26.dp else 32.dp)
+                                    .fillParentMaxHeight(0.25f)
                             )
                         } else {
                             CandidateItem(
                                 text = item,
-                                onClick = { onKeyPress(item) },
+                                // 符号栏=用户自选符号，直接上屏（剪贴板通道），
+                                // 不经 Rime processKey——半角符号如 @ ! : 会被 rime punctuator
+                                // 拦截成标点候选列表（1 @ ! : 、…），无法直接上屏
+                                onClick = { callbacks.onCommitTextDirect?.invoke(item) ?: onKeyPress(item) },
                                 onPress = { onKeyPressDown?.invoke(item) },
                                 textColor = keyTextColor,
                                 backgroundColor = keyBackgroundColor,
@@ -569,7 +616,7 @@ private fun T9KeyboardContent(
                                 isSelected = false,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(if (compactMode) 26.dp else 32.dp)
+                                    .fillParentMaxHeight(0.25f)
                             )
                         }
                     }
@@ -749,15 +796,19 @@ private fun T9KeyboardContent(
             )
             "delete" -> SwipeableIconKeyButton(
                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
-                onClick = { onDelete() },
-                onLongClick = { onDelete() },
+                onClick = { onDelete(false) },
+                onLongClick = { onDelete(true) },
                 backgroundColor = specialKeyBackgroundColor,
                 iconColor = specialKeyTextColor,
                 modifier = modifier,
                 a11yDescription = "退格",
                 swipeText = if (compactMode) null else "清空",
                 onSwipe = { onKeyPress("clear_composition") },
-                onPress = { onKeyPressDown?.invoke("delete") },
+                onPress = {
+                    t9BackspaceDeletedInput = false
+                    onKeyPressDown?.invoke("delete")
+                },
+                onRelease = { t9BackspaceDeletedInput = false },
                 swipeUpLabel = if (compactMode) null else "上滑清空",
                 swipeDownLabel = if (compactMode) null else "下滑撤回",
                 onSwipeUp = {
@@ -790,6 +841,21 @@ private fun T9KeyboardContent(
                 shadowShapeRadius = shadowShapeRadius,
                 compactMode = compactMode,
             )
+            // 候选/单字切换（自定义键盘可用 keyid "danzi" 摆放该键）
+            "danzi" -> KeyButton(
+                text = if (singleCharFilter) "单字" else "候选",
+                onClick = { onKeyPress("danzi") },
+                backgroundColor =
+                    if (singleCharFilter) specialKeyBackgroundColor.copy(alpha = 0.3f)
+                    else specialKeyBackgroundColor,
+                textColor = specialKeyTextColor,
+                modifier = modifier,
+                onPress = { onKeyPressDown?.invoke("danzi") },
+                shadowEnabled = shadowEnabled,
+                shadowElevation = shadowElevation,
+                shadowShapeRadius = shadowShapeRadius,
+                fontSize = ctrlFontSize,
+            )
             "enter" -> KeyButton(
                 text = uiState.enterKeyText,
                 onClick = { onKeyPress("enter") },
@@ -817,8 +883,8 @@ private fun T9KeyboardContent(
                 .weight(0.8f),
             verticalArrangement = Arrangement.spacedBy(if (compactMode) 2.dp else 4.dp)
         ) {
-            t9Layout.left.forEach { id ->
-                KeyCell(id, Modifier.weight(keyWeight(id)))
+            for (id in t9Layout.left) {
+                KeyCell(id, Modifier.weight(keyWeight(id, inRightColumn = false)))
             }
         }
 
@@ -828,12 +894,12 @@ private fun T9KeyboardContent(
                 .fillMaxHeight()
                 .weight(3.4f),
         ) {
-            t9Layout.rows.forEach { rowIds ->
+            for (rowIds in t9Layout.rows) {
                 Row(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 ) {
-                    rowIds.forEach { id ->
-                        KeyCell(id, Modifier.weight(keyWeight(id)))
+                    for (id in rowIds) {
+                        KeyCell(id, Modifier.weight(keyWeight(id, inRightColumn = false)))
                     }
                 }
             }
@@ -845,8 +911,8 @@ private fun T9KeyboardContent(
                 .fillMaxHeight()
                 .weight(0.8f),
         ) {
-            t9Layout.right.forEach { id ->
-                KeyCell(id, Modifier.weight(keyWeight(id)))
+            for (id in t9Layout.right) {
+                KeyCell(id, Modifier.weight(keyWeight(id, inRightColumn = true)))
             }
         }
     }
@@ -1098,6 +1164,7 @@ private fun ResetKey(
             .then(shadowModifier)
             .clip(shape)
             .background(if (isPressed) backgroundColor.copy(alpha = 0.7f) else backgroundColor)
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), shape)
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     isPressed = true
@@ -1233,6 +1300,10 @@ private fun T9SpaceKey(
                 .then(spaceShadowModifier)
                 .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
                 .background(backgroundColor)
+                .border(
+                    LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent),
+                    RoundedCornerShape(LocalKeyCornerRadius.current)
+                )
         )
         if (voiceSticky) {
             Text(
