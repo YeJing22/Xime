@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -152,6 +153,7 @@ fun CandidateBar(
     val inputTextLocation = SettingsPreferences.getInputTextLocation(context)
     val showInputBoxStyle = inputTextLocation == SettingsPreferences.INPUT_TEXT_INPUT_BOX
     val candidateTextSize = SettingsPreferences.getCandidateTextSize(context)
+    val candidateCellWidthPercent = SettingsPreferences.getCandidateCellWidthPercent(context)
     val candidateFontFamily = AppFonts.candidateFontFamily
     val commentFontFamily = AppFonts.commentFontFamily
 
@@ -161,6 +163,8 @@ fun CandidateBar(
     val spacingPx = with(density) { 4.dp.toPx() }
 
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+    val candidateCellWidthPx = screenWidthPx * candidateCellWidthPercent / 100f
+    val candidateCellWidthDp = with(density) { candidateCellWidthPx.toDp() }
     val rowPaddingPx = with(density) { 16.dp.toPx() }
     val rightSidePx = with(density) {
         val moreBtn = if (callbacks.onShowMoreCandidates != null) 38.dp.toPx() else 0f
@@ -289,7 +293,7 @@ fun CandidateBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height((candidateTextSize + 25).dp)
             .drawPreeditBubble(
                 text = preeditBubbleText,
                 caretOffset = preeditBubbleCaret,
@@ -482,6 +486,7 @@ fun CandidateBar(
                                     else -> ""
                                 }
                             } else "",
+                            modifier = Modifier.widthIn(min = candidateCellWidthDp),
                             isSelected = index == 0,
                             accentColor = visuals.accentColor,
                             selectedTextColor = visuals.selectedTextColor,
@@ -516,6 +521,7 @@ fun CandidateBar(
                         onClick = { callbacks.onAssociationSelect?.invoke(index) },
                         textColor = visuals.textColor,
                         comment = displayComments.getOrElse(index) { "" },
+                        modifier = Modifier.widthIn(min = candidateCellWidthDp),
                         isSelected = assocState?.highlightIndex == index,
                         accentColor = visuals.accentColor,
                         selectedTextColor = visuals.selectedTextColor,
@@ -792,6 +798,7 @@ fun CandidateItem(
                 onLongClick = onLongClick,
             )
             .padding(horizontal = 4.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
