@@ -1,6 +1,8 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -61,8 +63,16 @@ fun KeyboardLayoutScreen(
         ?: if (uiState.isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
     val keyTextColor = KeyboardThemes.getKeyTextColorOverride(uiState.themeId, uiState.isDarkTheme)
         ?: if (uiState.isDarkTheme) longToColor(kbColors.keyTextColorDark) else longToColor(kbColors.keyTextColor)
+    val keyTransparent = themeScheme.keyBackground?.transparent == true
+    // 符号面板/剪贴板等列表面板不跟随按键透明，保持原有底色
+    val keyBgColorOpaque = if (keyTransparent) {
+        if (uiState.isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
+    } else {
+        keyBgColor
+    }
     val specialKeyBgColor =
-        if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
+        if (keyTransparent) Color.Transparent
+        else if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
             ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) }
             ?: themeSpecialKeyColor
     val specialKeyTextColor = KeyboardThemes.getSpecialKeyTextColorForBackground(
@@ -106,8 +116,18 @@ fun KeyboardLayoutScreen(
     // 键内部的长按/按下协程会继续执行并继续上报，导致气泡/按下状态残留。
     // 这里用 key() 让整个活动键盘在 cancel（epoch 变化）时 remount：
     // 所有键的 remember 状态重置、所有进行中手势协程被 Compose 取消，彻底清干净。
+    val screenKeyBorder = themeScheme.keyBackground?.borderColor?.let { bc ->
+        val bw = (themeScheme.keyBackground?.borderWidthDp ?: 0.5f).dp
+        val c = runCatching {
+            val hex = bc.trim().removePrefix("0x").removePrefix("#")
+            val long = java.lang.Long.parseLong(hex, 16)
+            if (long > 0xFFFFFFL) Color(long) else Color(0xFF000000L or long)
+        }.getOrElse { Color.White }
+        BorderStroke(bw, c)
+    }
     key(keyboardState) {
         key(uiState.swipeCancelEpoch) {
+            CompositionLocalProvider(LocalKeyBorder provides screenKeyBorder) {
             when (keyboardState) {
             is KeyboardLayoutState.Chinese -> {
                 if (isHandwritingLookup) {
@@ -274,6 +294,7 @@ fun KeyboardLayoutScreen(
                         modifier = modifier,
                     )
                 } else if (t9Controller != null) {
+                    val singleCharFilter by viewModel.singleCharFilter.collectAsStateWithLifecycle()
                     T9KeyboardLayout(
                         onKeyPress = onKeyPress,
                         callbacks = callbacks,
@@ -297,6 +318,15 @@ fun KeyboardLayoutScreen(
                         isFloatingMode = uiState.isFloatingMode,
                         specialKeyTextColor = specialKeyTextColor,
                         onGestureAction = onGestureAction,
+                        singleCharFilter = singleCharFilter,
+                        keyBorderColor = themeScheme.keyBackground?.borderColor?.let { bc ->
+                            runCatching {
+                                val hex = bc.trim().removePrefix("0x").removePrefix("#")
+                                val long = java.lang.Long.parseLong(hex, 16)
+                                if (long > 0xFFFFFFL) Color(long) else Color(0xFF000000L or long)
+                            }.getOrNull()
+                        },
+                        keyBorderWidthDp = themeScheme.keyBackground?.borderWidthDp ?: 0.5f,
                     )
                 }
             }
@@ -305,6 +335,7 @@ fun KeyboardLayoutScreen(
                 // 符号键盘已改为路由，此处不应到达
             }
         }
+            }
         }
     }
 }

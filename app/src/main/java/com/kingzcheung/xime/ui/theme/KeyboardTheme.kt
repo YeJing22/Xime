@@ -260,6 +260,8 @@ object KeyboardThemes {
     private fun resolveKeyBgColor(entry: ColorSchemeEntry, isDark: Boolean): Color? {
         val bg = entry.keyBackground
         if (bg != null) {
+            // transparent: true → 完全透明（Long 编码不了 alpha=0）
+            if (bg.transparent) return Color.Transparent
             when (bg.type) {
                 "solid" -> {
                     val hex = if (isDark) bg.colorDark ?: bg.color else bg.color

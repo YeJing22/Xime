@@ -1,6 +1,8 @@
 package com.kingzcheung.xime.ui.keyboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -139,7 +141,11 @@ data class SwipeState(
 
 private val shadowColorCache = HashMap<Color, Color>()
 
+/** 按键描边（由上层主题 key_background.border_color 提供）；null = 不描边。 */
+val LocalKeyBorder = staticCompositionLocalOf<BorderStroke?> { null }
+
 internal fun crispShadowColor(backgroundColor: Color): Color {
+    if (backgroundColor.alpha <= 0f) return Color.Transparent
     return shadowColorCache.getOrPut(backgroundColor) {
         val r = backgroundColor.red
         val g = backgroundColor.green
@@ -398,6 +404,7 @@ fun KeyButton(
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
                 else backgroundColor
             )
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape)
             .keySemantics(a11yDescription, a11yState) { currentOnClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -840,6 +847,7 @@ fun SwipeableKeyButton(
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
                 else backgroundColor
             )
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape)
             .keySemantics(a11yDescription, a11yState) { currentOnClick() },
         contentAlignment = if (layoutMode == ButtonLayout.COMPACT) Alignment.TopStart else Alignment.Center
     ) {
@@ -1203,6 +1211,7 @@ fun IconKeyButton(
                 else if (isHighlighted) darkenColor(backgroundColor, 0.2f)
                 else backgroundColor
             )
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape)
             .keySemantics(a11yDescription, a11yState) { currentOnClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -1662,6 +1671,7 @@ fun SwipeableIconKeyButton(
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
                 else backgroundColor
             )
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape)
             .keySemantics(a11yDescription, a11yState) { currentOnClick() },
         contentAlignment = Alignment.Center
     ) {

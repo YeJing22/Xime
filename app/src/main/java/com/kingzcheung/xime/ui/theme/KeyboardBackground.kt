@@ -44,6 +44,10 @@ private fun angleToFractionalPoints(angleDeg: Int): Pair<Offset, Offset> {
     )
 }
 
+/** 0xRRGGBB 补 FF alpha；0xAARRGGBB 保留 alpha（与 KeyboardTheme.longToColor 同逻辑）。 */
+private fun longToColorWithAlpha(it: Long): Color =
+    if (it > 0xFFFFFF) Color(it) else Color(0xFF000000 or it)
+
 /** 从 BackgroundConfig 解析出像素色值，供不支持渐变/图片的场景使用。 */
 fun resolveSolidColorHex(config: BackgroundConfig, isDark: Boolean): Long? {
     return when (config.type) {
@@ -58,7 +62,7 @@ fun resolveSolidColorHex(config: BackgroundConfig, isDark: Boolean): Long? {
 
 /** 从 BackgroundConfig 解析出 Compose Color。 */
 fun resolveSolidColor(config: BackgroundConfig, isDark: Boolean): Color? {
-    return resolveSolidColorHex(config, isDark)?.let { Color(0xFF000000 or it) }
+    return resolveSolidColorHex(config, isDark)?.let { longToColorWithAlpha(it) }
 }
 
 /**
@@ -77,15 +81,18 @@ fun Modifier.keyboardBackground(
 
     when (background.type) {
         "solid" -> {
+            if (background.transparent) {
+                return this.then(Modifier.background(Color.Transparent))
+            }
             val hex = if (isDark) background.colorDark ?: background.color else background.color
-            val color = hex?.let { Color(0xFF000000 or it) }
+            val color = hex?.let { longToColorWithAlpha(it) }
             return if (color != null) this.then(Modifier.background(color))
             else this.then(Modifier.background(fallbackColor))
         }
         "gradient" -> {
             val hexes = if (isDark) background.colorsDark ?: background.colors else background.colors
             if (hexes != null && hexes.size >= 2) {
-                val colors = hexes.map { Color(0xFF000000 or it) }
+                val colors = hexes.map { longToColorWithAlpha(it) }
                 val (startRatio, endRatio) = angleToFractionalPoints(background.angle ?: 0)
                 return this.then(
                     Modifier.drawWithContent {
