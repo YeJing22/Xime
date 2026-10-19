@@ -143,10 +143,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     /** 打开/收起候选展开页。 */
     fun setCandidatePageExpanded(expanded: Boolean) {
         _candidatePageExpanded.value = expanded
-        if (!expanded) {
-            // 筛选开关只在展开页左栏：收起后候选栏若仍被过滤将无处可关，自动复位
-            _singleCharFilter.value = false
-        }
+        // 主键盘 danzi 键可随时开关只看单字，收起展开页后保持用户设置
     }
 
     // ── 展开页翻页联动 ──
@@ -167,6 +164,11 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleSingleCharFilter() {
         _singleCharFilter.value = !_singleCharFilter.value
+    }
+
+    /** 直接设置单字过滤（选字后自动退出单字模式） */
+    fun setSingleCharFilter(value: Boolean) {
+        _singleCharFilter.value = value
     }
 
 

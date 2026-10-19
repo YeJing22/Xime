@@ -204,6 +204,8 @@ fun KeyboardView(
                 t9Controller.onRightCandidateSelectedByDirectCommit()
             } else {
                 t9Controller.onRightCandidateSelected(pinyin, text, textLength)
+            }.also {
+                viewModel.setSingleCharFilter(false)
             }
         }
         callbacks.onT9ForceSendToRime = {
@@ -211,6 +213,9 @@ fun KeyboardView(
         }
         callbacks.onFilterT9Candidates = { candidates, comments ->
             Pair(candidates, comments)  // no-op: t9_processor handles filtering
+        }
+        callbacks.onExitSingleCharFilter = {
+            viewModel.setSingleCharFilter(false)
         }
     }
 
@@ -233,12 +238,19 @@ fun KeyboardView(
     val keyTextColor = KeyboardThemes.getKeyTextColorOverride(state.themeId, state.isDarkTheme)
         ?: if (state.isDarkTheme) longToColor(kbColors.keyTextColorDark)
         else longToColor(kbColors.keyTextColor)
+    // 符号面板/剪贴板不跟随按键透明配置：用默认不透明按键色
+    val panelKeyBgColor = if (state.isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
     val accentColor = KeyboardThemes.getAccentColor(state.themeId, state.isDarkTheme)
     val themeScheme = KeyboardThemes.getThemeById(state.themeId)
     val themeSpecialKeyColor = KeyboardThemes.getSpecialKeyColor(state.themeId, state.isDarkTheme)
-    val specialKeyBgColor = if (state.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
-        ?: themeSpecialKeyColor
-        else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
+    val keyTransparent = themeScheme.keyBackground?.transparent == true
+    val specialKeyBgColor = if (keyTransparent) {
+        androidx.compose.ui.graphics.Color.Transparent
+    } else if (state.isDarkTheme) {
+        kbColors.specialKeyBgColorDark?.let { longToColor(it) } ?: themeSpecialKeyColor
+    } else {
+        kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
+    }
     val specialKeyTextColor = KeyboardThemes.getSpecialKeyTextColorForBackground(
         specialKeyBgColor, keyTextColor
     )
@@ -331,11 +343,26 @@ fun KeyboardView(
             } else {
                 emptyList()
             }
+            // 非展开态候选栏：单字筛选是否激活（激活后即使当前页无单字也显示空候选栏，
+            // 不回退全量）；筛选态取当前页候选的单字子列表（保留原索引，
+            // 点选/长按经 first 换算回原索引；引擎侧候选列表始终是全量，
+            // 单字筛选激活条件：非展开态 + 筛选开启 + 当前有候选（剪贴板候选除外）。
+            // 不依赖 isComposing：T9 的显示态（partial 半提交/RightCommit 等）该语义不统一，
+            // 部分输入串（如 yi'qian 场景）可能导致过滤不生效。
+            val normalFilterActive = !expandedDataMode && singleCharFilter &&
+                cs.candidates.isNotEmpty() && !cs.isShowingRecentClipboard
+            val railNormal = if (normalFilterActive) {
+                // cs.candidates 为 String 列表，直接按文本长度过滤，保留原索引
+                cs.candidates.withIndex()
+                    .mapNotNull { (i, c) -> if (c.length == 1) i to c else null }
+            } else {
+                emptyList()
+            }
             val candidateBarState = remember(
                 cs.candidates, cs.candidateComments, cs.inputText, cs.preeditText, cs.isComposing,
                 cs.associationCandidates, cs.pendingEnglishText, cs.isShowingRecentClipboard, cs.hasNextPage,
                 state.isCalculatorMode, handwritingCandidates, handwritingComments, showHandwritingCandidates,
-                railExpanded, cs.preeditCaretPos, state.recentClipboardItems,
+                railExpanded, railNormal, cs.preeditCaretPos, state.recentClipboardItems,
             ) {
                 if (showHandwritingCandidates) {
                     CandidateBarState.AssociationOnly(
@@ -345,8 +372,16 @@ fun KeyboardView(
                     )
                 } else {
                     CandidateBarState.from(
-                        candidates = if (railExpanded.isNotEmpty()) railExpanded.map { it.second.text } else cs.candidates,
-                        candidateComments = if (railExpanded.isNotEmpty()) railExpanded.map { it.second.comment } else cs.candidateComments,
+                        candidates = when {
+                            railExpanded.isNotEmpty() -> railExpanded.map { it.second.text }
+                            normalFilterActive -> railNormal.map { it.second }
+                            else -> cs.candidates
+                        },
+                        candidateComments = when {
+                            railExpanded.isNotEmpty() -> railExpanded.map { it.second.comment }
+                            normalFilterActive -> railNormal.map { (i, _) -> cs.candidateComments.getOrNull(i) ?: "" }
+                            else -> cs.candidateComments
+                        },
                         inputText = cs.inputText,
                         preeditText = cs.preeditText,
                         isComposing = cs.isComposing,
@@ -360,7 +395,7 @@ fun KeyboardView(
                         isCalculatorActive = state.isCalculatorMode,
                         preeditCaretPos = cs.preeditCaretPos,
                         // 剪贴板态：与 cs.candidates 同序同长，非图片位为 null（展开态数据源不同则不带图片）
-                        clipboardImages = if (cs.isShowingRecentClipboard && railExpanded.isEmpty()) {
+                        clipboardImages = if (cs.isShowingRecentClipboard && railExpanded.isEmpty() && !normalFilterActive) {
                             state.recentClipboardItems.map { if (it.isImage) it else null }
                         } else {
                             emptyList()
@@ -531,18 +566,26 @@ fun KeyboardView(
                                 callbacks.onGlobalCandidateSelect?.invoke(globalIndex)
                                 viewModel.setCandidatePageExpanded(false)
                             }
+                        } else if (normalFilterActive) {
+                            // 单字筛选态（非展开）：位置索引经 railNormal 换算回原候选索引
+                            val origIndex = railNormal.getOrNull(index)?.first
+                            if (origIndex != null) callbacks.onCandidateSelect(origIndex)
                         } else {
                             callbacks.onCandidateSelect(index)
                         }
                     },
                     onCandidateLongPress = { index ->
                         val railEntry = if (expandedDataMode) railExpanded.getOrNull(index) else null
+                        val normalEntry = if (!expandedDataMode && normalFilterActive) railNormal.getOrNull(index) else null
                         val word = railEntry?.second?.text
+                            ?: normalEntry?.second
                             ?: candidateState.value.candidates.getOrNull(index)
                         if (!word.isNullOrEmpty()) {
                             deletePending = DeletePendingWord(word) {
                                 if (railEntry != null) {
                                     callbacks.onGlobalCandidateDelete?.invoke(railEntry.first)
+                                } else if (normalEntry != null) {
+                                    callbacks.onCandidateDelete?.invoke(normalEntry.first)
                                 } else {
                                     callbacks.onCandidateDelete?.invoke(index)
                                 }
@@ -922,6 +965,8 @@ fun KeyboardView(
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 // 与 emoji 同档：command: symbol / 自定义键发 "symbol" 时打开符号面板
                                 "symbol" -> viewModel.showOverlay(OverlayRoute.Symbol)
+                                "danzi" -> viewModel.toggleSingleCharFilter()
+                                "toggle_single_char" -> viewModel.toggleSingleCharFilter()
                                 else -> {
                                     callbacks.onKeyPress(key, isShifted)
                                     viewModel.onCharacterTyped()
@@ -952,6 +997,8 @@ fun KeyboardView(
                                 "emoji" -> {
                                     viewModel.showOverlay(OverlayRoute.Emoji)
                                 }
+                                "danzi" -> viewModel.toggleSingleCharFilter()
+                                "toggle_single_char" -> viewModel.toggleSingleCharFilter()
                                 else -> callbacks.onKeyPress(key, false)
                             }
                         }
@@ -1040,6 +1087,8 @@ fun KeyboardView(
                                     callbacks.onT9SwitchAway?.invoke()
                                     callbacks.onKeyPress(key, false)
                                 }
+                                "danzi" -> viewModel.toggleSingleCharFilter()
+                                "toggle_single_char" -> viewModel.toggleSingleCharFilter()
                                 else -> callbacks.onKeyPress(key, false)
                             }
                         }
@@ -1235,7 +1284,13 @@ fun KeyboardView(
                                 "emoji" -> {
                                     viewModel.showOverlay(OverlayRoute.Emoji)
                                 }
-                                else -> callbacks.onKeyPress(key, false)
+                                else -> {
+                                    if (key.length == 1) {
+                                        callbacks.onCommitTextDirect?.invoke(key) ?: callbacks.onKeyPress(key, false)
+                                    } else {
+                                        callbacks.onKeyPress(key, false)
+                                    }
+                                }
                             }
                         },
                         viewModel = viewModel,
@@ -1278,7 +1333,13 @@ fun KeyboardView(
                                 "emoji" -> {
                                     viewModel.showOverlay(OverlayRoute.Emoji)
                                 }
-                                else -> callbacks.onKeyPress(key, false)
+                                else -> {
+                                    if (key.length == 1) {
+                                        callbacks.onCommitTextDirect?.invoke(key) ?: callbacks.onKeyPress(key, false)
+                                    } else {
+                                        callbacks.onKeyPress(key, false)
+                                    }
+                                }
                             }
                         },
                         viewModel = viewModel,
@@ -1467,7 +1528,7 @@ fun KeyboardView(
                         selectedTab = p.route.tab,
                         backgroundColor = keyboardBgColor,
                         keyTextColor = keyTextColor,
-                        keyBgColor = keyBgColor,
+                        keyBgColor = panelKeyBgColor,
                         viewModel = viewModel,
                         onSelectItem = { text ->
                             callbacks.onClipboardSelect?.invoke(text)
@@ -1557,14 +1618,17 @@ fun KeyboardView(
                             if (symbol == "delete") {
                                 callbacks.onKeyPress("delete", false)
                             } else {
-                                callbacks.onCommitText?.invoke(symbol)
+                                // 符号走正常输入通道（onKeyPress → commitText）：
+                                // 1) 符号自动成对在 commitText 统一入口拦截，此处必须经该通道；
+                                // 2) 原 onCommitText 走剪贴板性质上屏（isPaste=true），不触发配对。
+                                callbacks.onCommitTextDirect?.invoke(symbol) ?: callbacks.onKeyPress(symbol, false)
                             }
                         },
                         onBack = { viewModel.closeOverlay() },
                         backgroundColor = keyboardBgColor,
                         textColor = keyTextColor,
                         accentColor = accentColor,
-                        keyBgColor = keyBgColor,
+                        keyBgColor = panelKeyBgColor,
                         specialKeyBgColor = specialKeyBgColor,
                         specialKeyTextColor = specialKeyTextColor,
                         bottomPaddingDp = state.keyboardBottomPaddingDp,
