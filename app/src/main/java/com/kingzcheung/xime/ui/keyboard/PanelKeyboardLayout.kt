@@ -268,6 +268,12 @@ private fun mirrorColumnsForEntryPosition(layout: PanelLayoutConfig, backKeyOnLe
         left.add(bottomItem)
         return layout
     }
+    // 官方镜像只对齐「返回键」：左列末不是 back 说明布局被自定义过（如 open_symbols/space_bar），
+    // 不再交换，保证所有入口布局一致。
+    if (bottomItem.first() != "back") {
+        left.add(bottomItem)
+        return layout
+    }
     val lastRow = rows.removeAt(rows.lastIndex).toMutableList()
     val rowFirst = lastRow.removeAt(0)
     left.add(listOf(rowFirst))

@@ -968,18 +968,21 @@ keyboard:
   # 键间距沿用 keyboard.key.number；平板设备档变体：写 number_tablet 段即可整段替换（同 qwerty_tablet）。
   number:
     type: columns
+    side_symbols: [":", "-", "#"]
     layout:
       left:
         - ["+", "-", "*", "/"]
-        - back
+        - open_symbols
       rows:
         - [1, 2, 3]
         - [4, 5, 6]
         - [7, 8, 9]
-        - [open_symbols, 0, "."]
-      right: [delete, space_bar, emoji, enter]
+        - [space_bar, 0, back]
+      right: [delete, ".", "@", enter]
     keys:
-      enter: { tap: { action: send_rime, value: enter, label: "确定" } }
+      open_symbols: { tap: { label: "符" } }
+      back: { tap: { label: "返回" } }
+      enter: { tap: { action: send_rime, value: enter, label: "发送" } }
 
   # ── 常用符号键盘（rows 行布局；中英共用一套，不再分中/英两段、没有 En 键）──
   # 符号默认用**中文形态**（＠＃＄… 、＊“”！？），只有 `,` 与 `.` 保留半角 ASCII
