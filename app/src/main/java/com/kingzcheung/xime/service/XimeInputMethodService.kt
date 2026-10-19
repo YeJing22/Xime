@@ -320,6 +320,15 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private var deleteSessionActive = false
     private var deleteSessionBeforeText = ""
     private var deleteSessionBeforeCode = ""
+
+    /** 退格长按周期：按住激活、释放复位（全局，所有键盘布局）；配合
+     *  [backspaceDeletedInput] 实现「长按删空输入串即停，空闲长按连续删上屏文字」。 */
+    @Volatile
+    var backspacePressActive = false
+
+    /** 当前退格按住周期内是否删除过输入串（拼音 / 英文待处理等）。 */
+    @Volatile
+    var backspaceDeletedInput = false
     /** 累积的 partial commit 段列表（多段选词场景下逐段追加，文本+拼音同源，供调频/回滚） */
     internal val t9PartialSegments = mutableListOf<T9PartialSegment>()
     /**

@@ -949,6 +949,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         } else when {
             // 1. 英文待处理文本：逐个删除字符，重新加载联想
             candState.pendingEnglishText.isNotEmpty() -> {
+                // 删了英文待处理输入串：按住周期内标记（供「删空即停」判定）
+                if (service.backspacePressActive) service.backspaceDeletedInput = true
                 val newPending = candState.pendingEnglishText.dropLast(1)
                 if (newPending.isNotEmpty()) {
                     withContext(Dispatchers.Main) {
@@ -988,6 +990,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
             // 2. Rime 编码中：让 Rime 处理退格，更新候选
             candState.isComposing || candState.inputText.isNotEmpty() -> {
+                // 删了 Rime 输入串（拼音等）：按住周期内标记（供「删空即停」判定）
+                if (service.backspacePressActive) service.backspaceDeletedInput = true
                 val editingCaret = service.editingCaretPos
                 val editingInput = if (editingCaret > 0) service.rimeEngine.getInput() else ""
                 if (editingCaret > 0 && editingInput.length >= editingCaret) {
@@ -1046,6 +1050,9 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
             // 4. 无候选也无编码：直接回删已上屏文本
             else -> {
+                // 长按退格：本周期已删除过输入串且当前已删空 → 即停，不继续删除
+                // 已上屏文字；空闲态长按（本周期从未删过输入串）保持连续删上屏。
+                if (service.backspacePressActive && service.backspaceDeletedInput) return
                 service.predictionManager.deleteLastChar()
 
                 withContext(Dispatchers.Main) {

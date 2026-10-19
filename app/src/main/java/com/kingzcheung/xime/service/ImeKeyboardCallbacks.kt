@@ -42,10 +42,18 @@ internal fun rememberImeKeyboardCallbacks(
                 // 派发之前（同一主线程回调内同步完成），否则首个被删字符漏记。
                 // 会话结算见 XimeInputMethodService.finishDeleteSession：由撤回请求或
                 // 其它按键触发，不在抬手上结算（抬手时退格 job 可能还在队列里没落盘）。
-                if (key == "delete") service.beginDeleteSession()
+                if (key == "delete") {
+                    // 按住周期开始：重置「本周期删过输入串」标记（单击/长按共用）。
+                    // 长按删空输入串后由 processDeleteKey 判定即停；空闲态长按
+                    // （从未删过输入串）保持连续删除已上屏文字。
+                    service.backspacePressActive = true
+                    service.backspaceDeletedInput = false
+                    service.beginDeleteSession()
+                }
                 service.feedbackManager.performKeyPressDownEffect(key, view)
             },
             onKeyRelease = { key ->
+                if (key == "delete") service.backspacePressActive = false
                 service.feedbackManager.hapticFeedback(view, keyUp = true)
             },
             onCandidateSelect = { index ->
