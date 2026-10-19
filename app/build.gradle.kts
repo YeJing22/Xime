@@ -48,18 +48,18 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.kingzcheung.xime"
+        applicationId = "com.kingzcheung.xime.test"
         minSdk = 28
         targetSdk = 35
         versionCode = 20261019
-        versionName = "3.3.0"
+        versionName = "3.3.0-test"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // NDK 配置
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            abiFilters += listOf("arm64-v8a")
         }
 
         // 构建信息
@@ -155,22 +155,12 @@ android {
         checkDependencies = true
     }
 
-    // 分架构打包
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
-        }
-    }
 }
 
 android.applicationVariants.all {
     val appName = "Xime"
     outputs.all {
-        val abi = filters.find { it.filterType.toString() == "ABI" }?.identifier ?: "universal"
-        (this as BaseVariantOutputImpl).outputFileName = "$appName-$versionName-$abi.apk"
+        (this as BaseVariantOutputImpl).outputFileName = "$appName-$versionName-arm64-v8a.apk"
     }
 }
 

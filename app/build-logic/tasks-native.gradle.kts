@@ -106,7 +106,7 @@ val downloadOnnx by tasks.registering {
     outputs.file(nnapiMarker)
 
     doLast {
-        val abis = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        val abis = listOf("arm64-v8a")
 
         // 已全部就绪则跳过
         val allSoPresent = abis.all {
@@ -378,7 +378,12 @@ val syncT9Plugin by tasks.registering {
         } else if (mirror.exists()) {
             mirror.deleteRecursively()
         }
-        Files.createSymbolicLink(link, expectedTarget)
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            if (mirror.exists()) mirror.deleteRecursively()
+            authoritative.copyRecursively(mirror, overwrite = true)
+        } else {
+            Files.createSymbolicLink(link, expectedTarget)
+        }
     }
 }
 
