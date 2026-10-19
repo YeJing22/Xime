@@ -369,7 +369,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
 
     /** 刷新展开页的跨页全量候选；非展开态清空以省内存。编码变化与展开动作时调用 */
     internal fun refreshExpandedCandidates() {
-        if (!keyboardViewModel.candidatePageExpanded.value) {
+        val needFull = keyboardViewModel.candidatePageExpanded.value ||
+            keyboardViewModel.singleCharFilter.value
+        if (!needFull) {
             if (candidateState.value.expandedCandidates.isNotEmpty()) {
                 candidateState.value = candidateState.value.copy(
                     expandedCandidates = emptyList(),
@@ -2732,6 +2734,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     
     internal fun hideKeyboard() {
         clearInputState()
+        keyboardViewModel.setSingleCharFilter(false)
         requestHideSelf(0)
     }
     
@@ -2889,7 +2892,51 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     internal val candidateTransform = CandidateTransformCoordinator(this)
 
     override fun commitText(text: String) {
+        // 单字模式：选字上屏后自动退出，回到普通词组模式
+        if (keyboardViewModel.singleCharFilter.value) {
+            keyboardViewModel.setSingleCharFilter(false)
+        }
+        // 符号自动成对（布局与显示 → 符号自动成对 开关）：
+        // 所有上屏文本统一入口在此拦截——符号键无论来自数字键盘/符号面板/全角半角，
+        // 都最终经 commitText 上屏，比在按键路由（handleKeyPress）里拦截覆盖更全。
+        // 组合态在此先同步提交（对齐原按键路由行为），再插入成对符号；
+        // 敏感输入框（密码类）不做成对（无法可靠移动光标）。
+        val pairRight = autoPairRightFor(text)
+        if (pairRight != null && SettingsPreferences.isAutoPairSymbolsEnabled(this)) {
+            val ic = currentInputConnection
+            if (ic != null && !pluginEvents.isCurrentEditorSensitive) {
+                // 组合态先同步提交（对齐原按键路由行为），避免拼音残留卡在组合态
+                if (rimeEngine.getInput().isNotEmpty()) {
+                    val committed = rimeEngine.commit()
+                    rimeEngine.clearComposition()
+                    if (committed.isNotEmpty()) commitTextSilently(committed, isPaste = false)
+                }
+                val before = ic.getTextBeforeCursor(4096, 0)?.length ?: 0
+                commitTextSilently(text + pairRight, isPaste = false)
+                // 光标移到两个符号中间（before 为提交前光标前文本长度）
+                ic.setSelection(before + 1, before + 1)
+                return
+            }
+        }
         commitTextAndPredict(text, isPaste = false)
+    }
+
+    /** 符号自动成对：左符号 → 右符号（配合 [commitText] 拦截使用）。 */
+    private fun autoPairRightFor(key: String): String? = when (key) {
+        "(" -> ")"
+        "（" -> "）"
+        "[" -> "]"
+        "【" -> "】"
+        "{" -> "}"
+        "「" -> "」"
+        "『" -> "』"
+        "“" -> "”"
+        "‘" -> "’"
+        "\"" -> "\""
+        "'" -> "'"
+        "<" -> ">"
+        "《" -> "》"
+        else -> null
     }
 
     /**
@@ -2976,6 +3023,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         // 上屏会让光标前进 text.length，属自身写入
         selfWriteCaret.noteWrite(text.length, android.os.SystemClock.uptimeMillis())
         currentInputConnection?.commitText(text, 1)
+        // 单字模式：选字上屏后自动退出，回到普通词组模式（含 partial commit 右选）
+        if (keyboardViewModel.singleCharFilter.value) {
+            keyboardViewModel.setSingleCharFilter(false)
+        }
 
         // text_committed 事件：真实上屏才累计/投递（内部编辑器分支已在上方 return；
         // 敏感输入框（密码）不计不投；粘贴性质上屏带 is_paste 标记，见 commitPastedText；
