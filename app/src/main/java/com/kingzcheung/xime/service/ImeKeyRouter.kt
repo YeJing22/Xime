@@ -93,6 +93,9 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         // 空键无任何按键语义，且下游 Rime 路由按 key[0] 取码（key.lowercase()[0]），
         // 空串会越界崩溃（2026-09-14 真机实证：滑动手势 commit 值为空时触发）。
         if (key.isEmpty()) return
+        // 任何非删除键的新输入 = 英文待处理文本不再处于「删空」状态（复位权威标记，
+        // 使下一次英文输入的长按退格可正常删空后进入空闲删上屏语义）
+        if (key != "delete") service.englishPendingCleared = false
         if (service.uiState.value.toolPanelInputFocused) {
             val candState = service.candidateState.value
             val hasComposing = candState.isComposing || candState.inputText.isNotEmpty()
@@ -949,8 +952,14 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         } else when {
             // 1. 英文待处理文本：逐个删除字符，重新加载联想
             candState.pendingEnglishText.isNotEmpty() -> {
-                // 删了英文待处理输入串：按住周期内标记（供「删空即停」判定）
-                if (service.backspacePressActive) service.backspaceDeletedInput = true
+                // 英文待处理文本删空即停（权威判定）：pendingEnglishText 的 UI 快照经
+                // Channel 异步更新、删空后可能滞后显示非空而误入本分支；本周期已真正
+                // 删空过待处理文本（englishPendingCleared）时立即停止，避免空态回删上屏。
+                if (service.backspaceDeletedInput && service.englishPendingCleared) return
+                // 删了英文待处理输入串：标记「本周期删除过输入串」（供「删空即停」判定）。
+                // 不要求按键仍在按住中：抬手后 keyJobs 队列里排队的 follow-up 删除同样
+                // 属于本长按周期，若此时才删输入串也必须标记，否则删空后失去防护。
+                service.backspaceDeletedInput = true
                 val newPending = candState.pendingEnglishText.dropLast(1)
                 if (newPending.isNotEmpty()) {
                     withContext(Dispatchers.Main) {
@@ -972,6 +981,9 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                         }
                     }
                 } else {
+                    // 英文待处理文本真正删空：置权威标记（供后续 job 删空即停判定，
+                    // 此时 UI 快照可能仍显示非空）
+                    service.englishPendingCleared = true
                     withContext(Dispatchers.Main) {
                         service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
                         service.candidateState.value = service.candidateState.value.copy(
@@ -990,8 +1002,10 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
             // 2. Rime 编码中：让 Rime 处理退格，更新候选
             candState.isComposing || candState.inputText.isNotEmpty() -> {
-                // 删了 Rime 输入串（拼音等）：按住周期内标记（供「删空即停」判定）
-                if (service.backspacePressActive) service.backspaceDeletedInput = true
+                // 删了 Rime 输入串（拼音等）：标记「本周期删除过输入串」（供「删空即停」判定）。
+                // 不要求按键仍在按住中：抬手后 keyJobs 队列里排队的 follow-up 删除同样
+                // 属于本长按周期，若此时才删输入串也必须标记，否则删空后失去防护。
+                service.backspaceDeletedInput = true
                 val editingCaret = service.editingCaretPos
                 val editingInput = if (editingCaret > 0) service.rimeEngine.getInput() else ""
                 if (editingCaret > 0 && editingInput.length >= editingCaret) {
@@ -1008,6 +1022,14 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     }
                     sendTransformedResult(result) { if (service.calculatorEngine.isActive()) updateCalculatorCandidates() }
                 } else {
+                    // 删空即停（权威判定）：candidateState 的 UI 快照经 Channel 异步更新，
+                    // 删空后仍可能滞后显示非空而误入本分支；以 Rime 实际输入串为准——
+                    // 本周期删除过输入串、且实际已删空（无 T9 partial 段残留时）→ 立即
+                    // 停止，不再向 Rime 发退格（空态退格会回删已上屏文本）。
+                    // 有 partial 段时保留原逻辑：删空那一轮已在其内完成 partial 回滚，
+                    // 之后不再追加空态退格，避免误删上屏文字。
+                    if (service.backspaceDeletedInput && service.rimeEngine.getInput().isEmpty()
+                        && service.t9PartialSegments.isEmpty()) return
                     service.rimeEngine.processKey(0xff08, 0)
                     val result = service.rimeEngine.getProcessResult(true)
                     if (result.inputText.isEmpty()) {
@@ -1050,9 +1072,12 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
             // 4. 无候选也无编码：直接回删已上屏文本
             else -> {
-                // 长按退格：本周期已删除过输入串且当前已删空 → 即停，不继续删除
-                // 已上屏文字；空闲态长按（本周期从未删过输入串）保持连续删上屏。
-                if (service.backspacePressActive && service.backspaceDeletedInput) return
+                // 删空即停：本退格周期删除过输入串且当前已删空 → 立即停止，不再删除
+                // 已上屏文字。标志在下次按下时重置、长按周期（含抬手后队列中残留的
+                // follow-up 尾单）内持续为 true——因此删空后即使已经抬手、仍有积压的
+                // 退格请求在 keyJobs 中排队，也全部被拦截，不会误删上屏文本；
+                // 空闲态长按（本周期从未删过输入串）则保持连续删除已上屏文字。
+                if (service.backspaceDeletedInput) return
                 service.predictionManager.deleteLastChar()
 
                 withContext(Dispatchers.Main) {

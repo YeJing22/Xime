@@ -329,6 +329,13 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     /** 当前退格按住周期内是否删除过输入串（拼音 / 英文待处理等）。 */
     @Volatile
     var backspaceDeletedInput = false
+
+    /** 英文待处理文本（pendingEnglishText）已删空（删空即停的权威标记）。
+     *  candidateState 的 pendingEnglishText 经 Channel 异步更新、删空后可能滞后
+     *  显示非空，后续退格 job 会误以为仍在删英文编码而回删已上屏文字；
+     *  此标记在英文待处理文本真正删空时置位、下一次非删除键输入时复位。 */
+    @Volatile
+    var englishPendingCleared = false
     /** 累积的 partial commit 段列表（多段选词场景下逐段追加，文本+拼音同源，供调频/回滚） */
     internal val t9PartialSegments = mutableListOf<T9PartialSegment>()
     /**
