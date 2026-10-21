@@ -2356,18 +2356,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             ) {
                 return
             }
-            if (!shouldBreakCompositionOnSelectionChange(
-                    oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
-                )
-            ) {
-                return
-            }
-            if (!hasPendingComposition()) return
-            FileLogger.i(
-                TAG,
-                "onUpdateSelection: 丢弃待上屏组合态 ($oldSelStart,$oldSelEnd)->($newSelStart,$newSelEnd)"
-            )
-            breakPendingCompositionForCaretMove(newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+            // [用户需求 2026-10-19] 光标移动（点击已上屏文字/九键滑动等）不再清空输入串：
+            // 保留组合态。原"用户移动光标→丢弃组合态"策略（shouldBreakCompositionOnSelectionChange
+            // + breakPendingCompositionForCaretMove）已停用：编码随输入继续增长，
+            // 上屏时落到当前光标位置，由用户自行掌握光标语义。
         } finally {
             selectionUpdateGate.exit()
         }
