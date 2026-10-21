@@ -897,11 +897,16 @@ fun KeyboardView(
                         val currentOnCursorMove = rememberUpdatedState(callbacks.onCursorMove)
                         val suppressCursorMove = remember { mutableStateOf(false) }
                         val cursorGestureActive = remember { mutableStateOf(false) }
+                        // 触发距离 / 每格距离改为用户可调（设置 → 布局与显示 → 光标滑动）。
+                        // 每次手势开始时重读设置：改完阈值不必重开输入法，下一次滑动即生效。
+                        val cursorPrefContext = LocalContext.current
                         val cursorMod = if (callbacks.onCursorMove != null) {
                             Modifier.pointerInput(Unit) {
-                                val stepThresholdPx = 25.dp.toPx()
-                                val activationThresholdPx = 60.dp.toPx()
                                 awaitEachGesture {
+                                    val stepThresholdPx = SettingsPreferences
+                                        .getCursorDragStepDp(cursorPrefContext).dp.toPx()
+                                    val activationThresholdPx = SettingsPreferences
+                                        .getCursorDragActivationDp(cursorPrefContext).dp.toPx()
                                     suppressCursorMove.value = false
                                     cursorGestureActive.value = false
                                     val down = awaitFirstDown(requireUnconsumed = false)

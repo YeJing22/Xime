@@ -132,6 +132,8 @@ object SettingsPreferences {
     private const val KEY_PAGE_SIZE = "page_size"
     private const val KEY_CANDIDATE_TEXT_SIZE = "candidate_text_size"
     private const val KEY_CANDIDATE_CELL_WIDTH_PERCENT = "candidate_cell_width_percent"
+    private const val KEY_CURSOR_DRAG_ACTIVATION_DP = "cursor_drag_activation_dp"
+    private const val KEY_CURSOR_DRAG_STEP_DP = "cursor_drag_step_dp"
     const val INPUT_TEXT_INPUT_BOX = "input_box"
     const val INPUT_TEXT_CANDIDATE_BAR = "candidate_bar"
     const val DEFAULT_PAGE_SIZE = 20 // 手机候选栏每页候选词数；schema 里的 page_size 来自 PC 版（5），太短，默认用 20
@@ -794,6 +796,54 @@ object SettingsPreferences {
 
     fun setCandidateCellWidthPercent(context: Context, percent: Int) {
         getPrefs(context).edit().putInt(KEY_CANDIDATE_CELL_WIDTH_PERCENT, percent).apply()
+    }
+
+    // ── 键盘区横向滑动移动光标 ──
+
+    /**
+     * 触发距离（dp）：在键盘区域横向滑动多远才开始移动光标。
+     *
+     * 原实现硬编码 60dp，比商业输入法明显迟钝（拖动一段距离仍无反应）。
+     * 降到 30dp 后与常见手感接近；下限 20dp（低于此值极易与按键点按/横滑手势互相误触）。
+     */
+    const val DEFAULT_CURSOR_DRAG_ACTIVATION_DP = 30
+    const val MIN_CURSOR_DRAG_ACTIVATION_DP = 20
+    const val MAX_CURSOR_DRAG_ACTIVATION_DP = 60
+
+    fun getCursorDragActivationDp(context: Context): Int {
+        return getPrefs(context)
+            .getInt(KEY_CURSOR_DRAG_ACTIVATION_DP, DEFAULT_CURSOR_DRAG_ACTIVATION_DP)
+            .coerceIn(MIN_CURSOR_DRAG_ACTIVATION_DP, MAX_CURSOR_DRAG_ACTIVATION_DP)
+    }
+
+    fun setCursorDragActivationDp(context: Context, dp: Int) {
+        getPrefs(context).edit()
+            .putInt(
+                KEY_CURSOR_DRAG_ACTIVATION_DP,
+                dp.coerceIn(MIN_CURSOR_DRAG_ACTIVATION_DP, MAX_CURSOR_DRAG_ACTIVATION_DP)
+            )
+            .apply()
+    }
+
+    /**
+     * 每格距离（dp）：光标每移动一个字符所需的横向位移。
+     *
+     * 原实现硬编码 25dp。调小 → 同样距离走更多字符（更快也更难精细控制）。
+     */
+    const val DEFAULT_CURSOR_DRAG_STEP_DP = 25
+    const val MIN_CURSOR_DRAG_STEP_DP = 8
+    const val MAX_CURSOR_DRAG_STEP_DP = 40
+
+    fun getCursorDragStepDp(context: Context): Int {
+        return getPrefs(context)
+            .getInt(KEY_CURSOR_DRAG_STEP_DP, DEFAULT_CURSOR_DRAG_STEP_DP)
+            .coerceIn(MIN_CURSOR_DRAG_STEP_DP, MAX_CURSOR_DRAG_STEP_DP)
+    }
+
+    fun setCursorDragStepDp(context: Context, dp: Int) {
+        getPrefs(context).edit()
+            .putInt(KEY_CURSOR_DRAG_STEP_DP, dp.coerceIn(MIN_CURSOR_DRAG_STEP_DP, MAX_CURSOR_DRAG_STEP_DP))
+            .apply()
     }
 
     // ── 方案市场「已安装」的持久记录 ──

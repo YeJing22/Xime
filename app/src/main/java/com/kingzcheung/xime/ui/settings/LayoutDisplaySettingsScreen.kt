@@ -156,6 +156,99 @@ fun LayoutDisplaySettingsContent(
             }
 
             item {
+                SettingsSection(title = "光标滑动", content = {
+                    val cursorActivationPref = SettingsPreferences.getCursorDragActivationDp(context)
+                    var cursorActivation by remember(cursorActivationPref) {
+                        mutableStateOf(cursorActivationPref.toFloat())
+                    }
+                    val cursorStepPref = SettingsPreferences.getCursorDragStepDp(context)
+                    var cursorStep by remember(cursorStepPref) {
+                        mutableStateOf(cursorStepPref.toFloat())
+                    }
+
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "触发距离",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${cursorActivation.toInt()} dp",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Slider(
+                            value = cursorActivation,
+                            onValueChange = { cursorActivation = it },
+                            onValueChangeFinished = {
+                                SettingsPreferences.setCursorDragActivationDp(
+                                    context, cursorActivation.toInt()
+                                )
+                            },
+                            valueRange = SettingsPreferences.MIN_CURSOR_DRAG_ACTIVATION_DP.toFloat()..
+                                SettingsPreferences.MAX_CURSOR_DRAG_ACTIVATION_DP.toFloat(),
+                            steps = SettingsPreferences.MAX_CURSOR_DRAG_ACTIVATION_DP -
+                                SettingsPreferences.MIN_CURSOR_DRAG_ACTIVATION_DP - 1
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "在键盘上横向滑动多远才开始移动光标，越小越跟手（默认 30dp，原为 60dp）",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "每格距离",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${cursorStep.toInt()} dp",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Slider(
+                            value = cursorStep,
+                            onValueChange = { cursorStep = it },
+                            onValueChangeFinished = {
+                                SettingsPreferences.setCursorDragStepDp(context, cursorStep.toInt())
+                            },
+                            valueRange = SettingsPreferences.MIN_CURSOR_DRAG_STEP_DP.toFloat()..
+                                SettingsPreferences.MAX_CURSOR_DRAG_STEP_DP.toFloat(),
+                            steps = SettingsPreferences.MAX_CURSOR_DRAG_STEP_DP -
+                                SettingsPreferences.MIN_CURSOR_DRAG_STEP_DP - 1
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "光标每移动一个字符所需的横向距离，越小走得越快（默认 25dp）",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                })
+            }
+
+            item {
                 SettingsSection(title = "候选词", content = {
                     val candidateTextSizePref = SettingsPreferences.getCandidateTextSize(context)
                     var candidateTextSize by remember(candidateTextSizePref) {

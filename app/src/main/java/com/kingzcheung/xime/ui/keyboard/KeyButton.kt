@@ -230,8 +230,9 @@ fun KeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 与 KeyboardView 光标手势激活阈值（activationThresholdPx = 60dp）对齐，
-    // 消除 30~60dp 位移区间"点击被取消但光标手势未激活"的死区（打字吃键）。
+    // 父层光标手势的激活阈值已改为用户可调（SettingsPreferences.getCursorDragActivationDp，
+    // 20~60dp）：父层先接管时事件被 consume，本键自动取消点击，不会"光标动了又打字"。
+    // 这里保留 60dp 作为父层未接管（onCursorMove 为空）时的兜底口径。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
     // 父层光标手势已接管横向滑动时，本键不再判定点击（否则会"移动光标 + 打出一个字母"）
     val cursorGestureActive = LocalCursorGestureActive.current
@@ -539,14 +540,18 @@ fun SwipeableKeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 与 KeyboardView 光标手势激活阈值（activationThresholdPx = 60dp）对齐，
-    // 消除 30~60dp 位移区间"点击被取消但光标手势未激活"的死区（打字吃键）。
+    // 父层光标手势的激活阈值已改为用户可调（SettingsPreferences.getCursorDragActivationDp，
+    // 20~60dp）：父层先接管时事件被 consume，本键自动取消点击，不会"光标动了又打字"。
+    // 这里保留 60dp 作为父层未接管（onCursorMove 为空）时的兜底口径。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
     // 左/右滑触发阈值
     val swipeLeftThreshold = with(density) { (-50).dp.toPx() }
     val swipeRightThreshold = with(density) { 50.dp.toPx() }
-    // 横向接管阈值：低于父层光标手势激活阈值（60dp），使配置了左右滑的键优先接管横向滑动
-    val horizontalSwipeSuppressThreshold = with(density) { 30.dp.toPx() }
+    // 横向接管阈值：必须低于父层光标手势的**最小**激活阈值
+    // （SettingsPreferences.MIN_CURSOR_DRAG_ACTIVATION_DP = 20dp），这样无论用户把光标
+    // 灵敏度调到多高，配置了左右滑的键都优先接管横向滑动，不会被父层光标手势抢走。
+    // 14dp 仍高于系统 touch slop（约 8dp），不会因手指抖动误触发。
+    val horizontalSwipeSuppressThreshold = with(density) { 14.dp.toPx() }
     val suppressCursorMove = LocalSuppressCursorMove.current
 
     /**
@@ -1317,8 +1322,11 @@ fun SwipeableIconKeyButton(
     val swipeDownThreshold = with(density) { 50.dp.toPx() }
     val swipeLeftThreshold = with(density) { (-50).dp.toPx() }
     val swipeRightThreshold = with(density) { 50.dp.toPx() }
-    // 横向接管阈值：低于父层光标手势激活阈值（60dp），使配置了左右滑的键优先接管横向滑动
-    val horizontalSwipeSuppressThreshold = with(density) { 30.dp.toPx() }
+    // 横向接管阈值：必须低于父层光标手势的**最小**激活阈值
+    // （SettingsPreferences.MIN_CURSOR_DRAG_ACTIVATION_DP = 20dp），这样无论用户把光标
+    // 灵敏度调到多高，配置了左右滑的键都优先接管横向滑动，不会被父层光标手势抢走。
+    // 14dp 仍高于系统 touch slop（约 8dp），不会因手指抖动误触发。
+    val horizontalSwipeSuppressThreshold = with(density) { 14.dp.toPx() }
     val suppressCursorMove = LocalSuppressCursorMove.current
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
@@ -1327,8 +1335,9 @@ fun SwipeableIconKeyButton(
     val clearActionThreshold = with(density) { (-50).dp.toPx() }
     val undoActionThreshold = with(density) { 50.dp.toPx() }
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 与 KeyboardView 光标手势激活阈值（activationThresholdPx = 60dp）对齐，
-    // 消除 30~60dp 位移区间"点击被取消但光标手势未激活"的死区（打字吃键）。
+    // 父层光标手势的激活阈值已改为用户可调（SettingsPreferences.getCursorDragActivationDp，
+    // 20~60dp）：父层先接管时事件被 consume，本键自动取消点击，不会"光标动了又打字"。
+    // 这里保留 60dp 作为父层未接管（onCursorMove 为空）时的兜底口径。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
     
     LaunchedEffect(isLongPress, repeatLongPress) {
