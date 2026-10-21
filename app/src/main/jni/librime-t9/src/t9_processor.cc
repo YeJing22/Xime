@@ -473,16 +473,12 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
         return true;
     }
 
-    // 全简拼无候选注释 → enterLike 提交
-    if (candidate_pinyin.empty() &&
-        !state_machine_.selection_history().empty() &&
-        std::all_of(state_machine_.selection_history().begin(),
-                     state_machine_.selection_history().end(),
-                     [](const SyllableOption& o) { return o.digit_length == 1; })) {
-        T9LOG(">> SelectCandidate: all-abbrev no comment → EnterIdle");
-        EnterIdle();
-        return true;
-    }
+    // 全简拼无候选注释 → enterLike 提交分支已移除（2026-10-19 修复）：
+    // T9 引擎会把输入序列自动左选成单音节（如 "23744" → c/e/s/h/i，
+    // unassigned 为空），此时点选空注释候选（万象"测"）若走 enterLike 整串
+    // 提交会误清空未消费音节（上屏"测"后剩余 shi 消失）。空注释候选改由
+    // QueryRimeConsumedDigits 文本兜底/letterBuffer 分支按音节消费定位，
+    // 保证 partial commit 保留剩余输入串。
 
     T9RightCommitHandler::Context ctx;
     BuildHandlerContext(ctx);
@@ -801,11 +797,15 @@ int T9Processor::QueryRimeConsumedDigits(
     // 精确计算出候选在输入中的匹配结束位置（Candidate::end()），
     // 其坐标基于 RIME 引擎当前 input 字符串（可能含分隔符）。
     // 换算规则：消费数字位数 = input[0:end) 中数字字符的个数。
-    if (!candidate_pinyin.has_value() || candidate_pinyin->empty()) return -1;
+    // 空注释（如万象九键部分候选无注释）时按候选文本定位 end 换算，
+    // 避免 fallback 误判 full commit 清空输入串（2026-10-19 修复）。
     auto* ctx = engine_->context();
     if (!ctx) return -1;
     const std::string& rime_input = ctx->input();
     const auto& comp = ctx->composition();
+    const bool has_pinyin = candidate_pinyin.has_value() && !candidate_pinyin->empty();
+    // 无注释且无文本 → 无法定位候选
+    if (!has_pinyin && candidate_text.empty()) return -1;
     const bool match_text = !candidate_text.empty();
     for (const auto& seg : comp) {
         if (!seg.menu) continue;
@@ -822,7 +822,9 @@ int T9Processor::QueryRimeConsumedDigits(
             // （"jì huà"），而 UI comment 经方案 lua 处理为无声调（"ji hua"）。
             // 精确比较会漏匹配 → 调频码捕获失败 → fallback 命中轻声音节。
             // 归一化后两者同为 "jihua"；多音字（yínháng/yínxíng）仍可区分。
-            if (NormalizePinyinComment(genuine->comment()) !=
+            // 空注释场景跳过注释比较，直接按文本定位候选。
+            if (has_pinyin &&
+                NormalizePinyinComment(genuine->comment()) !=
                 NormalizePinyinComment(*candidate_pinyin))
                 continue;
             // 注释歧义根治：Kotlin 同时传入候选文本，双条件精确定位用户点选

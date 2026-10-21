@@ -240,6 +240,28 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
             const auto& syllables = alignment.syllables;
             int sel_count = static_cast<int>(buf.selections.size());
 
+            // S8（2026-10-20）：候选注释为空（万象九键 lua 过滤拼音注释）时，
+            // 音节解析结果为 0，无法走多音节/单音节对齐；直接采用 RIME 文本
+            // 查询得到的 rime_consumed_digits（总消费，已含左选 consumed_count）
+            // 做消费基准，从 unassigned 消费 rime_consumed_digits - consumed_count 位。
+            // 例：固定 bu(28) 后选"不能"，rime_consumed=6 → 消费 6-2=4 位 → 剩 ''。
+            // 避免降级到单音节分支只消费 1 位导致残留 "364(eng)"（上屏"不能eng"）。
+            if (syllables.empty()) {
+                int consumed_from_unassigned =
+                    rime_consumed_digits - buf.consumed_count;
+                if (consumed_from_unassigned < 0) consumed_from_unassigned = 0;
+                if (consumed_from_unassigned > static_cast<int>(unassigned.size()))
+                    consumed_from_unassigned = static_cast<int>(unassigned.size());
+                RCLOG(">>   apostrophe: empty-comment fallback rimeConsumed=%d consumedCount=%d → consume %d from unassigned (unassigned='%s')",
+                      rime_consumed_digits, buf.consumed_count,
+                      consumed_from_unassigned, unassigned.c_str());
+                if (consumed_from_unassigned > 0) {
+                    return {Take(unassigned, consumed_from_unassigned),
+                            Drop(unassigned, consumed_from_unassigned)};
+                }
+                return {"", unassigned};
+            }
+
             if (static_cast<int>(syllables.size()) > sel_count) {
                 // 多音节候选词：剩余音节匹配到 unassigned。
                 // S4-统一：直接使用 alignment 阶段2 的结果（unassigned_consumed 始终计算），
@@ -456,18 +478,11 @@ bool T9RightCommitHandler::HandleRightCommit(
     ctx.input_buffer.AssertInvariants();
 #endif
 
-    // 全简拼无候选 → enterLike 提交
-    if (!candidate_pinyin.has_value() || candidate_pinyin->empty()) {
-        const auto& history = ctx.state_machine.selection_history();
-        bool all_abbrev = !history.empty();
-        for (const auto& sel : history) {
-            if (sel.digit_length != 1) { all_abbrev = false; break; }
-        }
-        if (all_abbrev) {
-            ClearAndEnterIdle(ctx);
-            return true;
-        }
-    }
+    // 全简拼无候选 → enterLike 提交分支已移除（2026-10-19 修复）：
+    // T9 引擎自动左选使 unassigned 为空时（如 "23744" → c/e/s/h/i），
+    // 空注释候选走 enterLike 整串提交会误清空未消费音节（万象"测"上屏后
+    // 剩余 shi 消失）。改由后续 ClassifyRoute/letterBuffer 分支按音节消费，
+    // 保证 partial commit 保留剩余输入串。
 
     const T9Buffer& buf = ctx.input_buffer;
     bool has_selections = !buf.selections.empty();
