@@ -98,6 +98,15 @@ import kotlinx.coroutines.launch
 // Compose 编译器不允许 @Composable lambda 捕获外层 remember 局部变量。
 private var t9BackspaceDeletedInput = false
 
+/**
+ * 本退格周期已删空（权威标记）：C++ 对空缓冲返回 kNoop（NOT_CONSUMED，缓冲已无可删内容）
+ * 后置位，此后本周期内的长按重复在入口直接丢弃，不再投递退格 job。新按键周期（onPress）复位。
+ *
+ * 与 [t9BackspaceDeletedInput] 的分工：后者只表示「本周期删过拼音」，用于拦截
+ * 「转发去删上屏文字」；本标记表示「已经删到没东西可删」，用于拦截「继续入队跑空退格」。
+ */
+private var t9BackspaceStopped = false
+
 @Composable
 fun T9KeyboardLayout(
     onKeyPress: (String) -> Unit,
@@ -138,7 +147,23 @@ fun T9KeyboardLayout(
         if (!longPress) {
             // 单击：完整原行为（删拼音，删空后继续删上屏文字）
             t9BackspaceDeletedInput = false
+            t9BackspaceStopped = false
         }
+        // 「删空即停」在九键链路的入口拦截。
+        // 九键中文不经过 ImeKeyRouter（那是全键盘/英文/数字面板的公共删除链路），
+        // 只在回调里拦 NOT_CONSUMED 只能阻止「转发去删上屏文字」；没有输入串时，
+        // 每次长按重复仍会投递一个退格 job（processKey → t9FlushRimeInput → fetchAll
+        // → 候选栏刷新，30ms 一次），表现为删空后候选栏继续刷新、"看起来还在删"。
+        // 这里直接丢弃重复请求，让"停"发生在投递之前。
+        // 判定两路：
+        //   1) t9BackspaceStopped —— 权威：C++ 已明确回报空缓冲无可删内容；
+        //   2) 快照预判 —— 输入串已空且状态机 IDLE；必须叠加 t9BackspaceDeletedInput，
+        //      否则「刚打完数字立刻长按」时 cachedInput 还没回填，会把首个退格吃掉。
+        if (longPress && t9BackspaceDeletedInput &&
+            (t9BackspaceStopped ||
+                (controller.inputBuffer.isEmpty() &&
+                    controller.leftPanelState == T9InputController.LeftPanelState.IDLE))
+        ) return
         // onDeleted 在后台队列中处理（flush 不阻塞 UI），结果通过回调返回（Main 线程）。
         controller.onDeleted { result ->
             when (result) {
@@ -152,6 +177,9 @@ fun T9KeyboardLayout(
                     // 但本长按周期从未删过拼音（空闲态长按）保持连续删上屏文字
                     if (!longPress || !t9BackspaceDeletedInput) {
                         onKeyPress("delete")
+                    } else {
+                        // 本周期删过拼音，且 C++ 回报已无可删内容 → 删空，后续重复全丢弃
+                        t9BackspaceStopped = true
                     }
                 }
 
@@ -806,6 +834,7 @@ private fun T9KeyboardContent(
                 onSwipe = { onKeyPress("clear_composition") },
                 onPress = {
                     t9BackspaceDeletedInput = false
+                    t9BackspaceStopped = false
                     onKeyPressDown?.invoke("delete")
                 },
                 onRelease = { t9BackspaceDeletedInput = false },
