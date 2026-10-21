@@ -493,23 +493,42 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
     bool is_t9_user = false;
 
     // 空注释候选（万象等方案 lua 会清空候选拼音注释）：按候选文本从 t9_filter
-    // 预存的 Phrase 码缓存回捞音节数，供消费计算判断「候选是否被已左选音节完全覆盖」。
-    // 覆盖时（音节数 ≤ 已选数）整串消费兜底必然多消费——真机 2026-10-21：
-    // zhan sheng guo 固定前两音节后选「战胜」，未选的 guo(486) 被一起吃掉。
+    // 预存的 Phrase 码缓存回捞原始拼音。两个用途：
+    //   1) 音节数供 CRCC 的 S8 兜底判断「候选是否被已左选音节完全覆盖」；
+    //   2) 候选音节数恰等于已左选数时，直接用回捞拼音顶替空注释。
+    //
+    // 为什么必须顶替（真机 2026-10-21 二次复现）：左选固定 zhan、sheng 后，
+    // route 分类为 kLetterBuffer_Selection（选中项是 sheng，selected_pinyin
+    // "zhansheng" 以其结尾且更长）。CRCC 的 apostrophe 段在该路由下整块跳过，
+    // 于是落到 LetterBufferStrategy：syllableCount=0 → HandleDefensiveNoCommentCommit，
+    // 其子路径 A 判定「selection_history 完全覆盖 selected_pinyin」后直接
+    // ClearAndEnterIdle —— 把整个编码（含未选的 guo/486）一起清空。
+    // 回捞后 syllable_count == selection_count，改由 IsFullSelectionOnly 命中，
+    // 只消费已选段，unassigned 保留。
+    std::string effective_pinyin = candidate_pinyin;
     int candidate_syllables = 0;
-    if (candidate_pinyin.empty()) {
+    if (ParseSyllables(candidate_pinyin).empty()) {
         std::string recovered;
         size_t recovered_syllables = 0;
         if (FindPhraseInfoByText(candidate_text, &recovered, &recovered_syllables)) {
             candidate_syllables = static_cast<int>(recovered_syllables);
-            T9LOG(">> SelectCandidate: 空注释回捞音节数 syl=%zu (%s) for '%s'",
-                  recovered_syllables, recovered.c_str(), candidate_text.c_str());
+            const size_t sel_count = input_buffer_.selections.size();
+            if (!recovered.empty() && sel_count > 0 && recovered_syllables == sel_count) {
+                effective_pinyin = recovered;
+                T9LOG(">> SelectCandidate: 空注释回捞拼音 '%s' (syl=%zu == selCount=%zu) for '%s'",
+                      recovered.c_str(), recovered_syllables, sel_count, candidate_text.c_str());
+            } else {
+                T9LOG(">> SelectCandidate: 空注释回捞音节数 syl=%zu (selCount=%zu)，仅作兜底判定 for '%s'",
+                      recovered_syllables, sel_count, candidate_text.c_str());
+            }
         } else {
             T9LOG(">> SelectCandidate: 空注释且缓存未命中，沿用整串消费兜底 for '%s'",
                   candidate_text.c_str());
         }
     }
 
+    // rime_consumed 仍按原始（可能为空的）注释查询：文本定位兜底不依赖回捞拼音，
+    // 且回捞结果只用于音节对齐，混用会让注释比较逻辑多一种输入形态。
     int rime_consumed =
         QueryRimeConsumedDigits(candidate_pinyin, candidate_text, &captured_code, &captured_text,
                                 &is_t9_user);
@@ -552,7 +571,7 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
           is_first_select ? 1 : 0);
 
     bool full_commit = right_commit_handler_.HandleRightCommit(
-        ctx, candidate_pinyin, candidate_text_length, rime_consumed, is_t9_user,
+        ctx, effective_pinyin, candidate_text_length, rime_consumed, is_t9_user,
         candidate_syllables);
 
     // 必须先把 handler 消费结果回写 input_buffer_（consumed/unassigned 更新）。

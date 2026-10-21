@@ -794,6 +794,22 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
             JoinPinyins(history) == selected_pinyin &&
             candidate_text_length > 0 &&
             candidate_text_length >= static_cast<int>(history.size())) {
+            // history == selected_pinyin 只证明候选覆盖了「已选段」，并不代表覆盖
+            // unassigned。原实现在此无条件 ClearAndEnterIdle，会把还没选的数字一起
+            // 清空——真机 2026-10-21：zhan sheng guo 左选 zhan、sheng 后选「战胜」，
+            // 整个输入串消失，未选的 guo(486) 一并被吃。
+            // 这是空注释候选（syllableCount=0）才会走到的最后兜底，无法判断候选是否
+            // 真覆盖到输入末尾，因此按最保守语义处理：只消费已选段，剩余数字保留。
+            if (!buf.unassigned().empty()) {
+                const std::string& rest = buf.unassigned();
+                RCLOG(">>   DefensiveNoComment: unassigned='%s' 非空 → 仅消费已选段，保留剩余数字",
+                      rest.c_str());
+                ctx.input_buffer = T9Buffer(rest, {}, 0, static_cast<int>(rest.size()));
+                ctx.left_column_locked = false;
+                return owner.RestorePrevState(ctx, prev_selected_option,
+                                              prev_selection_candidate_digits,
+                                              prev_confirmed_pinyin);
+            }
             owner.ClearAndEnterIdle(ctx);
             return true;
         }
