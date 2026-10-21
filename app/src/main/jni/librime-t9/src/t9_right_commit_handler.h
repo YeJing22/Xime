@@ -116,11 +116,17 @@ public:
     // @param rime_consumed_digits 方案 A：RIME 候选 end 换算的应消费数字位数，
     //                             -1 表示无法确定（fallback 到现有消费算法）
     // @param is_t9_user_word 候选是否为 T9 用户词：是则 unassigned 全量消费
+    // @param candidate_syllable_count 候选词的音节数（由 Phrase 码缓存回捞，
+    //                                 0 = 未知）。空注释候选无法解析音节时，
+    //                                 「整串消费」兜底仅凭 rime_consumed 推断，
+    //                                 当候选音节数 ≤ 已左选音节数时该兜底必然多消费
+    //                                 （选「战胜」吃掉未选的 guo），用本参数拦下。
     bool HandleRightCommit(Context& ctx,
                            const std::optional<std::string>& candidate_pinyin,
                            int candidate_text_length = 0,
                            int rime_consumed_digits = -1,
-                           bool is_t9_user_word = false);
+                           bool is_t9_user_word = false,
+                           int candidate_syllable_count = 0);
 
     // ── 策略共享公共服务 ──
     // 三个 Strategy 类通过 Context 与协调器交互所需的下层辅助。
@@ -181,13 +187,15 @@ private:
     // @param rime_consumed_digits 方案 A：RIME 候选 end 换算的应消费数字位数，
     //                             -1 表示无法确定（fallback 到现有消费算法）
     // @param is_t9_user_word 候选是否为 T9 用户词：是则 unassigned 全量消费
+    // @param candidate_syllable_count 候选词音节数（0 = 未知）
     std::pair<std::string, std::string> ComputeRightCommitConsumption(
         const T9Buffer& buf,
         const SyllableAlignment& alignment,
         const std::optional<std::string>& candidate_pinyin,
         RouteType route,
         int rime_consumed_digits = -1,
-        bool is_t9_user_word = false);
+        bool is_t9_user_word = false,
+        int candidate_syllable_count = 0);
 };
 
 }  // namespace rime

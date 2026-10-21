@@ -491,6 +491,25 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
     // 识别候选是否为 T9 用户词：其 input_digits 与当前 unassigned 完全一致，
     // 右选应全量消费（避免音节对齐不匹配导致 partial commit）。
     bool is_t9_user = false;
+
+    // 空注释候选（万象等方案 lua 会清空候选拼音注释）：按候选文本从 t9_filter
+    // 预存的 Phrase 码缓存回捞音节数，供消费计算判断「候选是否被已左选音节完全覆盖」。
+    // 覆盖时（音节数 ≤ 已选数）整串消费兜底必然多消费——真机 2026-10-21：
+    // zhan sheng guo 固定前两音节后选「战胜」，未选的 guo(486) 被一起吃掉。
+    int candidate_syllables = 0;
+    if (candidate_pinyin.empty()) {
+        std::string recovered;
+        size_t recovered_syllables = 0;
+        if (FindPhraseInfoByText(candidate_text, &recovered, &recovered_syllables)) {
+            candidate_syllables = static_cast<int>(recovered_syllables);
+            T9LOG(">> SelectCandidate: 空注释回捞音节数 syl=%zu (%s) for '%s'",
+                  recovered_syllables, recovered.c_str(), candidate_text.c_str());
+        } else {
+            T9LOG(">> SelectCandidate: 空注释且缓存未命中，沿用整串消费兜底 for '%s'",
+                  candidate_text.c_str());
+        }
+    }
+
     int rime_consumed =
         QueryRimeConsumedDigits(candidate_pinyin, candidate_text, &captured_code, &captured_text,
                                 &is_t9_user);
@@ -533,7 +552,8 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
           is_first_select ? 1 : 0);
 
     bool full_commit = right_commit_handler_.HandleRightCommit(
-        ctx, candidate_pinyin, candidate_text_length, rime_consumed, is_t9_user);
+        ctx, candidate_pinyin, candidate_text_length, rime_consumed, is_t9_user,
+        candidate_syllables);
 
     // 必须先把 handler 消费结果回写 input_buffer_（consumed/unassigned 更新）。
     ApplyHandlerContext(ctx);
@@ -690,6 +710,50 @@ T9SyllableCode T9Processor::FindPhraseCode(
         }
     }
     return {};
+}
+
+bool T9Processor::FindPhraseInfoByText(const std::string& text,
+                                       std::string* out_comment,
+                                       size_t* out_syllable_count) const {
+    if (text.empty()) return false;
+
+    // 已左选拼音（无分隔符拼接，如 "zhansheng"）：用于在多音字/同形词条中
+    // 挑出与当前输入真正对得上的那条。
+    const std::string selected = input_buffer_.selected_pinyin();
+    auto compact = [](const std::string& s) {
+        std::string out;
+        out.reserve(s.size());
+        for (char c : s) {
+            if (c != ' ' && c != '\t' && c != '\'') out.push_back(c);
+        }
+        return out;
+    };
+
+    const PhraseCodeEntry* best = nullptr;
+    int best_score = -1;
+    for (const auto& e : phrase_code_cache_) {
+        if (e.text != text) continue;
+        std::string norm = NormalizePinyinComment(e.comment);
+        if (norm.empty()) continue;  // 无注释的条目对本用途无价值
+        int score = 0;
+        if (!selected.empty() && compact(norm).rfind(selected, 0) == 0) {
+            score = 2;  // 注释前缀与已左选拼音完全一致（最可信）
+        } else if (e.code.size() >= input_buffer_.selections.size()) {
+            score = 1;  // 音节数不少于已选数量，至少不会误判「覆盖不了」
+        }
+        if (score > best_score) {
+            best_score = score;
+            best = &e;
+        }
+    }
+    if (!best || best_score <= 0) return false;
+
+    if (out_comment) *out_comment = NormalizePinyinComment(best->comment);
+    if (out_syllable_count) *out_syllable_count = best->code.size();
+    T9LOG(">> FindPhraseInfoByText: '%s' → comment='%s' syll=%zu (score=%d)",
+          text.c_str(), out_comment ? out_comment->c_str() : "",
+          best->code.size(), best_score);
+    return true;
 }
 
 bool T9Processor::WriteDictEntry(const std::string& text,

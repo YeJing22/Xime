@@ -78,6 +78,16 @@ public:
     T9SyllableCode FindPhraseCode(const std::string& text,
                                   const std::string& normalized_comment) const;
 
+    // 按候选文本回捞原始拼音注释（归一化为无声调 ASCII，保留空格）。
+    // 用途：万象等方案 lua 会清空候选注释，空注释候选无法走音节对齐，只能落到
+    // 「整串消费」兜底（选「战胜」把后面未选的 guo 一起吃掉）。t9_filter 在 lua
+    // 之前已缓存 Phrase 原始码与注释，按文本回捞即可恢复拼音，回到精确对齐。
+    // 同文本多条时优先「注释拼音前缀与已左选拼音一致」的那条（多音字歧义）。
+    // @return 命中且注释非空为 true，out_comment 为归一化拼音，out_syllable_count 为音节数
+    bool FindPhraseInfoByText(const std::string& text,
+                              std::string* out_comment,
+                              size_t* out_syllable_count) const;
+
     // 获取 partial commit 后剩余的数字串
     std::string GetRemainingDigits() const;
 

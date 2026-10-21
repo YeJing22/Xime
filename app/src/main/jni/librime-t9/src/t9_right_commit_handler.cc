@@ -210,7 +210,8 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
     const std::optional<std::string>& candidate_pinyin,
     RouteType route,
     int rime_consumed_digits,
-    bool is_t9_user_word) {
+    bool is_t9_user_word,
+    int candidate_syllable_count) {
 
     T9_SCOPED_TIMER_TAG("T9RightCommit", "ComputeRightCommitConsumption");
     bool has_selections = !buf.selections.empty();
@@ -247,6 +248,17 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
             // 例：固定 bu(28) 后选"不能"，rime_consumed=6 → 消费 6-2=4 位 → 剩 ''。
             // 避免降级到单音节分支只消费 1 位导致残留 "364(eng)"（上屏"不能eng"）。
             if (syllables.empty()) {
+                // 候选被已左选音节完全覆盖（音节数 ≤ 已选数）：未选的数字一位都不该
+                // 消费。整串消费兜底此时必然多消费——真机 2026-10-21：zhan sheng guo
+                // 固定前两音节后选「战胜」，兜底把未选的 guo(486) 一起吃掉。
+                // 音节数由 Phrase 码缓存按文本回捞（candidate_syllable_count），
+                // 0 = 未知，保持原兜底行为。
+                if (candidate_syllable_count > 0 &&
+                    candidate_syllable_count <= sel_count) {
+                    RCLOG(">>   apostrophe: empty-comment but sylCount=%d ≤ selCount=%d → consume none (unassigned='%s')",
+                          candidate_syllable_count, sel_count, unassigned.c_str());
+                    return {"", unassigned};
+                }
                 int consumed_from_unassigned =
                     rime_consumed_digits - buf.consumed_count;
                 if (consumed_from_unassigned < 0) consumed_from_unassigned = 0;
@@ -469,7 +481,8 @@ bool T9RightCommitHandler::HandleRightCommit(
     const std::optional<std::string>& candidate_pinyin,
     int candidate_text_length,
     int rime_consumed_digits,
-    bool is_t9_user_word) {
+    bool is_t9_user_word,
+    int candidate_syllable_count) {
 
     T9_SCOPED_TIMER_TAG("T9RightCommit", "HandleRightCommit");
     if (ctx.input_buffer.is_empty()) return true;
@@ -498,7 +511,7 @@ bool T9RightCommitHandler::HandleRightCommit(
 
     auto consumption = ComputeRightCommitConsumption(
         buf, alignment, candidate_pinyin, route, rime_consumed_digits,
-        is_t9_user_word);
+        is_t9_user_word, candidate_syllable_count);
     const std::string& remaining_digits = consumption.second;
 
     RCLOG(">> HandleRightCommit: hasSels=%d, hasUnassigned=%d, route=%d, unassigned='%s'",
