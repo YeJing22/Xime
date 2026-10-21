@@ -353,11 +353,23 @@ fun KeyboardView(
             // 不依赖 isComposing：T9 的显示态（partial 半提交/RightCommit 等）该语义不统一，
             // 部分输入串（如 yi'qian 场景）可能导致过滤不生效。
             val normalFilterActive = !expandedDataMode && singleCharFilter &&
-                cs.candidates.isNotEmpty() && !cs.isShowingRecentClipboard
+                (cs.candidates.isNotEmpty() || cs.expandedCandidates.isNotEmpty()) &&
+                !cs.isShowingRecentClipboard
+            // 当前页能否筛出单字（候选为空，或当前页全为词组——如 wuyiyi/yiqian 等
+            // 合成切词后词组在前）决定单字数据源口径：
+            // 当前页能筛 → 用引擎当前页候选（索引=当前页索引，onCandidateSelect）；
+            // 筛不出 → 回退跨页全量 expandedCandidates（singleCharFilter 开启时服务层
+            // 已拉取；索引=全量索引，onGlobalCandidateSelect），保证普通界面单字模式
+            // 与展开页一致（2026-10-19 修复）
+            val singlePageEmpty = cs.candidates.isEmpty() || cs.candidates.none { it.length == 1 }
             val railNormal = if (normalFilterActive) {
-                // cs.candidates 为 String 列表，直接按文本长度过滤，保留原索引
-                cs.candidates.withIndex()
-                    .mapNotNull { (i, c) -> if (c.length == 1) i to c else null }
+                if (!singlePageEmpty) {
+                    cs.candidates.withIndex()
+                        .mapNotNull { (i, c) -> if (c.length == 1) i to c else null }
+                } else {
+                    cs.expandedCandidates.withIndex()
+                        .mapNotNull { (i, c) -> if (c.text.length == 1) i to c.text else null }
+                }
             } else {
                 emptyList()
             }
@@ -382,7 +394,10 @@ fun KeyboardView(
                         },
                         candidateComments = when {
                             railExpanded.isNotEmpty() -> railExpanded.map { it.second.comment }
-                            normalFilterActive -> railNormal.map { (i, _) -> cs.candidateComments.getOrNull(i) ?: "" }
+                            normalFilterActive -> railNormal.map { (i, _) ->
+                                if (!singlePageEmpty) cs.candidateComments.getOrNull(i) ?: ""
+                                else cs.expandedCandidates.getOrNull(i)?.comment ?: ""
+                            }
                             else -> cs.candidateComments
                         },
                         inputText = cs.inputText,
@@ -571,8 +586,15 @@ fun KeyboardView(
                             }
                         } else if (normalFilterActive) {
                             // 单字筛选态（非展开）：位置索引经 railNormal 换算回原候选索引
+                            //（数据源为全量时索引即跨页全局索引，走全局链路）
                             val origIndex = railNormal.getOrNull(index)?.first
-                            if (origIndex != null) callbacks.onCandidateSelect(origIndex)
+                            if (origIndex != null) {
+                                if (!singlePageEmpty) {
+                                    callbacks.onCandidateSelect(origIndex)
+                                } else {
+                                    callbacks.onGlobalCandidateSelect?.invoke(origIndex)
+                                }
+                            }
                         } else {
                             callbacks.onCandidateSelect(index)
                         }
@@ -588,7 +610,11 @@ fun KeyboardView(
                                 if (railEntry != null) {
                                     callbacks.onGlobalCandidateDelete?.invoke(railEntry.first)
                                 } else if (normalEntry != null) {
-                                    callbacks.onCandidateDelete?.invoke(normalEntry.first)
+                                    if (!singlePageEmpty) {
+                                        callbacks.onCandidateDelete?.invoke(normalEntry.first)
+                                    } else {
+                                        callbacks.onGlobalCandidateDelete?.invoke(normalEntry.first)
+                                    }
                                 } else {
                                     callbacks.onCandidateDelete?.invoke(index)
                                 }
@@ -968,8 +994,14 @@ fun KeyboardView(
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 // 与 emoji 同档：command: symbol / 自定义键发 "symbol" 时打开符号面板
                                 "symbol" -> viewModel.showOverlay(OverlayRoute.Symbol)
-                                "danzi" -> viewModel.toggleSingleCharFilter()
-                                "toggle_single_char" -> viewModel.toggleSingleCharFilter()
+                                "danzi" -> {
+                                    viewModel.toggleSingleCharFilter()
+                                    callbacks.onRequestExpandedCandidates?.invoke()
+                                }
+                                "toggle_single_char" -> {
+                                    viewModel.toggleSingleCharFilter()
+                                    callbacks.onRequestExpandedCandidates?.invoke()
+                                }
                                 else -> {
                                     callbacks.onKeyPress(key, isShifted)
                                     viewModel.onCharacterTyped()
@@ -1000,8 +1032,14 @@ fun KeyboardView(
                                 "emoji" -> {
                                     viewModel.showOverlay(OverlayRoute.Emoji)
                                 }
-                                "danzi" -> viewModel.toggleSingleCharFilter()
-                                "toggle_single_char" -> viewModel.toggleSingleCharFilter()
+                                "danzi" -> {
+                                    viewModel.toggleSingleCharFilter()
+                                    callbacks.onRequestExpandedCandidates?.invoke()
+                                }
+                                "toggle_single_char" -> {
+                                    viewModel.toggleSingleCharFilter()
+                                    callbacks.onRequestExpandedCandidates?.invoke()
+                                }
                                 else -> callbacks.onKeyPress(key, false)
                             }
                         }
@@ -1090,8 +1128,14 @@ fun KeyboardView(
                                     callbacks.onT9SwitchAway?.invoke()
                                     callbacks.onKeyPress(key, false)
                                 }
-                                "danzi" -> viewModel.toggleSingleCharFilter()
-                                "toggle_single_char" -> viewModel.toggleSingleCharFilter()
+                                "danzi" -> {
+                                    viewModel.toggleSingleCharFilter()
+                                    callbacks.onRequestExpandedCandidates?.invoke()
+                                }
+                                "toggle_single_char" -> {
+                                    viewModel.toggleSingleCharFilter()
+                                    callbacks.onRequestExpandedCandidates?.invoke()
+                                }
                                 else -> callbacks.onKeyPress(key, false)
                             }
                         }
