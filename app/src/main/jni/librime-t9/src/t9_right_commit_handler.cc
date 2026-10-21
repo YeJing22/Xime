@@ -384,6 +384,26 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
 
     // letterBuffer 模式
     std::string selected_pinyin = buf.selected_pinyin();
+
+    // 装饰性候选（`〔表情：💡〕`/`〔符号：′〕`）：非拼音候选，代表整段输入。
+    // 两条判据：
+    //   1) 注释非空但归一化后无拼音字母；
+    //   2) SelectCandidate 已把 rime_consumed 置为「覆盖整段」，说明该候选要求全量消费。
+    // 第 2 条也覆盖了普通候选精确匹配整段的正常情况，语义一致、无副作用。
+    const bool pinyin_is_decorated =
+        candidate_pinyin.has_value() && !candidate_pinyin->empty() &&
+        NormalizePinyinComment(*candidate_pinyin).empty();
+    const bool consumed_covers_all =
+        rime_consumed_digits > 0 &&
+        rime_consumed_digits >= buf.consumed_count +
+                                    static_cast<int>(unassigned.size());
+    if (pinyin_is_decorated || consumed_covers_all) {
+        RCLOG(">> CRCC: 装饰性/整段候选 (decorated=%d, rimeConsumed=%d) → 全量消费 '%s'",
+              pinyin_is_decorated ? 1 : 0, rime_consumed_digits,
+              buf.digit_sequence.c_str());
+        return {buf.digit_sequence, ""};
+    }
+
     int candidate_letter_count = CountLetters(candidate_pinyin);
     // S5：命名化 — 候选词字母数 < 已选拼音长度 → 候选词部分覆盖 selections
     const bool is_partial_selection_coverage =

@@ -120,6 +120,18 @@ bool LetterBufferStrategy::Handle(
           prev_selected_option.has_value() ? prev_selected_option->pinyin.c_str() : "(null)",
           prev_selection_candidate_digits.has_value() ? prev_selection_candidate_digits->c_str() : "(null)");
 
+    // 装饰性注释候选（`〔表情：💡〕` / `〔符号：′〕`）：注释非空但归一化后无拼音字母。
+    // 它不代表某个音节，而是代表整段输入，选中即应上屏并结束组合态。
+    // 必须先于 syllableCount==0 判定：否则会落到 HandleDefensiveNoCommentCommit，
+    // 而 0023 已把那里改成「unassigned 非空时保留剩余数字」（为保护空注释中文候选），
+    // 两者语义冲突，装饰性候选会因此残留编码。
+    if (candidate_pinyin.has_value() && !candidate_pinyin->empty() &&
+        NormalizePinyinComment(*candidate_pinyin).empty()) {
+        RCLOG(">>  装饰性注释候选 '%s' → 全清空提交", candidate_pinyin->c_str());
+        owner.ClearAndEnterIdle(ctx);
+        return true;
+    }
+
     // 子路径 A：候选词无音节 → 防御性无注释提交
     if (syllable_count == 0) {
         RCLOG(">>   syllableCount=0 → HandleDefensiveNoCommentCommit");

@@ -527,6 +527,25 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
         }
     }
 
+    // 装饰性注释候选（`〔表情：💡〕` / `〔符号：′〕` 等）：注释非空，但归一化后不含
+    // 任何拼音字母。这类候选由方案 filter 在候选列表里生成，**不在 RIME menu 中**，
+    // 所以 QueryRimeConsumedDigits 必然返回 -1；回退到音节对齐又因没有音节算出 0 位。
+    // 结果：每次点选只做一次 partial commit（上屏一个 emoji），输入编码一位都不动，
+    // 可以无限点、上屏一串 emoji，输入态永远结束不了（真机 2026-10-21：deng pao 选 💡）。
+    //
+    // 与「空注释中文候选」（万象 lua 把 comment 清成 ""）严格区分：
+    //   - 空注释（""）        → ParseSyllables 为空，走上面的回捞逻辑，不能全量消费；
+    //   - 装饰性候选          → 非拼音候选，语义上代表整段输入，直接全量消费。
+    //
+    // 判据两条，任一成立即为装饰性候选：
+    //   1) 注释非空但归一化后无拼音字母（`〔表情：💡〕` 这类装饰性注释）；
+    //   2) **候选文本本身不含任何文字**（💡 / ′ 等）——不依赖注释形态。
+    // 第 2 条是主判据：真机复测发现万象的表情候选注释未必传到 C++（左选固定后能正常
+    // 上屏、不固定则 0 消费，说明注释判据没命中），只看注释会漏判，退回 0 消费。
+    const bool decorated_candidate =
+        (!candidate_pinyin.empty() && NormalizePinyinComment(candidate_pinyin).empty()) ||
+        IsNonWordCandidate(candidate_text);
+
     // rime_consumed 仍按原始（可能为空的）注释查询：文本定位兜底不依赖回捞拼音，
     // 且回捞结果只用于音节对齐，混用会让注释比较逻辑多一种输入形态。
     int rime_consumed =
@@ -535,6 +554,14 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
     // 左选场景时 RIME input 含左选拼音前缀，需加 consumed_count 得到总消费位数。
     if (rime_consumed >= 0 && !input_buffer_.selections.empty()) {
         rime_consumed += input_buffer_.consumed_count;
+    }
+    // 装饰性候选（表情/符号）：查询必然失败（-1），按「代表整段输入」全量消费。
+    // 放在 consumed_count 补偿之后，避免再加一次前缀长度。
+    if (decorated_candidate) {
+        rime_consumed = input_buffer_.consumed_count +
+                        static_cast<int>(input_buffer_.unassigned().size());
+        T9LOG(">> SelectCandidate: 装饰性注释候选 '%s' → 全量消费 %d 位",
+              candidate_pinyin.c_str(), rime_consumed);
     }
     T9LOG(">> SelectCandidate: rimeConsumedDigits=%d (consumed=%d, isT9User=%d, hasSels=%d)",
           rime_consumed, input_buffer_.consumed_count, is_t9_user ? 1 : 0,

@@ -47,6 +47,15 @@ std::string FilterLetters(const std::string& s);
 // 便于在没有 T9Buffer 实例时使用（如对历史快照操作）
 std::string JoinPinyins(const std::vector<SyllableOption>& sels);
 
+// 判断候选文本是否「不含文字」：既没有 CJK 汉字/假名/韩文，也没有 ASCII 字母。
+// 典型命中：表情（💡）、符号（′）、标点。
+//
+// 用途：方案 filter 生成的表情/符号候选不对应任何音节，选中后应消费整段输入；
+// 而它们不在 RIME menu 里，也解析不出拼音，只能靠候选文本本身识别。
+// 注意不能用「注释为空」判断——万象 lua 会把中文候选的注释清成空串，
+// 那种情况仍是拼音候选，必须走音节对齐。
+bool IsNonWordCandidate(const std::string& text);
+
 }  // namespace rime
 
 #endif  // T9_STRING_UTILS_H_
