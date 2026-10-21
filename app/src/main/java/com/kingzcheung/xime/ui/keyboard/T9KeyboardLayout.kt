@@ -75,6 +75,7 @@ import com.kingzcheung.xime.R
 import com.kingzcheung.xime.rime.T9InputController
 import com.kingzcheung.xime.service.CandidateState
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
+import com.kingzcheung.xime.util.FileLogger
 import com.kingzcheung.xime.util.PermissionHelper
 import com.kingzcheung.xime.util.SubcharHelper
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
@@ -93,19 +94,45 @@ import kotlinx.coroutines.launch
  *   第3行：PQRS(7) | TUV(8) | WXYZ(9) | 0
  *   第4行：符 | 123 | 空格(显示方案名) | 中/En(地球图标) | 发送
  */
-// 长按退格周期标记（文件级）：删空拼音即停；onPress（新按键周期开始）/onRelease（松手）时
-// 重置，使下一次长按直接可删上屏文字，无需先单击一次。用文件级而非 remember——
+private const val TAG = "T9Keyboard"
+
+// 长按退格周期标记（文件级）：删空拼音即停。**只在手势结束（onRelease）时重置**，
+// 绝不在 onPress 里重置——拖动（手指微动超过 touch slop）会二次触发 onPress，
+// 在那里重置会把「本周期删过输入串」的守卫清掉，删空后继续转发去删上屏文字
+// （真机表现为「随机删掉最后一个字」）。用文件级而非 remember——
 // Compose 编译器不允许 @Composable lambda 捕获外层 remember 局部变量。
 private var t9BackspaceDeletedInput = false
 
 /**
  * 本退格周期已删空（权威标记）：C++ 对空缓冲返回 kNoop（NOT_CONSUMED，缓冲已无可删内容）
- * 后置位，此后本周期内的长按重复在入口直接丢弃，不再投递退格 job。新按键周期（onPress）复位。
+ * 后置位，此后本周期内的长按重复在入口直接丢弃，不再投递退格 job。
  *
  * 与 [t9BackspaceDeletedInput] 的分工：后者只表示「本周期删过拼音」，用于拦截
  * 「转发去删上屏文字」；本标记表示「已经删到没东西可删」，用于拦截「继续入队跑空退格」。
  */
 private var t9BackspaceStopped = false
+
+/**
+ * 退格手势代际号：每次手势结束（onRelease）自增。
+ *
+ * 退格 job 在 t9Dispatcher 上异步执行，回调回到主线程时手势可能已经结束、新一轮按压
+ * 已经开始。此时若直接用共享标记判断，上一轮「已删空」的尾单会被当成本轮的空闲态，
+ * 转发去删已上屏文字。回调携带发起时的代际，代际不符即为跨手势的遗留结果，直接丢弃。
+ */
+private var t9DeleteCycleGen = 0
+
+/** 已记录过「转发删上屏」的代为号：空闲态长按每次重复都会转发，只记首次，避免刷日志。 */
+private var t9ForwardLoggedGen = -1
+
+/**
+ * 本次手势按下瞬间输入串是否非空。每个手势只采样一次（用 [t9CycleStartSampledGen]
+ * 识别"同一手势"——代际号只在 onRelease 自增，拖动二次触发的 onPress 不会重采样）。
+ *
+ * 这是「该不该转发去删上屏文字」的第二道独立判据：手势开始时明明有输入串，
+ * 无论中途标记被什么路径清掉，都不允许转发——比只看可变标记更抗干扰。
+ */
+private var t9CycleStartedWithInput = false
+private var t9CycleStartSampledGen = -1
 
 @Composable
 fun T9KeyboardLayout(
@@ -157,35 +184,59 @@ fun T9KeyboardLayout(
         // 这里直接丢弃重复请求，让"停"发生在投递之前。
         // 判定两路：
         //   1) t9BackspaceStopped —— 权威：C++ 已明确回报空缓冲无可删内容；
-        //   2) 快照预判 —— 输入串已空且状态机 IDLE；必须叠加 t9BackspaceDeletedInput，
-        //      否则「刚打完数字立刻长按」时 cachedInput 还没回填，会把首个退格吃掉。
-        if (longPress && t9BackspaceDeletedInput &&
+        //   2) 快照预判 —— 输入串已空且状态机 IDLE；必须叠加「本手势动过输入串」
+        //      （按下时已有输入串，或本周期删过），否则「刚打完数字立刻长按」时
+        //      cachedInput 还没回填，会把首个退格吃掉。
+        if (longPress && (t9BackspaceDeletedInput || t9CycleStartedWithInput) &&
             (t9BackspaceStopped ||
                 (controller.inputBuffer.isEmpty() &&
                     controller.leftPanelState == T9InputController.LeftPanelState.IDLE))
         ) return
+        // 手势代际：本轮 job 的结果只允许作用于发起它的那一次手势
+        val gen = t9DeleteCycleGen
         // onDeleted 在后台队列中处理（flush 不阻塞 UI），结果通过回调返回（Main 线程）。
         controller.onDeleted { result ->
+            // 跨手势的遗留结果：上一轮手势排队、现在才返回的退格 job。此时标记已被
+            // onRelease 清零，若继续按「空闲态」处理就会转发去删刚上屏的文字。
+            val stale = gen != t9DeleteCycleGen
             when (result) {
                 T9InputController.DeleteResult.UNDO_COMMIT -> {
+                    // 撤销右选段的 UI 重建与手势无关，照常执行；只有标记写入需要判代际
                     controller.clearRimeAndResend()
-                    if (longPress) t9BackspaceDeletedInput = true
+                    if (longPress && !stale) t9BackspaceDeletedInput = true
                 }
 
                 T9InputController.DeleteResult.NOT_CONSUMED -> {
+                    if (stale) {
+                        // 唯一会真正删掉上屏文字的分支，跨手势一律不转发
+                        FileLogger.d(TAG, "T9 delete: 丢弃跨手势空结果 (gen=$gen, cur=$t9DeleteCycleGen)")
+                        return@onDeleted
+                    }
                     // 长按：拼音串删空后停止，不接着删已上屏文字；
-                    // 但本长按周期从未删过拼音（空闲态长按）保持连续删上屏文字
-                    if (!longPress || !t9BackspaceDeletedInput) {
+                    // 但本长按周期从未删过拼音（空闲态长按）保持连续删上屏文字。
+                    // 两道判据都要「本周期没删过输入串」才转发，任一为真即视为本周期
+                    // 动过输入串，绝不转发——避免标记被意外重置后误删上屏文字。
+                    if (!longPress || (!t9BackspaceDeletedInput && !t9CycleStartedWithInput)) {
+                        if (t9ForwardLoggedGen != gen) {
+                            t9ForwardLoggedGen = gen
+                            FileLogger.d(
+                                TAG,
+                                "T9 delete: 转发删上屏文字 (longPress=$longPress, deleted=$t9BackspaceDeletedInput, gen=$gen, buf='${controller.inputBuffer}')"
+                            )
+                        }
                         onKeyPress("delete")
                     } else {
                         // 本周期删过拼音，且 C++ 回报已无可删内容 → 删空，后续重复全丢弃
+                        if (!t9BackspaceStopped) {
+                            FileLogger.d(TAG, "T9 delete: 删空即停 (gen=$gen)")
+                        }
                         t9BackspaceStopped = true
                     }
                 }
 
                 T9InputController.DeleteResult.DELETED, T9InputController.DeleteResult.UNDO_CHOICE -> {
                     // 长按期间删除过拼音：标记，删空后即停
-                    if (longPress) {
+                    if (longPress && !stale) {
                         t9BackspaceDeletedInput = true
                     }
                 }
@@ -832,12 +883,23 @@ private fun T9KeyboardContent(
                 a11yDescription = "退格",
                 swipeText = if (compactMode) null else "清空",
                 onSwipe = { onKeyPress("clear_composition") },
+                // 按下只做「按键按下」的副作用（触感/删除会话），**不复位周期标记**：
+                // 拖动手势（手指微动超过 touch slop）会二次触发 onPress，在那里复位
+                // 会把「本周期删过输入串」的守卫清掉，删空后重复退格就会转发去删上屏文字。
                 onPress = {
-                    t9BackspaceDeletedInput = false
-                    t9BackspaceStopped = false
+                    // 手势开始采样一次「按下时是否已有输入串」（同手势的二次 onPress 不覆盖）
+                    if (t9CycleStartSampledGen != t9DeleteCycleGen) {
+                        t9CycleStartSampledGen = t9DeleteCycleGen
+                        t9CycleStartedWithInput = controller.inputBuffer.isNotEmpty()
+                    }
                     onKeyPressDown?.invoke("delete")
                 },
-                onRelease = { t9BackspaceDeletedInput = false },
+                // 手势结束才结算周期：清标记 + 推进代际（让上一轮遗留的退格结果作废）
+                onRelease = {
+                    t9BackspaceDeletedInput = false
+                    t9BackspaceStopped = false
+                    t9DeleteCycleGen++
+                },
                 swipeUpLabel = if (compactMode) null else "上滑清空",
                 swipeDownLabel = if (compactMode) null else "下滑撤回",
                 onSwipeUp = {

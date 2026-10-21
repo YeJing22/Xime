@@ -1078,6 +1078,15 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                 // 退格请求在 keyJobs 中排队，也全部被拦截，不会误删上屏文本；
                 // 空闲态长按（本周期从未删过输入串）则保持连续删除已上屏文字。
                 if (service.backspaceDeletedInput) return
+                // 诊断日志（九键场景专用）：九键退格正常应由 T9 链路消化，只有「空闲态
+                // 长按 / 单击」才转发到这里真正删上屏文字。若用户反馈"删拼音时上屏文字
+                // 被吃掉"，这条日志能确认删除确实发生在公共链路，便于定位转发源头。
+                if (isT9Schema(service.uiState.value.currentSchemaId)) {
+                    FileLogger.d(
+                        XimeInputMethodService.TAG,
+                        "delete: 九键态回删上屏文字 (deletedInput=${service.backspaceDeletedInput}, pressActive=${service.backspacePressActive})"
+                    )
+                }
                 service.predictionManager.deleteLastChar()
 
                 withContext(Dispatchers.Main) {
