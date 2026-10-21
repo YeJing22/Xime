@@ -62,9 +62,9 @@ private val SetupStep.navTitle: String
 /** 双栏导航项说明。 */
 private val SetupStep.navDescription: String
     get() = when (this) {
-        SetupStep.EnableIme -> "在系统设置中启用曦码输入法"
+        SetupStep.EnableIme -> "在系统设置中启用曦码T9输入法"
         SetupStep.SelectSchemas -> "选择并部署输入方案"
-        SetupStep.SwitchToIme -> "切换到曦码输入法"
+        SetupStep.SwitchToIme -> "切换到曦码T9输入法"
     }
 
 /** 步骤正文标题。 */
@@ -349,7 +349,7 @@ private fun VerticalStepNavigation(
 
     Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 32.dp)) {
         Text(
-            text = "曦码输入法",
+            text = "曦码T9输入法",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
@@ -445,7 +445,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     Text(
-        text = "曦码输入法",
+        text = "曦码T9输入法",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary
@@ -465,7 +465,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
     )
     Spacer(Modifier.height(12.dp))
     Text(
-        text = "请在系统设置中启用「曦码输入法」",
+        text = "请在系统设置中启用「曦码T9输入法」",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -484,7 +484,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
     if (isEnabled) {
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "✓ 曦码输入法已启用",
+            text = "✓ 曦码T9输入法已启用",
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold
         )
@@ -498,7 +498,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
     } else {
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "请先在系统设置中启用曦码输入法",
+            text = "请先在系统设置中启用曦码T9输入法",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error
         )
@@ -634,7 +634,7 @@ private fun SwitchToImeStep(onCompleted: () -> Unit) {
     )
     Spacer(Modifier.height(12.dp))
     Text(
-        text = "一切准备就绪！请切换到曦码输入法开始使用",
+        text = "一切准备就绪！请切换到曦码T9输入法开始使用",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
