@@ -551,7 +551,7 @@ data class KeyboardFontConfig(
  * - 其余 id：自定义键，行为在 keys.<id> 定义（无配置时键面为键名、点按提交键名）。
  */
 data class KeyboardT9LayoutConfig(
-    /** 左列（自上而下）。candidates = 拼音候选面板占位（候选态显示音节，空闲态显示 side_symbols）。 */
+    /** 左列（自上而下）。candidates = 候选/符号面板占位（候选态显示音节，空闲态显示 side_symbols）。 */
     val left: List<String> = DEFAULT_T9_LEFT,
     /** 主区行：每个子列表一行，从左到右。 */
     val rows: List<List<String>> = DEFAULT_T9_ROWS,

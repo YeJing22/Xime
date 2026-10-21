@@ -1326,6 +1326,11 @@ public:
         // 目标方案与当前不同时只写缓存，随后的 switchSchema 自然生效
         if (!schema || schema->schema_id() != sid)
             return;
+        // 已是覆盖值：无需重建。ApplySchema 会重建全部组件（含用户词典，开销很大），
+        // 旧实现每次 onStartInput / 每次用户词库操作后都会无条件重建一次；
+        // 重建期间并发进入引擎也是 SIGSEGV 的温床（session/config 被替换）
+        if (schema->page_size() == page_size_override_)
+            return;
         session->ApplySchema(new rime::Schema(sid));
         LOGI("applyPageSizeOverride: re-applied schema '%s' (menu/page_size=%d)",
              sid.c_str(), page_size_override_);

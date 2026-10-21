@@ -77,7 +77,7 @@ internal object EditorInfoClassifier {
      * 数字密码框（支付密码/验证码等，TYPE_CLASS_NUMBER + TYPE_NUMBER_VARIATION_PASSWORD）
      * 也纳入：此类宿主常在每次输入后重新发起 onStartInput（restarting=false），
      * 若排除密码框，用户手动进入的数字面板会被 onStartInput 的键盘重置切回主键盘
-     * （表现为"每输入一个数字都跳回主键盘"）。纳入后密码框与普通数字框一致：
+     * （表现为“每输入一个数字都跳回主键盘”）。纳入后密码框与普通数字框一致：
      * 自动进入数字面板，且每次会话重置仍保持数字面板。
      */
     fun isNumberEditor(info: EditorInfo?): Boolean {

@@ -30,21 +30,25 @@ class KeyboardResizeBoundsTest {
     }
 
     @Test
-    fun `margin cap is 25 percent of screen width per side`() {
-        // 800dp 宽：25% = 200dp，(800-240)/2 = 280dp ⇒ 取较小者 200
-        assertEquals(200, KeyboardResizeBounds.maxHorizontalMarginDp(800))
+    fun `wide screens can narrow keyboard down to min width`() {
+        // 800dp 宽（折叠屏/平板）：不再被屏宽百分比卡住，最窄可到 180dp
+        assertEquals(310, KeyboardResizeBounds.maxHorizontalMarginDp(800))
+        assertEquals(180, 800 - 2 * KeyboardResizeBounds.maxHorizontalMarginDp(800))
+        assertEquals(150, KeyboardResizeBounds.maxHorizontalMarginDp(480))
     }
 
     @Test
     fun `margin cap keeps keyboard at least min width`() {
-        // 360dp 宽（常见手机）：25% = 90dp，(360-240)/2 = 60dp ⇒ 60，键盘最窄 240dp
-        assertEquals(60, KeyboardResizeBounds.maxHorizontalMarginDp(360))
-        assertEquals(240, 360 - 2 * KeyboardResizeBounds.maxHorizontalMarginDp(360))
+        // 360dp 宽（常见手机）：(360-180)/2 = 90dp ⇒ 键盘最窄 180dp
+        assertEquals(90, KeyboardResizeBounds.maxHorizontalMarginDp(360))
+        assertEquals(180, 360 - 2 * KeyboardResizeBounds.maxHorizontalMarginDp(360))
+        // 412dp 宽（宽屏手机，issue #1114）：可收到 180dp（约为屏宽 44%）
+        assertEquals(116, KeyboardResizeBounds.maxHorizontalMarginDp(412))
     }
 
     @Test
     fun `margin is zero on screens narrower than min keyboard width`() {
-        assertEquals(0, KeyboardResizeBounds.maxHorizontalMarginDp(200))
+        assertEquals(0, KeyboardResizeBounds.maxHorizontalMarginDp(160))
     }
 
     @Test

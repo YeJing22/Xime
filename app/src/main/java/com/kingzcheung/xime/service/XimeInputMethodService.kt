@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.ui.keyboard.FloatingCardGeometry
 import com.kingzcheung.xime.ui.keyboard.FloatingExitGlow
 import com.kingzcheung.xime.ui.keyboard.KeyboardResizeOverlay
+import com.kingzcheung.xime.ui.keyboard.KeyboardResizeBounds
 import com.kingzcheung.xime.ui.keyboard.HardwareKeyboardCandidateBar
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
@@ -535,14 +536,19 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             SettingsPreferences.setFloatingOffsetX(this, clampedX, isLandscape)
             SettingsPreferences.setFloatingOffsetY(this, clampedY, isLandscape)
         }
+        // 边距按当前屏宽收紧：横竖屏/折叠屏切换后旧值可能超出上限（键盘会收到负宽）
+        val maxMargin = KeyboardResizeBounds.maxHorizontalMarginDp(screenW)
         uiState.value = uiState.value.copy(
             darkMode = SettingsPreferences.getDarkMode(this),
             themeId = SettingsPreferences.getKeyboardTheme(this),
             isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService),
             keyboardHeightDp = SettingsPreferences.getKeyboardHeightDp(this, isLandscape),
             keyboardBottomPaddingDp = SettingsPreferences.getKeyboardBottomPaddingDp(this),
-            keyboardMarginStartDp = SettingsPreferences.getKeyboardMarginStartDp(this),
-            keyboardMarginEndDp = SettingsPreferences.getKeyboardMarginEndDp(this),
+            keyboardMarginStartDp = SettingsPreferences.getKeyboardMarginStartDp(this).coerceIn(0, maxMargin),
+            keyboardMarginEndDp = SettingsPreferences.getKeyboardMarginEndDp(this).coerceIn(0, maxMargin),
+            // 调节进行中的预览值同样收紧（旋转/折叠切换后可能超出新屏宽上限）
+            resizePreviewMarginStartDp = uiState.value.resizePreviewMarginStartDp.coerceIn(0, maxMargin),
+            resizePreviewMarginEndDp = uiState.value.resizePreviewMarginEndDp.coerceIn(0, maxMargin),
             toolbarButtons = SettingsPreferences.getToolbarButtons(this),
             isFloatingMode = isFloatingMode,
             floatingOffsetX = clampedX,
@@ -2169,10 +2175,12 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             schemaController.applyPageSizeSetting(savedSchema)
                             rimeEngine.switchSchema(savedSchema)
                         } else {
-                            // 即使 schema 相同也重新 switch 一下，确保 processor 完全初始化
-                            debugLog("onStartInput: Schema already matches, re-switching to init processors")
-                            schemaController.applyPageSizeSetting(savedSchema)
-                            rimeEngine.switchSchema(savedSchema)
+                            // 方案未变：select_schema 会重建全部 processor/translator（连用户词典一起重开），
+                            // 而 current==saved 已证明当前会话的引擎应用了该方案（会话重建后 current 是
+                            // ".default"）。这里跳过重建，只兜底清一次上轮可能残留的组合态
+                            //（原实现靠 ApplySchema 的 context.Clear 顺带完成）。
+                            debugLog("onStartInput: Schema already active, skip redundant switch")
+                            rimeEngine.clearComposition()
                         }
                         actualSchema = savedSchema
                     }

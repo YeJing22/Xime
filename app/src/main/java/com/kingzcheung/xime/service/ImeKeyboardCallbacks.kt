@@ -11,6 +11,7 @@ import com.kingzcheung.xime.rime.RimeProcessResult
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.keyboard.FloatingCardGeometry
 import com.kingzcheung.xime.ui.keyboard.KeyboardCallbacks
+import com.kingzcheung.xime.ui.keyboard.KeyboardResizeBounds
 import com.kingzcheung.xime.ui.keyboard.isT9Schema
 import com.kingzcheung.xime.util.FileLogger
 import kotlin.math.roundToInt
@@ -146,11 +147,15 @@ internal fun rememberImeKeyboardCallbacks(
             onKeyboardResize = {
                 val config = service.resources.configuration
                 val isLandscape = config.screenWidthDp > config.screenHeightDp
+                // 按当前屏宽收紧已存边距（横竖屏切换后旧值可能超出上限）
+                val maxMargin = KeyboardResizeBounds.maxHorizontalMarginDp(config.screenWidthDp)
                 service.uiState.value = service.uiState.value.copy(
                     showKeyboardResize = true,
                     resizePreviewHeightDp = SettingsPreferences.getKeyboardHeightDp(service, isLandscape),
-                    resizePreviewMarginStartDp = SettingsPreferences.getKeyboardMarginStartDp(service),
-                    resizePreviewMarginEndDp = SettingsPreferences.getKeyboardMarginEndDp(service),
+                    resizePreviewMarginStartDp = SettingsPreferences.getKeyboardMarginStartDp(service)
+                        .coerceIn(0, maxMargin),
+                    resizePreviewMarginEndDp = SettingsPreferences.getKeyboardMarginEndDp(service)
+                        .coerceIn(0, maxMargin),
                 )
             },
             onReloadConfig = { service.schemaController.reloadConfig() },

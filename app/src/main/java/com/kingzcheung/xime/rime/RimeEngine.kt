@@ -505,18 +505,33 @@ class RimeEngine {
     }
 
     fun setOption(option: String, value: Boolean) {
-        if (!nativeHasSession()) return
-        nativeSetOption(option, value)
+        if (!isInitialized) return
+        // 会话/方案状态读写必须与 rimeLock 序列化：后台用户词库操作（readUserDictText /
+        // sync）会销毁重建会话并 ApplySchema（重建 translator 组件），
+        // 并发进入 librime 会读到已释放的 Config/Schema 而 SIGSEGV。
+        // 用非阻塞锁：部署/维护持锁时直接跳过，保证输入路径不被 30s+ 的编译阻塞。
+        tryLocked(Unit) {
+            if (!nativeHasSession()) return@tryLocked
+            nativeSetOption(option, value)
+        }
     }
 
     fun getOption(option: String): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeGetOption(option)
+        if (!isInitialized) return false
+        return tryLocked(false) {
+            if (!nativeHasSession()) return@tryLocked false
+            nativeGetOption(option)
+        }
     }
 
     fun setPageSize(schemaId: String, pageSize: Int) {
         if (!isInitialized) return
-        nativeSetPageSize(schemaId, pageSize)
+        // 会写方案配置并 session->ApplySchema 重建组件（重），必须独占引擎；
+        // 否则与后台用户词库读取/同步的 ApplySchema 并发 → 原生层 SIGSEGV
+        //（反馈日志：applyPageSizeOverride 与 readUserDictText 同一时刻执行）
+        locked {
+            nativeSetPageSize(schemaId, pageSize)
+        }
     }
 
     fun switchSchema(schemaId: String): Boolean {
