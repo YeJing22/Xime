@@ -482,8 +482,11 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
         int consumed_digit_count = options.empty() ? 0 : options[0].digit_length;
         if (consumed_digit_count >= 1 &&
             consumed_digit_count < static_cast<int>(digits.size())) {
+            // digits 只是 selected_pinyin 的拼音码，未选数字（unassigned）必须接在尾部，
+            // 否则下游按 remaining 重建 buffer 时会把它整段丢掉
+            // （2026-10-22：gan'na'er'52453 右选「干」后 lai le 消失）。
             return {Take(digits, consumed_digit_count),
-                    Drop(digits, consumed_digit_count)};
+                    Drop(digits, consumed_digit_count) + unassigned};
         }
     }
     return {"", ""};
@@ -570,7 +573,8 @@ bool T9RightCommitHandler::HandleRightCommit(
             RCLOG(">> BRANCH: letterBuffer (selection state with unassigned)");
             is_full_commit = letter_buffer_strategy_->Handle(
                 *this, ctx, remaining_digits, candidate_pinyin, candidate_text_length,
-                prev_opt, prev_digits, prev_conf, prev_buf);
+                prev_opt, prev_digits, prev_conf, prev_buf,
+                candidate_syllable_count);
             break;
         case RouteType::kApostrophe:
             RCLOG(">> BRANCH: apostrophe (hasSels && hasUnassigned)");
@@ -589,7 +593,8 @@ bool T9RightCommitHandler::HandleRightCommit(
             RCLOG(">> BRANCH: letterBuffer (hasSels only)");
             is_full_commit = letter_buffer_strategy_->Handle(
                 *this, ctx, remaining_digits, candidate_pinyin, candidate_text_length,
-                prev_opt, prev_digits, prev_conf, prev_buf);
+                prev_opt, prev_digits, prev_conf, prev_buf,
+                candidate_syllable_count);
             break;
     }
 

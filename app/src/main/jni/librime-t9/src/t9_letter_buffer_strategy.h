@@ -41,7 +41,10 @@ public:
                 const std::optional<SyllableOption>& prev_selected_option,
                 const std::optional<std::string>& prev_selection_candidate_digits,
                 const std::string& prev_confirmed_pinyin,
-                const T9Buffer& prev_buf);
+                const T9Buffer& prev_buf,
+                // 候选音节数（空注释时由 Phrase 码缓存按文本回捞得到；0 = 未知）。
+                // 空注释候选解析不出音节，只能靠它判断「候选覆盖了几个已选音节」。
+                int candidate_syllable_count = 0);
 
     // 纯函数：候选词音节数 > 选择数（completion 额外音节）时的 full commit 判定。
     // 覆盖末选择的音节是候选词第 selection_count 个音节（非最后一个——额外音节
@@ -124,7 +127,8 @@ private:
         T9RightCommitHandler::Context& ctx,
         int candidate_text_length,
         const SelectionContext& sel_ctx,
-        const T9Buffer& prev_buf);
+        const T9Buffer& prev_buf,
+        int candidate_syllable_count);
 
     // ── 子路径 C 条件谓词 ──
 
