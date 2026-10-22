@@ -849,9 +849,42 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
             // 这是空注释候选（syllableCount=0）才会走到的最后兜底，无法判断候选是否
             // 真覆盖到输入末尾，因此按最保守语义处理：只消费已选段，剩余数字保留。
             if (!buf.unassigned().empty()) {
-                const std::string& rest = buf.unassigned();
-                RCLOG(">>   DefensiveNoComment: unassigned='%s' 非空 → 仅消费已选段，保留剩余数字",
-                      rest.c_str());
+                // 但「候选字数 > 已选音节数」时，候选必然还覆盖了 unassigned 的若干音节，
+                // 保守保留就会留下重复（真机 2026-10-22：固定 gan/na/er 后右选
+                // 「干那儿来了」，lai le 被留在串上，用户再选「来了」就多出一个「来了」）。
+                // 空注释给不出音节边界，按「候选每个汉字对应一个音节」对 unassigned
+                // 逐音节贪心切分，超出的字数即需额外消费的音节数。
+                const int extra_chars =
+                    candidate_text_length - static_cast<int>(history.size());
+                int extra_digits = 0;
+                if (extra_chars > 0) {
+                    std::string cursor = buf.unassigned();
+                    for (int k = 0; k < extra_chars && !cursor.empty(); ++k) {
+                        auto options = T9PinyinMap::Instance().FirstSyllableOptions(cursor, 1);
+                        int len = options.empty() ? 0 : options[0].digit_length;
+                        if (len <= 0 || len > static_cast<int>(cursor.size()))
+                            len = static_cast<int>(cursor.size());
+                        extra_digits += len;
+                        cursor = Drop(cursor, len);
+                    }
+                    if (extra_digits > static_cast<int>(buf.unassigned().size()))
+                        extra_digits = static_cast<int>(buf.unassigned().size());
+                    RCLOG(">>   DefensiveNoComment: 候选 %d 字 > 已选 %zu 音节 → 额外音节多吃 %d 位",
+                          candidate_text_length, history.size(), extra_digits);
+                }
+                if (extra_digits > 0 &&
+                    extra_digits >= static_cast<int>(buf.unassigned().size())) {
+                    RCLOG(">>   DefensiveNoComment: 额外消费覆盖整个 unassigned('%s') → 整段提交",
+                          buf.unassigned().c_str());
+                    owner.ClearAndEnterIdle(ctx);
+                    return true;
+                }
+                const std::string rest = extra_digits > 0
+                    ? buf.unassigned().substr(static_cast<size_t>(extra_digits))
+                    : buf.unassigned();
+                RCLOG(">>   DefensiveNoComment: unassigned='%s' → 消费已选段%s，保留 '%s'",
+                      buf.unassigned().c_str(),
+                      extra_digits > 0 ? "+额外音节" : "", rest.c_str());
                 ctx.input_buffer = T9Buffer(rest, {}, 0, static_cast<int>(rest.size()));
                 ctx.left_column_locked = false;
                 return owner.RestorePrevState(ctx, prev_selected_option,
