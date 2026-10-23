@@ -473,12 +473,16 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
         return true;
     }
 
-    // 全简拼无候选注释 → enterLike 提交分支已移除（2026-10-19 修复）：
-    // T9 引擎会把输入序列自动左选成单音节（如 "23744" → c/e/s/h/i，
-    // unassigned 为空），此时点选空注释候选（万象"测"）若走 enterLike 整串
-    // 提交会误清空未消费音节（上屏"测"后剩余 shi 消失）。空注释候选改由
-    // QueryRimeConsumedDigits 文本兜底/letterBuffer 分支按音节消费定位，
-    // 保证 partial commit 保留剩余输入串。
+    // 全简拼无候选注释 → enterLike 提交
+    if (candidate_pinyin.empty() &&
+        !state_machine_.selection_history().empty() &&
+        std::all_of(state_machine_.selection_history().begin(),
+                     state_machine_.selection_history().end(),
+                     [](const SyllableOption& o) { return o.digit_length == 1; })) {
+        T9LOG(">> SelectCandidate: all-abbrev no comment → EnterIdle");
+        EnterIdle();
+        return true;
+    }
 
     T9RightCommitHandler::Context ctx;
     BuildHandlerContext(ctx);
@@ -491,77 +495,12 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
     // 识别候选是否为 T9 用户词：其 input_digits 与当前 unassigned 完全一致，
     // 右选应全量消费（避免音节对齐不匹配导致 partial commit）。
     bool is_t9_user = false;
-
-    // 空注释候选（万象等方案 lua 会清空候选拼音注释）：按候选文本从 t9_filter
-    // 预存的 Phrase 码缓存回捞原始拼音。两个用途：
-    //   1) 音节数供 CRCC 的 S8 兜底判断「候选是否被已左选音节完全覆盖」；
-    //   2) 候选音节数恰等于已左选数时，直接用回捞拼音顶替空注释。
-    //
-    // 为什么必须顶替（真机 2026-10-21 二次复现）：左选固定 zhan、sheng 后，
-    // route 分类为 kLetterBuffer_Selection（选中项是 sheng，selected_pinyin
-    // "zhansheng" 以其结尾且更长）。CRCC 的 apostrophe 段在该路由下整块跳过，
-    // 于是落到 LetterBufferStrategy：syllableCount=0 → HandleDefensiveNoCommentCommit，
-    // 其子路径 A 判定「selection_history 完全覆盖 selected_pinyin」后直接
-    // ClearAndEnterIdle —— 把整个编码（含未选的 guo/486）一起清空。
-    // 回捞后 syllable_count == selection_count，改由 IsFullSelectionOnly 命中，
-    // 只消费已选段，unassigned 保留。
-    std::string effective_pinyin = candidate_pinyin;
-    int candidate_syllables = 0;
-    if (ParseSyllables(candidate_pinyin).empty()) {
-        std::string recovered;
-        size_t recovered_syllables = 0;
-        if (FindPhraseInfoByText(candidate_text, &recovered, &recovered_syllables)) {
-            candidate_syllables = static_cast<int>(recovered_syllables);
-            const size_t sel_count = input_buffer_.selections.size();
-            if (!recovered.empty() && sel_count > 0 && recovered_syllables == sel_count) {
-                effective_pinyin = recovered;
-                T9LOG(">> SelectCandidate: 空注释回捞拼音 '%s' (syl=%zu == selCount=%zu) for '%s'",
-                      recovered.c_str(), recovered_syllables, sel_count, candidate_text.c_str());
-            } else {
-                T9LOG(">> SelectCandidate: 空注释回捞音节数 syl=%zu (selCount=%zu)，仅作兜底判定 for '%s'",
-                      recovered_syllables, sel_count, candidate_text.c_str());
-            }
-        } else {
-            T9LOG(">> SelectCandidate: 空注释且缓存未命中，沿用整串消费兜底 for '%s'",
-                  candidate_text.c_str());
-        }
-    }
-
-    // 装饰性注释候选（`〔表情：💡〕` / `〔符号：′〕` 等）：注释非空，但归一化后不含
-    // 任何拼音字母。这类候选由方案 filter 在候选列表里生成，**不在 RIME menu 中**，
-    // 所以 QueryRimeConsumedDigits 必然返回 -1；回退到音节对齐又因没有音节算出 0 位。
-    // 结果：每次点选只做一次 partial commit（上屏一个 emoji），输入编码一位都不动，
-    // 可以无限点、上屏一串 emoji，输入态永远结束不了（真机 2026-10-21：deng pao 选 💡）。
-    //
-    // 与「空注释中文候选」（万象 lua 把 comment 清成 ""）严格区分：
-    //   - 空注释（""）        → ParseSyllables 为空，走上面的回捞逻辑，不能全量消费；
-    //   - 装饰性候选          → 非拼音候选，语义上代表整段输入，直接全量消费。
-    //
-    // 判据两条，任一成立即为装饰性候选：
-    //   1) 注释非空但归一化后无拼音字母（`〔表情：💡〕` 这类装饰性注释）；
-    //   2) **候选文本本身不含任何文字**（💡 / ′ 等）——不依赖注释形态。
-    // 第 2 条是主判据：真机复测发现万象的表情候选注释未必传到 C++（左选固定后能正常
-    // 上屏、不固定则 0 消费，说明注释判据没命中），只看注释会漏判，退回 0 消费。
-    const bool decorated_candidate =
-        (!candidate_pinyin.empty() && NormalizePinyinComment(candidate_pinyin).empty()) ||
-        IsNonWordCandidate(candidate_text);
-
-    // rime_consumed 仍按原始（可能为空的）注释查询：文本定位兜底不依赖回捞拼音，
-    // 且回捞结果只用于音节对齐，混用会让注释比较逻辑多一种输入形态。
     int rime_consumed =
         QueryRimeConsumedDigits(candidate_pinyin, candidate_text, &captured_code, &captured_text,
                                 &is_t9_user);
     // 左选场景时 RIME input 含左选拼音前缀，需加 consumed_count 得到总消费位数。
     if (rime_consumed >= 0 && !input_buffer_.selections.empty()) {
         rime_consumed += input_buffer_.consumed_count;
-    }
-    // 装饰性候选（表情/符号）：查询必然失败（-1），按「代表整段输入」全量消费。
-    // 放在 consumed_count 补偿之后，避免再加一次前缀长度。
-    if (decorated_candidate) {
-        rime_consumed = input_buffer_.consumed_count +
-                        static_cast<int>(input_buffer_.unassigned().size());
-        T9LOG(">> SelectCandidate: 装饰性注释候选 '%s' → 全量消费 %d 位",
-              candidate_pinyin.c_str(), rime_consumed);
     }
     T9LOG(">> SelectCandidate: rimeConsumedDigits=%d (consumed=%d, isT9User=%d, hasSels=%d)",
           rime_consumed, input_buffer_.consumed_count, is_t9_user ? 1 : 0,
@@ -598,8 +537,7 @@ bool T9Processor::SelectCandidate(const std::string& candidate_pinyin,
           is_first_select ? 1 : 0);
 
     bool full_commit = right_commit_handler_.HandleRightCommit(
-        ctx, effective_pinyin, candidate_text_length, rime_consumed, is_t9_user,
-        candidate_syllables);
+        ctx, candidate_pinyin, candidate_text_length, rime_consumed, is_t9_user);
 
     // 必须先把 handler 消费结果回写 input_buffer_（consumed/unassigned 更新）。
     ApplyHandlerContext(ctx);
@@ -758,50 +696,6 @@ T9SyllableCode T9Processor::FindPhraseCode(
     return {};
 }
 
-bool T9Processor::FindPhraseInfoByText(const std::string& text,
-                                       std::string* out_comment,
-                                       size_t* out_syllable_count) const {
-    if (text.empty()) return false;
-
-    // 已左选拼音（无分隔符拼接，如 "zhansheng"）：用于在多音字/同形词条中
-    // 挑出与当前输入真正对得上的那条。
-    const std::string selected = input_buffer_.selected_pinyin();
-    auto compact = [](const std::string& s) {
-        std::string out;
-        out.reserve(s.size());
-        for (char c : s) {
-            if (c != ' ' && c != '\t' && c != '\'') out.push_back(c);
-        }
-        return out;
-    };
-
-    const PhraseCodeEntry* best = nullptr;
-    int best_score = -1;
-    for (const auto& e : phrase_code_cache_) {
-        if (e.text != text) continue;
-        std::string norm = NormalizePinyinComment(e.comment);
-        if (norm.empty()) continue;  // 无注释的条目对本用途无价值
-        int score = 0;
-        if (!selected.empty() && compact(norm).rfind(selected, 0) == 0) {
-            score = 2;  // 注释前缀与已左选拼音完全一致（最可信）
-        } else if (e.code.size() >= input_buffer_.selections.size()) {
-            score = 1;  // 音节数不少于已选数量，至少不会误判「覆盖不了」
-        }
-        if (score > best_score) {
-            best_score = score;
-            best = &e;
-        }
-    }
-    if (!best || best_score <= 0) return false;
-
-    if (out_comment) *out_comment = NormalizePinyinComment(best->comment);
-    if (out_syllable_count) *out_syllable_count = best->code.size();
-    T9LOG(">> FindPhraseInfoByText: '%s' → comment='%s' syll=%zu (score=%d)",
-          text.c_str(), out_comment ? out_comment->c_str() : "",
-          best->code.size(), best_score);
-    return true;
-}
-
 bool T9Processor::WriteDictEntry(const std::string& text,
                                  const Code& code,
                                  int commits) {
@@ -907,15 +801,11 @@ int T9Processor::QueryRimeConsumedDigits(
     // 精确计算出候选在输入中的匹配结束位置（Candidate::end()），
     // 其坐标基于 RIME 引擎当前 input 字符串（可能含分隔符）。
     // 换算规则：消费数字位数 = input[0:end) 中数字字符的个数。
-    // 空注释（如万象九键部分候选无注释）时按候选文本定位 end 换算，
-    // 避免 fallback 误判 full commit 清空输入串（2026-10-19 修复）。
+    if (!candidate_pinyin.has_value() || candidate_pinyin->empty()) return -1;
     auto* ctx = engine_->context();
     if (!ctx) return -1;
     const std::string& rime_input = ctx->input();
     const auto& comp = ctx->composition();
-    const bool has_pinyin = candidate_pinyin.has_value() && !candidate_pinyin->empty();
-    // 无注释且无文本 → 无法定位候选
-    if (!has_pinyin && candidate_text.empty()) return -1;
     const bool match_text = !candidate_text.empty();
     for (const auto& seg : comp) {
         if (!seg.menu) continue;
@@ -932,9 +822,7 @@ int T9Processor::QueryRimeConsumedDigits(
             // （"jì huà"），而 UI comment 经方案 lua 处理为无声调（"ji hua"）。
             // 精确比较会漏匹配 → 调频码捕获失败 → fallback 命中轻声音节。
             // 归一化后两者同为 "jihua"；多音字（yínháng/yínxíng）仍可区分。
-            // 空注释场景跳过注释比较，直接按文本定位候选。
-            if (has_pinyin &&
-                NormalizePinyinComment(genuine->comment()) !=
+            if (NormalizePinyinComment(genuine->comment()) !=
                 NormalizePinyinComment(*candidate_pinyin))
                 continue;
             // 注释歧义根治：Kotlin 同时传入候选文本，双条件精确定位用户点选

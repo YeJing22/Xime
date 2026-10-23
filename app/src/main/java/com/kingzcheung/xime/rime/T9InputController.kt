@@ -347,11 +347,6 @@ class T9InputController(
             clearAll()
             return true
         }
-        FileLogger.d(
-            TAG,
-            "onRightCandidateSelected: pinyin='$candidatePinyin' text='$candidateText' " +
-                "len=$candidateTextLength → fullCommit=$isFullCommit, inputAfter='$cachedInput'",
-        )
         return isFullCommit
     }
 
@@ -447,17 +442,7 @@ class T9InputController(
      * T9 控制器无需做音节级消费计算。
      */
     fun onRightCandidateSelectedByDirectCommit(): Boolean {
-        // 表情/符号候选（注释为 null）走这条：只上屏候选文本，且必须结束组合态。
-        // 以「快照为空」作为提前返回条件不可靠——cachedInput 是 UI 快照，可能滞后；
-        // 若快照已空而引擎仍有编码，直接 return true 会让编码原地残留，
-        // 表现为每点一次表情上屏一个、输入串一位不动（真机 2026-10-21）。
-        val snapshot = inputBuffer
-        val engineInput = runCatching { rimeEngine.getInput() }.getOrDefault("")
-        FileLogger.d(
-            TAG,
-            "onRightCandidateSelectedByDirectCommit: snapshot='$snapshot' engineInput='$engineInput'",
-        )
-        if (snapshot.isEmpty() && engineInput.isEmpty()) return true
+        if (inputBuffer.isEmpty()) return true
         clearAll()
         return true
     }

@@ -200,10 +200,7 @@ fun KeyboardView(
         callbacks.onT9RightCandidateWillBeSelected = { pinyin, text, textLength ->
             // 返回 C++ T9RightCommitHandler 的 full_commit 权威标志，
             // 不依赖 RIME 引擎 input（full_commit 后引擎 input 可能残留，判断会失真）
-            // 2026-10-19 修复：仅 null（真无注释，如 emoji/符号）才直接提交清空；
-            // 空串注释（如万象九键 lua 过滤拼音后的候选）必须走 C++ SelectCandidate
-            // 文本兜底做 partial 消费，否则误清空未消费输入串（选"测"后 shi 消失）。
-            if (pinyin == null) {
+            if (pinyin.isNullOrBlank()) {
                 t9Controller.onRightCandidateSelectedByDirectCommit()
             } else {
                 t9Controller.onRightCandidateSelected(pinyin, text, textLength)

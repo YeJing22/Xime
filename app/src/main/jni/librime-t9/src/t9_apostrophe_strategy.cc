@@ -53,11 +53,7 @@ bool ApostropheStrategy::Handle(
           can_cover_all ? 1 : 0, comment_syllables.size(), required_syllables, remaining_digits.c_str());
 
     // 路径 A：remaining 空 && !canCoverAll → 移除全部已消费 selections + 恢复
-    // S9（2026-10-20）：空注释（万象九键 lua 过滤拼音）时 comment_syllables=0 →
-    // canCoverAll 恒 false，但这是"信息缺失"而非"消费不匹配"；此时 remaining 空
-    // 已由 CRCC 依据 RIME 文本兜底判定全量消费，应直接 full commit（路径 B），
-    // 避免误走回滚（移除已固定音节 + 残留 unassigned → 上屏"不能"+"neng"）。
-    if (!comment_syllables.empty() && remaining_digits.empty() && !can_cover_all) {
+    if (remaining_digits.empty() && !can_cover_all) {
         RCLOG(">> Apostrophe branch2: remaining empty && !canCoverAll → removeConsumed + restore");
         ctx.input_buffer = owner.RemoveConsumedSelections(ctx, buf, buf.selected_pinyin());
         ctx.left_column_locked = false;
@@ -67,7 +63,7 @@ bool ApostropheStrategy::Handle(
 
     // 路径 B：remaining 空 → buffer 清空
     if (remaining_digits.empty()) {
-        RCLOG(">> Apostrophe branch2: remaining empty → EMPTY buffer (full commit)");
+        RCLOG(">> Apostrophe branch2: remaining empty → EMPTY buffer");
         ctx.TransitionToIdle();
         return true;
     }

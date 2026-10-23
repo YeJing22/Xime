@@ -210,8 +210,7 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
     const std::optional<std::string>& candidate_pinyin,
     RouteType route,
     int rime_consumed_digits,
-    bool is_t9_user_word,
-    int candidate_syllable_count) {
+    bool is_t9_user_word) {
 
     T9_SCOPED_TIMER_TAG("T9RightCommit", "ComputeRightCommitConsumption");
     bool has_selections = !buf.selections.empty();
@@ -240,39 +239,6 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
         if (route != RouteType::kLetterBuffer_Selection) {
             const auto& syllables = alignment.syllables;
             int sel_count = static_cast<int>(buf.selections.size());
-
-            // S8（2026-10-20）：候选注释为空（万象九键 lua 过滤拼音注释）时，
-            // 音节解析结果为 0，无法走多音节/单音节对齐；直接采用 RIME 文本
-            // 查询得到的 rime_consumed_digits（总消费，已含左选 consumed_count）
-            // 做消费基准，从 unassigned 消费 rime_consumed_digits - consumed_count 位。
-            // 例：固定 bu(28) 后选"不能"，rime_consumed=6 → 消费 6-2=4 位 → 剩 ''。
-            // 避免降级到单音节分支只消费 1 位导致残留 "364(eng)"（上屏"不能eng"）。
-            if (syllables.empty()) {
-                // 候选被已左选音节完全覆盖（音节数 ≤ 已选数）：未选的数字一位都不该
-                // 消费。整串消费兜底此时必然多消费——真机 2026-10-21：zhan sheng guo
-                // 固定前两音节后选「战胜」，兜底把未选的 guo(486) 一起吃掉。
-                // 音节数由 Phrase 码缓存按文本回捞（candidate_syllable_count），
-                // 0 = 未知，保持原兜底行为。
-                if (candidate_syllable_count > 0 &&
-                    candidate_syllable_count <= sel_count) {
-                    RCLOG(">>   apostrophe: empty-comment but sylCount=%d ≤ selCount=%d → consume none (unassigned='%s')",
-                          candidate_syllable_count, sel_count, unassigned.c_str());
-                    return {"", unassigned};
-                }
-                int consumed_from_unassigned =
-                    rime_consumed_digits - buf.consumed_count;
-                if (consumed_from_unassigned < 0) consumed_from_unassigned = 0;
-                if (consumed_from_unassigned > static_cast<int>(unassigned.size()))
-                    consumed_from_unassigned = static_cast<int>(unassigned.size());
-                RCLOG(">>   apostrophe: empty-comment fallback rimeConsumed=%d consumedCount=%d → consume %d from unassigned (unassigned='%s')",
-                      rime_consumed_digits, buf.consumed_count,
-                      consumed_from_unassigned, unassigned.c_str());
-                if (consumed_from_unassigned > 0) {
-                    return {Take(unassigned, consumed_from_unassigned),
-                            Drop(unassigned, consumed_from_unassigned)};
-                }
-                return {"", unassigned};
-            }
 
             if (static_cast<int>(syllables.size()) > sel_count) {
                 // 多音节候选词：剩余音节匹配到 unassigned。
@@ -384,26 +350,6 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
 
     // letterBuffer 模式
     std::string selected_pinyin = buf.selected_pinyin();
-
-    // 装饰性候选（`〔表情：💡〕`/`〔符号：′〕`）：非拼音候选，代表整段输入。
-    // 两条判据：
-    //   1) 注释非空但归一化后无拼音字母；
-    //   2) SelectCandidate 已把 rime_consumed 置为「覆盖整段」，说明该候选要求全量消费。
-    // 第 2 条也覆盖了普通候选精确匹配整段的正常情况，语义一致、无副作用。
-    const bool pinyin_is_decorated =
-        candidate_pinyin.has_value() && !candidate_pinyin->empty() &&
-        NormalizePinyinComment(*candidate_pinyin).empty();
-    const bool consumed_covers_all =
-        rime_consumed_digits > 0 &&
-        rime_consumed_digits >= buf.consumed_count +
-                                    static_cast<int>(unassigned.size());
-    if (pinyin_is_decorated || consumed_covers_all) {
-        RCLOG(">> CRCC: 装饰性/整段候选 (decorated=%d, rimeConsumed=%d) → 全量消费 '%s'",
-              pinyin_is_decorated ? 1 : 0, rime_consumed_digits,
-              buf.digit_sequence.c_str());
-        return {buf.digit_sequence, ""};
-    }
-
     int candidate_letter_count = CountLetters(candidate_pinyin);
     // S5：命名化 — 候选词字母数 < 已选拼音长度 → 候选词部分覆盖 selections
     const bool is_partial_selection_coverage =
@@ -482,11 +428,8 @@ T9RightCommitHandler::ComputeRightCommitConsumption(
         int consumed_digit_count = options.empty() ? 0 : options[0].digit_length;
         if (consumed_digit_count >= 1 &&
             consumed_digit_count < static_cast<int>(digits.size())) {
-            // digits 只是 selected_pinyin 的拼音码，未选数字（unassigned）必须接在尾部，
-            // 否则下游按 remaining 重建 buffer 时会把它整段丢掉
-            // （2026-10-22：gan'na'er'52453 右选「干」后 lai le 消失）。
             return {Take(digits, consumed_digit_count),
-                    Drop(digits, consumed_digit_count) + unassigned};
+                    Drop(digits, consumed_digit_count)};
         }
     }
     return {"", ""};
@@ -504,8 +447,7 @@ bool T9RightCommitHandler::HandleRightCommit(
     const std::optional<std::string>& candidate_pinyin,
     int candidate_text_length,
     int rime_consumed_digits,
-    bool is_t9_user_word,
-    int candidate_syllable_count) {
+    bool is_t9_user_word) {
 
     T9_SCOPED_TIMER_TAG("T9RightCommit", "HandleRightCommit");
     if (ctx.input_buffer.is_empty()) return true;
@@ -514,11 +456,18 @@ bool T9RightCommitHandler::HandleRightCommit(
     ctx.input_buffer.AssertInvariants();
 #endif
 
-    // 全简拼无候选 → enterLike 提交分支已移除（2026-10-19 修复）：
-    // T9 引擎自动左选使 unassigned 为空时（如 "23744" → c/e/s/h/i），
-    // 空注释候选走 enterLike 整串提交会误清空未消费音节（万象"测"上屏后
-    // 剩余 shi 消失）。改由后续 ClassifyRoute/letterBuffer 分支按音节消费，
-    // 保证 partial commit 保留剩余输入串。
+    // 全简拼无候选 → enterLike 提交
+    if (!candidate_pinyin.has_value() || candidate_pinyin->empty()) {
+        const auto& history = ctx.state_machine.selection_history();
+        bool all_abbrev = !history.empty();
+        for (const auto& sel : history) {
+            if (sel.digit_length != 1) { all_abbrev = false; break; }
+        }
+        if (all_abbrev) {
+            ClearAndEnterIdle(ctx);
+            return true;
+        }
+    }
 
     const T9Buffer& buf = ctx.input_buffer;
     bool has_selections = !buf.selections.empty();
@@ -534,7 +483,7 @@ bool T9RightCommitHandler::HandleRightCommit(
 
     auto consumption = ComputeRightCommitConsumption(
         buf, alignment, candidate_pinyin, route, rime_consumed_digits,
-        is_t9_user_word, candidate_syllable_count);
+        is_t9_user_word);
     const std::string& remaining_digits = consumption.second;
 
     RCLOG(">> HandleRightCommit: hasSels=%d, hasUnassigned=%d, route=%d, unassigned='%s'",
@@ -573,8 +522,7 @@ bool T9RightCommitHandler::HandleRightCommit(
             RCLOG(">> BRANCH: letterBuffer (selection state with unassigned)");
             is_full_commit = letter_buffer_strategy_->Handle(
                 *this, ctx, remaining_digits, candidate_pinyin, candidate_text_length,
-                prev_opt, prev_digits, prev_conf, prev_buf,
-                candidate_syllable_count);
+                prev_opt, prev_digits, prev_conf, prev_buf);
             break;
         case RouteType::kApostrophe:
             RCLOG(">> BRANCH: apostrophe (hasSels && hasUnassigned)");
@@ -593,8 +541,7 @@ bool T9RightCommitHandler::HandleRightCommit(
             RCLOG(">> BRANCH: letterBuffer (hasSels only)");
             is_full_commit = letter_buffer_strategy_->Handle(
                 *this, ctx, remaining_digits, candidate_pinyin, candidate_text_length,
-                prev_opt, prev_digits, prev_conf, prev_buf,
-                candidate_syllable_count);
+                prev_opt, prev_digits, prev_conf, prev_buf);
             break;
     }
 

@@ -99,8 +99,7 @@ bool LetterBufferStrategy::Handle(
     const std::optional<SyllableOption>& prev_selected_option,
     const std::optional<std::string>& prev_selection_candidate_digits,
     const std::string& prev_confirmed_pinyin,
-    const T9Buffer& prev_buf,
-    int candidate_syllable_count) {
+    const T9Buffer& prev_buf) {
 
     T9_SCOPED_TIMER_TAG("T9RightCommit", "LetterBufferStrategy.Handle");
     const T9Buffer& buf = ctx.input_buffer;
@@ -121,26 +120,13 @@ bool LetterBufferStrategy::Handle(
           prev_selected_option.has_value() ? prev_selected_option->pinyin.c_str() : "(null)",
           prev_selection_candidate_digits.has_value() ? prev_selection_candidate_digits->c_str() : "(null)");
 
-    // 装饰性注释候选（`〔表情：💡〕` / `〔符号：′〕`）：注释非空但归一化后无拼音字母。
-    // 它不代表某个音节，而是代表整段输入，选中即应上屏并结束组合态。
-    // 必须先于 syllableCount==0 判定：否则会落到 HandleDefensiveNoCommentCommit，
-    // 而 0023 已把那里改成「unassigned 非空时保留剩余数字」（为保护空注释中文候选），
-    // 两者语义冲突，装饰性候选会因此残留编码。
-    if (candidate_pinyin.has_value() && !candidate_pinyin->empty() &&
-        NormalizePinyinComment(*candidate_pinyin).empty()) {
-        RCLOG(">>  装饰性注释候选 '%s' → 全清空提交", candidate_pinyin->c_str());
-        owner.ClearAndEnterIdle(ctx);
-        return true;
-    }
-
     // 子路径 A：候选词无音节 → 防御性无注释提交
     if (syllable_count == 0) {
-        RCLOG(">>   syllableCount=0 → HandleDefensiveNoCommentCommit (recoveredSyl=%d)",
-              candidate_syllable_count);
+        RCLOG(">>   syllableCount=0 → HandleDefensiveNoCommentCommit");
         return HandleDefensiveNoCommentCommit(
             owner, ctx, candidate_text_length,
             {prev_selected_option, prev_selection_candidate_digits, prev_confirmed_pinyin},
-            prev_buf, candidate_syllable_count);
+            prev_buf);
     }
 
     // 子路径 B：音节数 < selections 数，或音节数相等但字母数不足 → 部分消费
@@ -261,9 +247,7 @@ bool LetterBufferStrategy::HandleSelectionPrefixConsumed(
         auto remaining_digits_opt = T9PinyinMap::Instance().PinyinToDigitCode(
             Drop(selected_pinyin, consumed_pinyin_len));
         if (remaining_digits_opt.has_value()) {
-            // 同子路径 B：pinyin 码只覆盖已选段，unassigned 必须补回尾部。
-            const std::string remaining_digits_inner =
-                *remaining_digits_opt + buf.unassigned();
+            const std::string& remaining_digits_inner = *remaining_digits_opt;
             ctx.input_buffer = T9Buffer(remaining_digits_inner, {}, 0,
                 static_cast<int>(remaining_digits_inner.size()));
             ctx.left_column_locked = false;
@@ -793,8 +777,7 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
     T9RightCommitHandler::Context& ctx,
     int candidate_text_length,
     const SelectionContext& sel_ctx,
-    const T9Buffer& prev_buf,
-    int candidate_syllable_count) {
+    const T9Buffer& prev_buf) {
 
     const auto& prev_selected_option = sel_ctx.prev_selected_option;
     const auto& prev_selection_candidate_digits = sel_ctx.prev_selection_candidate_digits;
@@ -802,37 +785,6 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
 
     const T9Buffer& buf = ctx.input_buffer;
     std::string selected_pinyin = buf.selected_pinyin();
-
-    // 子路径 A0：空注释 + 回捞到音节数 N（0 = 未知），且 N < 已选数。
-    // 候选完全落在「已左选段」内部（如固定 gan/na/er 后选单字「干」，N=1 < 3），
-    // 此时 unassigned 一位都不该动。原实现（子路径 B/C）用 selected_pinyin 反推
-    // 拼音码再重建剩余数字，把 unassigned 整段丢掉——真机 2026-10-22：
-    // gan'na'er'52453 右选「干」后 lai le(52453) 消失，只剩 na er(6237)。
-    // 改为直接从 digit_sequence 切：消费前 N 个 selection，
-    // 其余（尾 selection + unassigned）原样保留。
-    if (candidate_syllable_count > 0 &&
-        candidate_syllable_count < static_cast<int>(buf.selections.size())) {
-        int consumed_sel_digits = 0;
-        std::string consumed_pinyin;
-        for (int i = 0; i < candidate_syllable_count; ++i) {
-            consumed_sel_digits += buf.selections[i].digit_length;
-            consumed_pinyin += buf.selections[i].pinyin;
-        }
-        int offset = std::max(buf.consumed_count - buf.selections_digit_length(), 0);
-        int cut = offset + consumed_sel_digits;
-        if (cut > 0 && cut < static_cast<int>(buf.digit_sequence.size())) {
-            std::string rest = buf.digit_sequence.substr(cut);
-            RCLOG(">>   DefensiveNoComment: recoveredSyl=%d < selCount=%zu → 只消费前 %d 个已选音节 '%s'，保留 '%s'",
-                  candidate_syllable_count, buf.selections.size(),
-                  candidate_syllable_count, consumed_pinyin.c_str(), rest.c_str());
-            ctx.state_machine.RemoveConsumedHistoryEntries(consumed_pinyin);
-            ctx.input_buffer = T9Buffer(rest, {}, 0, static_cast<int>(rest.size()));
-            ctx.left_column_locked = false;
-            return owner.RestorePrevState(ctx, prev_selected_option,
-                                          prev_selection_candidate_digits,
-                                          prev_confirmed_pinyin);
-        }
-    }
 
     // 子路径 A：SELECTION 态 + history 完全覆盖 → full commit
     if (prev_selected_option.has_value() &&
@@ -842,55 +794,6 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
             JoinPinyins(history) == selected_pinyin &&
             candidate_text_length > 0 &&
             candidate_text_length >= static_cast<int>(history.size())) {
-            // history == selected_pinyin 只证明候选覆盖了「已选段」，并不代表覆盖
-            // unassigned。原实现在此无条件 ClearAndEnterIdle，会把还没选的数字一起
-            // 清空——真机 2026-10-21：zhan sheng guo 左选 zhan、sheng 后选「战胜」，
-            // 整个输入串消失，未选的 guo(486) 一并被吃。
-            // 这是空注释候选（syllableCount=0）才会走到的最后兜底，无法判断候选是否
-            // 真覆盖到输入末尾，因此按最保守语义处理：只消费已选段，剩余数字保留。
-            if (!buf.unassigned().empty()) {
-                // 但「候选字数 > 已选音节数」时，候选必然还覆盖了 unassigned 的若干音节，
-                // 保守保留就会留下重复（真机 2026-10-22：固定 gan/na/er 后右选
-                // 「干那儿来了」，lai le 被留在串上，用户再选「来了」就多出一个「来了」）。
-                // 空注释给不出音节边界，按「候选每个汉字对应一个音节」对 unassigned
-                // 逐音节贪心切分，超出的字数即需额外消费的音节数。
-                const int extra_chars =
-                    candidate_text_length - static_cast<int>(history.size());
-                int extra_digits = 0;
-                if (extra_chars > 0) {
-                    std::string cursor = buf.unassigned();
-                    for (int k = 0; k < extra_chars && !cursor.empty(); ++k) {
-                        auto options = T9PinyinMap::Instance().FirstSyllableOptions(cursor, 1);
-                        int len = options.empty() ? 0 : options[0].digit_length;
-                        if (len <= 0 || len > static_cast<int>(cursor.size()))
-                            len = static_cast<int>(cursor.size());
-                        extra_digits += len;
-                        cursor = Drop(cursor, len);
-                    }
-                    if (extra_digits > static_cast<int>(buf.unassigned().size()))
-                        extra_digits = static_cast<int>(buf.unassigned().size());
-                    RCLOG(">>   DefensiveNoComment: 候选 %d 字 > 已选 %zu 音节 → 额外音节多吃 %d 位",
-                          candidate_text_length, history.size(), extra_digits);
-                }
-                if (extra_digits > 0 &&
-                    extra_digits >= static_cast<int>(buf.unassigned().size())) {
-                    RCLOG(">>   DefensiveNoComment: 额外消费覆盖整个 unassigned('%s') → 整段提交",
-                          buf.unassigned().c_str());
-                    owner.ClearAndEnterIdle(ctx);
-                    return true;
-                }
-                const std::string rest = extra_digits > 0
-                    ? buf.unassigned().substr(static_cast<size_t>(extra_digits))
-                    : buf.unassigned();
-                RCLOG(">>   DefensiveNoComment: unassigned='%s' → 消费已选段%s，保留 '%s'",
-                      buf.unassigned().c_str(),
-                      extra_digits > 0 ? "+额外音节" : "", rest.c_str());
-                ctx.input_buffer = T9Buffer(rest, {}, 0, static_cast<int>(rest.size()));
-                ctx.left_column_locked = false;
-                return owner.RestorePrevState(ctx, prev_selected_option,
-                                              prev_selection_candidate_digits,
-                                              prev_confirmed_pinyin);
-            }
             owner.ClearAndEnterIdle(ctx);
             return true;
         }
@@ -911,11 +814,8 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
                         first_syl.digit_length <= static_cast<int>(non_selected_digits.size())) {
                         std::string consumed_pinyin = Take(non_selected_part, first_syl.digit_length);
                         ctx.input_buffer = owner.RemoveConsumedSelections(ctx, buf, consumed_pinyin);
-                        // unassigned 必须原样接在尾部：这里只消费了「已选段」里的一个音节，
-                        // 未选数字一位都没动。漏掉它会凭空丢输入串（2026-10-22 干/lai le）。
                         std::string remaining_after_consume =
-                            Drop(non_selected_digits, first_syl.digit_length) + selected_digits +
-                            buf.unassigned();
+                            Drop(non_selected_digits, first_syl.digit_length) + selected_digits;
 
                         if (remaining_after_consume != selected_digits) {
                             ctx.input_buffer = T9Buffer(remaining_after_consume, {}, 0,
@@ -938,8 +838,7 @@ bool LetterBufferStrategy::HandleDefensiveNoCommentCommit(
         int consumed_digit_count = options.empty() ? 0 : options[0].digit_length;
         if (consumed_digit_count >= 1 &&
             consumed_digit_count < static_cast<int>(digits.size())) {
-            // 同子路径 B：digits 只是 selected_pinyin 的拼音码，unassigned 必须补回尾部。
-            std::string remaining = Drop(digits, consumed_digit_count) + buf.unassigned();
+            std::string remaining = Drop(digits, consumed_digit_count);
             ctx.input_buffer = T9Buffer(remaining, {}, 0,
                 static_cast<int>(remaining.size()));
             ctx.left_column_locked = false;

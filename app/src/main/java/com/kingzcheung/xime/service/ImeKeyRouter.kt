@@ -1146,9 +1146,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
         val isT9 = isT9Schema(service.uiState.value.currentSchemaId)
         val candidatePinyin = if (isT9) {
-            // 2026-10-19 修复：空串注释（万象九键 lua 过滤拼音）不得过滤为 null，
-            // 否则走 DirectCommit 误清空输入串；保留空串交由 C++ 文本兜底 partial 消费。
-            expandedCandidate?.comment
+            expandedCandidate?.comment?.takeIf { it.isNotEmpty() }
                 ?: if (index < service.candidateState.value.candidateComments.size) {
                     service.candidateState.value.candidateComments[index]
                 } else {
@@ -1204,11 +1202,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         val isFullCommit = if (isT9) {
             fullyConsumed && selectedCandidate != null
         } else {
-            // 非 T9（全拼等）：仅当 commit 后引擎 input 已无剩余音节才算整串上屏。
-            // 选单字/部分 commit 时引擎 input 仍保留后续音节（如 ceshi 选"测"后剩
-            // "shi"），必须走非 full commit 路径 updateUI 保留剩余输入串，否则
-            // 输入串被误清空、无法继续选择后续音节（2026-10-19 修复）。
-            committedText.isNotEmpty() && service.rimeEngine.getInput().isEmpty()
+            committedText.isNotEmpty()
         }
         if (isFullCommit) {
             if (SettingsPreferences.isSmartPredictionEnabled(service) && selectedCandidate != null && AssociationManager.isInitialized()) {
