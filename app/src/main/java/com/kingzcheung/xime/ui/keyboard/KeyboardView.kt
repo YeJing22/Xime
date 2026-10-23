@@ -95,6 +95,43 @@ val LocalSuppressCursorMove = compositionLocalOf { mutableStateOf(false) }
  */
 val LocalCursorGestureActive = compositionLocalOf { mutableStateOf(false) }
 
+/**
+ * 父层光标手势的运行时配置，供按键层做「点击结算」时查询。
+ *
+ * 横滑移动光标目前由两层各自判定：父层判「是否激活光标」，按键层判「是否上屏」。
+ * 两边阈值不同源就会出现空窗——父层按用户设置（默认 30dp）已开始移动光标，按键层
+ * 仍按硬编码的 60dp 判「不算滑动」，抬手补一次点击，表现为「光标动了还打出一个字母」。
+ * 这里把父层的激活阈值与激活状态下发，让两层同源。
+ *
+ * 阈值随设置实时变化，因此存成读取函数而非裸 Float。
+ */
+class CursorGestureState(
+    private val active: State<Boolean>,
+    private val activationPxProvider: () -> Float,
+) {
+    /** 本次手势是否已激活光标滑动。 */
+    fun isActive(): Boolean = active.value
+
+    /** 当前生效的光标激活阈值（px），每次读取都取最新设置。 */
+    fun activationPx(): Float = activationPxProvider()
+}
+
+/** 非空表示父层正在接管横向滑动移动光标（[KeyboardView] 的 onCursorMove 非空时提供）。 */
+val LocalCursorGestureState = compositionLocalOf<CursorGestureState?> { null }
+
+/**
+ * 光标手势的主轴判据：|dx| 需大于 |dy| 的多少倍才算横向滑动。
+ * 原为 4（约 14°），斜向滑动会被判成非横向；放宽到 2（约 26°）后斜滑也能进光标。
+ */
+private const val CURSOR_AXIS_RATIO = 2f
+
+/**
+ * 快速轻扫的速度补偿：位移达到激活阈值的该比例、且速度超过
+ * [CURSOR_FLICK_MIN_SPEED_PX_PER_MS] 时提前激活，不必滑满整个阈值。
+ */
+private const val CURSOR_FLICK_DISTANCE_RATIO = 0.6f
+private const val CURSOR_FLICK_MIN_SPEED_PX_PER_MS = 0.6f
+
 @Composable
 fun KeyboardView(
     viewModel: KeyboardViewModel,
@@ -897,6 +934,16 @@ fun KeyboardView(
                         // 触发距离 / 每格距离改为用户可调（设置 → 布局与显示 → 光标滑动）。
                         // 每次手势开始时重读设置：改完阈值不必重开输入法，下一次滑动即生效。
                         val cursorPrefContext = LocalContext.current
+                        val cursorDensity = LocalDensity.current
+                        // 下发给按键层：同一份阈值 + 同一份激活状态，避免两层各判一套
+                        val cursorGestureState = remember(cursorPrefContext, cursorDensity) {
+                            CursorGestureState(cursorGestureActive) {
+                                with(cursorDensity) {
+                                    SettingsPreferences
+                                        .getCursorDragActivationDp(cursorPrefContext).dp.toPx()
+                                }
+                            }
+                        }
                         val cursorMod = if (callbacks.onCursorMove != null) {
                             Modifier.pointerInput(Unit) {
                                 awaitEachGesture {
@@ -905,50 +952,61 @@ fun KeyboardView(
                                     val activationThresholdPx = SettingsPreferences
                                         .getCursorDragActivationDp(cursorPrefContext).dp.toPx()
                                     suppressCursorMove.value = false
+                                    // 复位点必须在「新一次按下」而不是「上一次抬起」：
+                                    // 按键层的延迟提交窗口（DEFERRED_CLICK_WINDOW_MS）发生在抬手
+                                    // 之后，若在抬手时清掉，延迟窗口就再也看不到本次是否激活过光标。
                                     cursorGestureActive.value = false
                                     val down = awaitFirstDown(requireUnconsumed = false)
                                     var isCursorGesture = false
                                     var lastSteps = 0
-                                    var activationAnchorX = down.position.x
 
-                                    // 手势结束即清标志，避免跨手势残留（26 键已改按本次手势峰值判定）
-                                    try {
-                                        do {
-                                            val event = awaitPointerEvent()
-                                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                            val dx = change.position.x - down.position.x
-                                            val dy = change.position.y - down.position.y
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                        val dx = change.position.x - down.position.x
+                                        val dy = change.position.y - down.position.y
 
-                                            if (!change.pressed) {
-                                                if (isCursorGesture) {
-                                                    event.changes.forEach { it.consume() }
-                                                }
-                                                break
+                                        if (!change.pressed) {
+                                            if (isCursorGesture) {
+                                                event.changes.forEach { it.consume() }
                                             }
-                                            if (suppressCursorMove.value) break
-                                            if (abs(dx) > abs(dy) * 4f) {
+                                            break
+                                        }
+                                        if (suppressCursorMove.value) break
+                                        // 主轴判据 2:1（原 4:1）：斜向滑动也能进光标手势。
+                                        // 4:1 时约 14° 以上的斜滑既不激活光标，按键层也不累计
+                                        // 横向峰值 → 一路判成点击，是误触的主要来源之一。
+                                        if (abs(dx) > abs(dy) * CURSOR_AXIS_RATIO) {
 
-                                                if (!isCursorGesture && abs(dx) > activationThresholdPx) {
+                                            if (!isCursorGesture) {
+                                                // 速度补偿：快速轻扫只需 60% 距离即激活（更跟手）；
+                                                // 慢速拖动仍按用户设定阈值，不会因打字漂移误激活。
+                                                val elapsedMs = (change.uptimeMillis - down.uptimeMillis)
+                                                    .coerceAtLeast(1L)
+                                                val speedPxPerMs = abs(dx) / elapsedMs
+                                                val flick = abs(dx) > activationThresholdPx *
+                                                    CURSOR_FLICK_DISTANCE_RATIO &&
+                                                    speedPxPerMs > CURSOR_FLICK_MIN_SPEED_PX_PER_MS
+                                                if (abs(dx) > activationThresholdPx || flick) {
                                                     isCursorGesture = true
-                                                    activationAnchorX = change.position.x
                                                     cursorGestureActive.value = true
                                                 }
+                                            }
 
-                                                if (isCursorGesture) {
-                                                    event.changes.forEach { it.consume() }
-                                                    val dxFromAnchor = change.position.x - activationAnchorX
-                                                    val steps = (dxFromAnchor / stepThresholdPx).toInt()
-                                                    if (steps != lastSteps) {
-                                                        val delta = steps - lastSteps
-                                                        currentOnCursorMove.value?.invoke(delta)
-                                                        lastSteps = steps
-                                                    }
+                                            if (isCursorGesture) {
+                                                event.changes.forEach { it.consume() }
+                                                // 锚点用按下点而非激活点：激活瞬间就吃掉已积累的
+                                                // 位移，不再出现「滑了一段没反应」（步进按格取整，
+                                                // 默认 30dp 激活 / 25dp 一格，激活即 1 格）。
+                                                val steps = (dx / stepThresholdPx).toInt()
+                                                if (steps != lastSteps) {
+                                                    val delta = steps - lastSteps
+                                                    currentOnCursorMove.value?.invoke(delta)
+                                                    lastSteps = steps
                                                 }
                                             }
-                                        } while (true)
-                                    } finally {
-                                        cursorGestureActive.value = false
-                                    }
+                                        }
+                                    } while (true)
                                 }
                             }
                         } else {
@@ -1153,6 +1211,9 @@ fun KeyboardView(
                         CompositionLocalProvider(
                             LocalSuppressCursorMove provides suppressCursorMove,
                             LocalCursorGestureActive provides cursorGestureActive,
+                            // 仅在父层真正接管光标手势时下发：为 null 时按键层退回 60dp 兜底口径
+                            LocalCursorGestureState provides
+                                if (callbacks.onCursorMove != null) cursorGestureState else null,
                         ) {
                             KeyboardLayoutScreen(
                                 keyboardState = keyboardState,

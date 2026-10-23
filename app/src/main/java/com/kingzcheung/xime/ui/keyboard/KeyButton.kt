@@ -124,6 +124,35 @@ internal fun shouldSuppressCursorMove(
     abs(dragOffsetX) > abs(dragOffsetY) &&
     abs(dragOffsetX) > horizontalThreshold
 
+/**
+ * 点击结算的横向位移阈值（px）。
+ *
+ * 父层接管光标手势时与其**激活阈值同源**（用户设置，默认 30dp）；父层未接管
+ * （[CursorGestureState] 为 null）时退回 [fallbackPx]（60dp 兜底口径）。
+ *
+ * 同源的必要性：父层按 30dp 开始移动光标，若本层仍按 60dp 判「不算滑动」，
+ * 30~60dp 之间就会既移动光标又补一次点击。
+ */
+internal fun resolveClickCancelPx(state: CursorGestureState?, fallbackPx: Float): Float =
+    state?.activationPx() ?: fallbackPx
+
+/** 父层光标手势是否已接管本次横向滑动（接管时本键一律不上屏）。 */
+internal fun cursorGestureTookOver(state: CursorGestureState?): Boolean =
+    state?.isActive() == true
+
+/**
+ * 边沿位移的延迟提交窗口（ms）。
+ *
+ * 位移已超过 touch slop（已经不像干净点击）但还没到激活阈值时，先等这段时间再上屏，
+ * 给父层光标手势留出「抢占」窗口——手指在抬起瞬间越过激活线时，按键层往往已经先
+ * 结算了点击（Main pass 子层先收到事件），延迟窗口让父层的判定先落地。
+ * 纯点按（位移 < slop）不走延迟，不影响打字速度。
+ */
+internal const val DEFERRED_CLICK_WINDOW_MS = 40L
+
+/** 判定「已不像干净点击」的位移下限，取 touch slop 量级（约 8dp）。 */
+internal val DEFERRED_CLICK_MIN_DP = 8.dp
+
 data class SwipeState(
     val isSwiping: Boolean = false,
     val swipeText: String? = null,
@@ -236,6 +265,9 @@ fun KeyButton(
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
     // 父层光标手势已接管横向滑动时，本键不再判定点击（否则会"移动光标 + 打出一个字母"）
     val cursorGestureActive = LocalCursorGestureActive.current
+    val cursorGestureState = LocalCursorGestureState.current
+    val deferredClickMinPx = with(density) { DEFERRED_CLICK_MIN_DP.toPx() }
+    val scope = rememberCoroutineScope()
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
         if (shadowEnabled) {
@@ -282,11 +314,23 @@ fun KeyButton(
                             isSwipeDown = false
                         },
                         onDragEnd = {
+                            val cancelThreshold = resolveClickCancelPx(
+                                cursorGestureState, horizontalClickCancelThreshold
+                            )
                             val shouldClick = !cursorGestureActive.value &&
+                            !cursorGestureTookOver(cursorGestureState) &&
                             !hasTriggeredSwipeUp && !hasTriggeredSwipeDown &&
-                            abs(dragOffsetX) < horizontalClickCancelThreshold
+                            abs(dragOffsetX) < cancelThreshold
                             if (shouldClick) {
-                                currentOnClick()
+                                // 边沿位移延迟提交，给父层光标手势留抢占窗口
+                                if (cursorGestureState != null && abs(dragOffsetX) >= deferredClickMinPx) {
+                                    scope.launch {
+                                        delay(DEFERRED_CLICK_WINDOW_MS)
+                                        if (!cursorGestureTookOver(cursorGestureState)) currentOnClick()
+                                    }
+                                } else {
+                                    currentOnClick()
+                                }
                             }
                             isPressed = false
                             currentOnRelease?.invoke()
@@ -540,10 +584,11 @@ fun SwipeableKeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 父层光标手势的激活阈值已改为用户可调（SettingsPreferences.getCursorDragActivationDp，
-    // 20~60dp）：父层先接管时事件被 consume，本键自动取消点击，不会"光标动了又打字"。
-    // 这里保留 60dp 作为父层未接管（onCursorMove 为空）时的兜底口径。
+    // 父层接管光标手势时改用父层的激活阈值（同一份用户设置，默认 30dp），
+    // 只有父层未接管（onCursorMove 为空 / 非主键盘页）时才退回 60dp 兜底。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
+    val cursorGestureState = LocalCursorGestureState.current
+    val deferredClickMinPx = with(density) { DEFERRED_CLICK_MIN_DP.toPx() }
     // 左/右滑触发阈值
     val swipeLeftThreshold = with(density) { (-50).dp.toPx() }
     val swipeRightThreshold = with(density) { 50.dp.toPx() }
@@ -557,16 +602,35 @@ fun SwipeableKeyButton(
     /**
      * 本次手势的唯一点击出口：点击分支与拖拽兜底共用，先到者生效。
      * 只有被判成滑动（含 `action: none`）或横向光标手势时才不点击。
+     *
+     * 三层把关：①已判滑动；②父层光标手势已接管；③横向峰值达到与父层同源的阈值。
+     * 边沿位移（已超 slop 但未达阈值）延迟 [DEFERRED_CLICK_WINDOW_MS] 提交，
+     * 让父层在抬手瞬间的判定先落地。
      */
     fun emitClick(atX: Float, atY: Float) {
         if (clickEmitted) return
-        // 被判成滑动（含 action: none）或横向光标手势时本就不该上屏
         val swiped = hasTriggeredSwipeUp || hasTriggeredSwipeDown ||
             hasTriggeredSwipeLeft || hasTriggeredSwipeRight
-        if (swiped || gesturePeakDx >= horizontalClickCancelThreshold) return
+        val tookOverByCursor = cursorGestureTookOver(cursorGestureState)
+        val cancelThreshold = resolveClickCancelPx(cursorGestureState, horizontalClickCancelThreshold)
+        if (swiped || tookOverByCursor || gesturePeakDx >= cancelThreshold) {
+            // 封口：本次手势不再补点
+            clickEmitted = true
+            return
+        }
         clickEmitted = true
-        KeyTapLogger.recordTap(currentText, atX, atY, buttonBounds, density.density)
-        currentOnClick()
+        val commit = {
+            KeyTapLogger.recordTap(currentText, atX, atY, buttonBounds, density.density)
+            currentOnClick()
+        }
+        if (cursorGestureState != null && gesturePeakDx >= deferredClickMinPx) {
+            scope.launch {
+                delay(DEFERRED_CLICK_WINDOW_MS)
+                if (!cursorGestureTookOver(cursorGestureState)) commit()
+            }
+        } else {
+            commit()
+        }
     }
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
@@ -646,9 +710,10 @@ fun SwipeableKeyButton(
                         dragOffsetX += dragAmount.x
                         dragOffsetY += dragAmount.y
                         // 横向净位移峰值（横向分量占优时），与父层光标手势同口径
+                        // 主轴比与父层一致取 2:1（原 4:1），斜向滑动同样计入峰值
                         val peakDx = change.position.x - lastPressOffset.x
                         val peakDy = change.position.y - lastPressOffset.y
-                        if (abs(peakDx) > abs(peakDy) * 4f) {
+                        if (abs(peakDx) > abs(peakDy) * 2f) {
                             gesturePeakDx = maxOf(gesturePeakDx, abs(peakDx))
                         }
 
@@ -1164,6 +1229,7 @@ fun IconKeyButton(
     var isPressed by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val currentOnClick by rememberUpdatedState(onClick)
+    val cursorGestureState = LocalCursorGestureState.current
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
         if (shadowEnabled) {
@@ -1208,7 +1274,8 @@ fun IconKeyButton(
                         onRelease?.invoke()
                     },
                     onTap = {
-                        onClick()
+                        // 父层光标手势已接管时不上屏（图标键无拖拽兜底，这里只做二次保险）
+                        if (!cursorGestureTookOver(cursorGestureState)) onClick()
                     }
                 )
             }
@@ -1335,10 +1402,32 @@ fun SwipeableIconKeyButton(
     val clearActionThreshold = with(density) { (-50).dp.toPx() }
     val undoActionThreshold = with(density) { 50.dp.toPx() }
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 父层光标手势的激活阈值已改为用户可调（SettingsPreferences.getCursorDragActivationDp，
-    // 20~60dp）：父层先接管时事件被 consume，本键自动取消点击，不会"光标动了又打字"。
-    // 这里保留 60dp 作为父层未接管（onCursorMove 为空）时的兜底口径。
+    // 父层接管光标手势时改用父层的激活阈值（同一份用户设置，默认 30dp），
+    // 只有父层未接管时才退回 60dp 兜底。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
+    val cursorGestureState = LocalCursorGestureState.current
+    val deferredClickMinPx = with(density) { DEFERRED_CLICK_MIN_DP.toPx() }
+
+    /**
+     * 图标键（退格 / 回车 / 空格）的唯一点击出口，口径与 [SwipeableKeyButton.emitClick] 一致：
+     * 已判滑动 / 父层光标手势已接管 / 横向峰值达同源阈值 → 不上屏；
+     * 边沿位移延迟 [DEFERRED_CLICK_WINDOW_MS] 提交。
+     *
+     * 图标键误触的代价比字母键更大（退格、回车），所以这里同样要过三层判据。
+     */
+    fun emitIconClick() {
+        if (cursorGestureTookOver(cursorGestureState)) return
+        val cancelThreshold = resolveClickCancelPx(cursorGestureState, horizontalClickCancelThreshold)
+        if (gesturePeakDx >= cancelThreshold) return
+        if (cursorGestureState != null && gesturePeakDx >= deferredClickMinPx) {
+            scope.launch {
+                delay(DEFERRED_CLICK_WINDOW_MS)
+                if (!cursorGestureTookOver(cursorGestureState)) currentOnClick()
+            }
+        } else {
+            currentOnClick()
+        }
+    }
     
     LaunchedEffect(isLongPress, repeatLongPress) {
         if (isLongPress && onLongClick != null) {
@@ -1409,7 +1498,9 @@ fun SwipeableIconKeyButton(
                         }
                     },
                     onTap = {
-                        if (!dragActivated && !isDragging && !hasTriggeredLongPress) {
+                        if (!dragActivated && !isDragging && !hasTriggeredLongPress &&
+                            !cursorGestureTookOver(cursorGestureState)
+                        ) {
                             onClick()
                         }
                         hasTriggeredLongPress = false
@@ -1452,11 +1543,13 @@ fun SwipeableIconKeyButton(
                             hasTriggeredSwipe = true
                             onSwipe()
                         } else if (
-                            gesturePeakDx < horizontalClickCancelThreshold &&
+                            gesturePeakDx < resolveClickCancelPx(
+                                cursorGestureState, horizontalClickCancelThreshold
+                            ) &&
                             !hasTriggeredLongPress &&
                             !hasTriggeredSwipeLeft && !hasTriggeredSwipeRight
                         ) {
-                            currentOnClick()
+                            emitIconClick()
                         }
                         dragActivated = false
                         isPressed = false
@@ -1480,14 +1573,16 @@ fun SwipeableIconKeyButton(
                     },
                     onDragCancel = {
                         // 拖拽被取消且没被判成滑动/长按：兜底点击，避免静默丢键
-                        if (gesturePeakDx < horizontalClickCancelThreshold &&
+                        if (gesturePeakDx < resolveClickCancelPx(
+                                cursorGestureState, horizontalClickCancelThreshold
+                            ) &&
                             !hasTriggeredLongPress &&
                             !hasTriggeredSwipe && !hasTriggeredSwipeDown &&
                             !hasTriggeredSwipeLeft && !hasTriggeredSwipeRight &&
                             !hasReachedClearThreshold && !hasReachedUndoThreshold &&
                             !isSwipingUp
                         ) {
-                            currentOnClick()
+                            emitIconClick()
                         }
                         dragActivated = false
                         isPressed = false
@@ -1512,9 +1607,10 @@ fun SwipeableIconKeyButton(
                         dragOffsetY += dragAmount.y
                         dragOffsetX += dragAmount.x
                         // 横向净位移峰值（横向分量占优时），与父层光标手势同口径
+                        // 主轴比与父层一致取 2:1（原 4:1），斜向滑动同样计入峰值
                         val peakDx = change.position.x - lastPressOffset.x
                         val peakDy = change.position.y - lastPressOffset.y
-                        if (abs(peakDx) > abs(peakDy) * 4f) {
+                        if (abs(peakDx) > abs(peakDy) * 2f) {
                             gesturePeakDx = maxOf(gesturePeakDx, abs(peakDx))
                         }
 
@@ -1807,12 +1903,14 @@ fun SwipeableKeyButtonLandscape(
     // 横向接管阈值：低于父层光标手势激活阈值（60dp），使配置了左右滑的键优先接管横向滑动
     val horizontalSwipeSuppressThreshold = with(density) { 18.dp.toPx() }
     val suppressCursorMove = LocalSuppressCursorMove.current
+    val cursorGestureState = LocalCursorGestureState.current
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
 
     /**
      * 本次手势的唯一点击出口：点击分支、拖拽兜底共用，先到者生效。
-     * 已判为滑动（任一方向）时不点击，避免「上滑后又补一个 tap」。
+     * 已判为滑动（任一方向）或父层光标手势已接管时不点击，
+     * 避免「上滑后又补一个 tap」「移动光标又打出一个字母」。
      */
     fun emitClick() {
         if (clickEmitted) return
@@ -1822,7 +1920,7 @@ fun SwipeableKeyButtonLandscape(
         )
         // 无论是否上屏都封口：一次手势最多一次点击，滑过之后不再补点
         clickEmitted = true
-        if (shouldClick) currentOnClick()
+        if (shouldClick && !cursorGestureTookOver(cursorGestureState)) currentOnClick()
     }
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
