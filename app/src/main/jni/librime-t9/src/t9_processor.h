@@ -81,6 +81,14 @@ public:
     // 获取 partial commit 后剩余的数字串
     std::string GetRemainingDigits() const;
 
+    // 已锁定（左选）的音节序列（按输入顺序）。
+    // 供 t9_filter 过滤「与已锁定音节边界不一致」的候选：万象等方案的词库/用户
+    // 词典会把已锁定音节再切开（qing(7464) → qi(74)+ng(64) → “刘羽琦嗯”），
+    // 这类候选既污染候选表，又会被 librime 当作 preedit 首选渲染成 qi+eng。
+    const std::vector<SyllableOption>& GetSelections() const {
+        return input_buffer_.selections;
+    }
+
     // 获取首音节候选列表（P3 方案 A：替代 Kotlin T9PinyinMap.firstSyllableOptions）
     // 委托给 T9PinyinMap::Instance().FirstSyllableOptions()
     // out 每项格式 "pinyin|digitLength"，供 JNI 序列化传输

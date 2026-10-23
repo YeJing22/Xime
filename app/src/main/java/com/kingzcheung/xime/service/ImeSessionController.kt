@@ -68,7 +68,11 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
             }
             FileLogger.d(
                 XimeInputMethodService.TAG,
-                "T9 display: enginePreedit='$preeditText' rawPreedit='$rawPreedit' input='$inputText' partials=${service.t9PartialSegments.size}"
+                "T9 display: enginePreedit='$preeditText' rawPreedit='$rawPreedit' input='$inputText' partials=${service.t9PartialSegments.size}" +
+                    // 诊断（2026-10-23）：编码行 = 末尾段落首选候选的 preedit，
+                    // 记录首候选文本/注释可判断「qi eng」是否由切分错误的候选带出
+                    " topCand='" + t9FilteredTexts.take(3).joinToString("|") + "'" +
+                    " topComment='" + t9FilteredComments.take(3).joinToString("|") + "'"
             )
             // preedit 转换由 C++ t9_filter 完成，Kotlin 侧直接使用引擎输出的 preedit
             val display = buildT9DisplayState(

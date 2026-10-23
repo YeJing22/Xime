@@ -100,6 +100,9 @@ private:
     void Advance();
     // 转换/缓存当前候选的 preedit（原逻辑）。
     void ConvertCurrent();
+    // 当前候选是否通过「已锁定音节边界」校验（见 t9_filter.cc MatchesLockedSyllables）。
+    // 未锁定任何音节（selections 空）时恒为 true。
+    bool AcceptsCurrent() const;
     // 单字提权：越过插入点时物化其后至多 kPromoteScanCap 个候选（后缀窗口），
     // 按 T9BuildSingleCharPromotionOrder(is_single, 0, promote_max_) 把窗口内
     // 首音节单字提到窗口头部；窗口外的候选照旧流式供给（不截断候选列表）。

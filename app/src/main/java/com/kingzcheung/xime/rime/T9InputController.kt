@@ -209,6 +209,14 @@ class T9InputController(
         val result = rimeEngine.getProcessResult(true)
         // 更新主线程可读的 input 快照（与 preedit/候选/左栏同源于本次 flush）
         cachedInput = result.inputText
+        // 诊断（2026-10-23）：C++ 侧 buffer 真实状态。
+        // panel 串 = STATE;SELECTED_PINYIN;SEL_DIGIT_LEN;SEL_DIGITS;PANEL_DIGITS;LEFT_LOCKED，
+        // 比 Kotlin 的显示文本更能说明「右选后到底剩了哪几位数字/哪个音节没消费」。
+        FileLogger.d(
+            TAG,
+            "T9 state: input='${result.inputText}' panel='${result.t9PanelState}' " +
+                "remaining='${rimeEngine.t9GetRemainingDigits()}' committed='${result.committedText}'"
+        )
         val panel = parseLeftPanelState(result.t9PanelState.ifEmpty { "IDLE;;;;;0" })
         val options = parseSyllableOptions(result.t9SyllableOptions)
         return T9RefreshData(result, panel, options)
@@ -341,6 +349,13 @@ class T9InputController(
             false
         }
         updateFromRime()
+        // 诊断（2026-10-23）：右选后编码串残留排查——记录候选注释/文本、是否 full commit
+        // 以及消费后的引擎输入串。用户侧只抓得到 Kotlin 日志，故打在 FileLogger。
+        FileLogger.d(
+            TAG,
+            "T9 right-select: pinyin='${candidatePinyin ?: ""}' text='${candidateText ?: ""}' " +
+                "textLen=$candidateTextLength fullCommit=$isFullCommit leftoverInput='$cachedInput'"
+        )
         // workaround: C++ t9_processor 对 nv/lv 等两键单音节词误判为 partial commit，残留 1 位数字。
         // 选单字后如果只剩 1 位残留，说明是误判，强制清空。
         if (!isFullCommit && cachedInput.length == 1) {

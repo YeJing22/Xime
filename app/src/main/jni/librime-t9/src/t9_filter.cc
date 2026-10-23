@@ -313,6 +313,81 @@ std::vector<size_t> T9BuildSingleCharPromotionOrder(
 
 // ── T9Translation ──
 
+// 「已锁定音节边界」校验（2026-10-23）。
+//
+// 问题：左选锁定音节后我们向 RIME 发的是拼音（如 liu'yu'qing，用于表达音节锁定），
+// 而 RIME 的音节切分是开放的：qing 完全可以被切成 qi(74)+ng(64)。万象词库里「嗯」
+// 读 ǹg（digit code 64）且权重极高，于是被锁定的 qing 会被重新切分，凑出
+// 「刘羽琦嗯」(liu|yu|qi|ng) 这类候选——既污染候选表，又因为 librime 用「末尾段落
+// 首选候选的 preedit」渲染编码行，把编码显示成 qi+eng（用户看到 "qieng"）。
+//
+// 修法：filter 链最靠前（t9_filter 由 @before 0 注入）就把这类候选剔掉，
+// 候选表与 preedit 同源修正，无需改动显示层。
+//
+// 判据：候选的音节序列必须能在「已锁定音节序列」中找到一段连续对齐（允许候选只覆盖
+// 其中一段，如末尾段落只匹配最后一个已锁定音节）：
+//   - 逐位一致 → 对齐；
+//   - 已锁定音节是简拼（单字母）→ 候选音节以该字母开头即算一致；
+//   - 候选音节数多于剩余锁定音节（覆盖到未锁定部分）→ 超出的部分不校验；
+//   - 候选无注释（表情/符号/插件候选）→ 通过（无从判断，交给原逻辑）。
+// 例：锁定 liu|yu|qing 时，候选 liu|yu|qing（刘玉清）对齐 p=0 通过；
+//     末尾段落候选 qing（清）对齐 p=2 通过；候选 liu|yu|qi|ng（刘羽琦嗯）三段均对不齐
+//     （qi ≠ qing）→ 剔除。
+static bool MatchesLockedSyllables(
+    const std::string& comment,
+    const std::vector<SyllableOption>& selections) {
+  if (selections.empty()) return true;
+  if (comment.empty()) return true;
+
+  std::vector<std::string> syllables;
+  {
+    std::istringstream iss(NormalizePinyinComment(comment));
+    std::string word;
+    while (iss >> word) {
+      if (!word.empty()) syllables.push_back(word);
+    }
+  }
+  if (syllables.empty()) return true;
+
+  // 已锁定音节归一化（带调/ü → 无声调 ASCII），避免与注释格式差异误判
+  std::vector<std::string> locked;
+  locked.reserve(selections.size());
+  for (const auto& sel : selections) {
+    locked.push_back(NormalizePinyinComment(sel.pinyin));
+  }
+
+  for (size_t p = 0; p < locked.size(); ++p) {
+    bool aligned = true;
+    for (size_t i = 0; i < syllables.size(); ++i) {
+      size_t idx = p + i;
+      if (idx >= locked.size()) break;  // 超出已锁定范围（未锁定部分）不校验
+      const std::string& want = locked[idx];
+      const std::string& got = syllables[i];
+      bool ok = want.empty() || got == want ||
+                (want.size() == 1 && got[0] == want[0]);
+      if (!ok) {
+        aligned = false;
+        break;
+      }
+    }
+    if (aligned) return true;
+  }
+  T9FLOG("locked-syllable mismatch: comment='%s' (locked=%zu) → drop",
+         comment.c_str(), locked.size());
+  return false;
+}
+
+bool T9Translation::AcceptsCurrent() const {
+  if (!cand_) return false;
+  auto* proc = T9ProcessorRequire();
+  if (!proc) return true;
+  const auto& selections = proc->GetSelections();
+  if (selections.empty()) return true;
+  auto genuine = Candidate::GetGenuineCandidate(cand_);
+  if (!genuine) return true;
+  return MatchesLockedSyllables(genuine->comment(), selections);
+}
+
 void T9Translation::ConvertCurrent() {
     T9_PERF_SCOPED_TIMER("[T9Filter] ConvertCurrent");
     if (!cand_) return;
@@ -412,7 +487,9 @@ void T9Translation::Advance() {
     while (!translation_->exhausted()) {
         cand_ = translation_->Peek();
         ConvertCurrent();
-        return;
+        if (AcceptsCurrent()) return;
+        // 与已锁定音节边界不符的候选（如把 qing 切成 qi|ng）直接跳过
+        if (!translation_->Next()) break;
     }
     cand_ = nullptr;
     set_exhausted(true);
@@ -428,11 +505,16 @@ void T9Translation::MaterializeSuffixForPromotion() {
     std::vector<bool> is_single;
     is_single.reserve(kPromoteScanCap);
     plan_items_.reserve(kPromoteScanCap);
-    for (size_t i = 0; i < kPromoteScanCap && !translation_->exhausted(); ++i) {
+    size_t scanned = 0;
+    while (scanned < kPromoteScanCap && !translation_->exhausted()) {
         cand_ = translation_->Peek();
         ConvertCurrent();
-        plan_items_.push_back(cand_);
-        is_single.push_back(IsPromotableSingle(cand_));
+        // 与已锁定音节边界不符的候选不入窗口（与流式路径同一判据）
+        if (AcceptsCurrent()) {
+            plan_items_.push_back(cand_);
+            is_single.push_back(IsPromotableSingle(cand_));
+            ++scanned;
+        }
         if (!translation_->Next()) break;
     }
     // 后缀窗口插入点 = 0：窗口内首音节单字提到窗口头部（受 promote_max_ 限制）。

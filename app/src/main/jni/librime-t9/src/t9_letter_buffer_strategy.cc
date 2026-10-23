@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "t9_log.h"
+#include "t9_pinyin_map.h"  // NormalizePinyinComment / T9PinyinMap
 #include "t9_right_commit_handler.h"
 #include "t9_right_commit_utils.h"
 #include "t9_string_utils.h"
@@ -90,6 +91,40 @@ ExtraSyllableCommitCheck LetterBufferStrategy::CheckExtraSyllableCommit(
     return check;
 }
 
+// ── 全锁定结算辅助（2026-10-23）──
+
+// 拼音串 → 纯小写字母（去分隔符、去声调、去辅助码 "…;ab"）
+static std::string T9LettersOnly(const std::string& text) {
+    std::string out;
+    out.reserve(text.size());
+    bool skipping_aux = false;
+    for (char c : NormalizePinyinComment(text)) {
+        if (c == ';') { skipping_aux = true; continue; }
+        if (c == ' ') { skipping_aux = false; continue; }
+        if (skipping_aux) continue;
+        if (c >= 'a' && c <= 'z') out += c;
+    }
+    return out;
+}
+
+// 候选拼音覆盖了几个已锁定音节：按音节粒度逐位对齐
+// （候选拼音必须是已锁定拼音的前缀；简拼音节按单字母比较）。
+static int ConsumeSelectionsCoveredBy(
+    const std::vector<SyllableOption>& selections,
+    const std::string& cand_letters) {
+    size_t acc = 0;
+    int cut = 0;
+    for (size_t i = 0; i < selections.size(); ++i) {
+        const std::string sel_letters = T9LettersOnly(selections[i].pinyin);
+        const size_t n = sel_letters.size();
+        if (n == 0 || acc + n > cand_letters.size()) break;
+        if (cand_letters.compare(acc, n, sel_letters) != 0) break;
+        acc += n;
+        cut = static_cast<int>(i) + 1;
+    }
+    return cut;
+}
+
 bool LetterBufferStrategy::Handle(
     T9RightCommitHandler& owner,
     T9RightCommitHandler::Context& ctx,
@@ -119,6 +154,50 @@ bool LetterBufferStrategy::Handle(
     RCLOG(">>   prevOpt='%s', prevDigits='%s'",
           prev_selected_option.has_value() ? prev_selected_option->pinyin.c_str() : "(null)",
           prev_selection_candidate_digits.has_value() ? prev_selection_candidate_digits->c_str() : "(null)");
+
+    // ── 全锁定（纯字母 buffer）的确定性结算（2026-10-23）──
+    //
+    // 左选把全部音节锁定后，RIME input 只剩字母（如 wu'ying'zi），没有数字。
+    // 此时既有的「字母↔数字」混算路径（letter_count 代理消费、按字符偏移
+    // Drop(selected_pinyin, n) 回推数字）会把音节边界算歪，残留末尾拼音与
+    // 多余数字。设备实证：锁定 wu|ying|zi 后选「无影」（覆盖前 2 个音节），
+    // 编码行残留 "zi'4"——多出 1 位数字，正好对应字母偏移少算 1 个字符。
+    //
+    // 这里按「音节粒度」直接结算，完全不碰字符偏移：
+    //   - 候选拼音（去分隔/去声调）逐音节对齐 selections，得到覆盖音节数 cut；
+    //   - cut 覆盖全部 → full commit；
+    //   - 否则未覆盖的整音节转回纯数字 buffer（与 scenario18 同型，可继续输入）；
+    //   - cut == 0（对不上，如选的是别的词）→ 原逻辑兜底，行为不变。
+    if (buf.unassigned().empty() && !buf.selections.empty() &&
+        candidate_pinyin.has_value() && !candidate_pinyin->empty()) {
+        const std::string cand_letters = T9LettersOnly(*candidate_pinyin);
+        int cut = ConsumeSelectionsCoveredBy(buf.selections, cand_letters);
+        RCLOG(">>   fully-locked settle: candLetters='%s' → coveredSelections=%d/%d",
+              cand_letters.c_str(), cut, selection_count);
+        if (cut >= selection_count) {
+            RCLOG(">>   fully-locked settle: 全部已锁定音节被覆盖 → full commit");
+            owner.ClearAndEnterIdle(ctx);
+            return true;
+        }
+        if (cut > 0) {
+            std::string remain_pinyin;
+            for (size_t i = cut; i < buf.selections.size(); ++i) {
+                remain_pinyin += buf.selections[i].pinyin;
+            }
+            auto remain_digits =
+                T9PinyinMap::Instance().PinyinToDigitCode(remain_pinyin);
+            if (remain_digits.has_value() && !remain_digits->empty()) {
+                ctx.state_machine.RemoveConsumedHistoryEntries(cand_letters);
+                ctx.input_buffer = T9Buffer(*remain_digits, {}, 0,
+                                           static_cast<int>(remain_digits->size()));
+                ctx.left_column_locked = false;
+                ctx.TransitionToInput(false);
+                RCLOG(">>   fully-locked settle: 消费 %d 个音节，剩余数字 '%s'（未覆盖音节 %s）",
+                      cut, remain_digits->c_str(), remain_pinyin.c_str());
+                return false;
+            }
+        }
+    }
 
     // 子路径 A：候选词无音节 → 防御性无注释提交
     if (syllable_count == 0) {
