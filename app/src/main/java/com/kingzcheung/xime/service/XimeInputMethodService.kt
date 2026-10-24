@@ -2867,7 +2867,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         preeditTapTracking = false
         FileLogger.d(
             TAG,
-            "preedit tap area: ${preeditTapArea?.let { "(${it.left},${it.top})-(${it.right},${it.bottom}) chars=${it.charBoundsX.size - 1}" } ?: "null"}"
+            "preedit tap area: ${preeditTapArea?.let { "(${it.left},${it.top})-(${it.right},${it.bottom}) chars=${it.charCount} lines=${it.lineCount}" } ?: "null"}"
         )
         try {
             window.window?.decorView?.requestLayout()
@@ -2898,7 +2898,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 preeditTapTracking = false
                 if (area.contains(wx, wy)) {
                     // 回传**显示串字符索引**，编码位换算由键盘层做（它持有编码文本）
-                    val index = area.indexAt(wx)
+                    val index = area.indexAt(wx, wy)
                     FileLogger.d(TAG, "preedit tap: x=$wx y=$wy -> charIndex=$index")
                     feedbackManager.performVibration()
                     keyboardCallbacks?.onPreeditCodeTap?.invoke(index)

@@ -2,6 +2,8 @@ package com.kingzcheung.xime.ui.keyboard
 
 import com.kingzcheung.xime.service.PredictionManager
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -309,7 +311,7 @@ fun CandidateBar(
     // 必须是同一实例——字号/度量不一致会让竖线与落点错位。
     val preeditBubblePaint = remember(visuals.textColor, density) {
         android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = with(density) { 12.sp.toPx() }
+            textSize = with(density) { PREEDIT_BASE_TEXT_SP.sp.toPx() }
             color = visuals.textColor.copy(alpha = 0.9f).toArgb()
         }
     }
@@ -323,6 +325,16 @@ fun CandidateBar(
     } else {
         preeditBubbleCaret
     }
+    // 编辑态放大：点击编码后气泡弹到 PREEDIT_EDIT_SCALE 倍（商业输入法的「放大编辑」手感）
+    val isCodeEditing = codeEditDigitCaret >= 0
+    val bubbleScale by animateFloatAsState(
+        targetValue = if (isCodeEditing) PREEDIT_EDIT_SCALE else 1f,
+        animationSpec = tween(durationMillis = 170),
+        label = "preeditBubbleScale",
+    )
+    // 命中区按**目标**倍数算（动画途中不重报：重报要触发一次布局，逐帧重报必卡）。
+    // 动画只改画面，不动命中，所以弹开途中点第二下也能落准。
+    val hitAreaScale = if (isCodeEditing) PREEDIT_EDIT_SCALE else 1f
 
     // 可点区域上报：气泡落在 IME 窗口的不可触摸区（应用区域），必须把这块矩形
     // 并进窗口触摸区，点击才会回到输入法。不可点时上报 null（恢复原触摸区）。
@@ -345,6 +357,8 @@ fun CandidateBar(
                 bubbleColor = visuals.backgroundColor,
                 textColor = visuals.textColor,
                 textPaint = preeditBubblePaint,
+                scale = bubbleScale,
+                emphasized = isCodeEditing,
             )
             .background(visuals.backgroundColor)
             .padding(horizontal = horizontalPadding),
@@ -352,7 +366,7 @@ fun CandidateBar(
     ) {
         LaunchedEffect(
             bubbleTappable, preeditBubbleText, bubbleNodeSize, bubbleNodeOrigin,
-            preeditBubblePaint,
+            preeditBubblePaint, hitAreaScale,
         ) {
             val report = callbacks.onPreeditTapArea
             if (report == null) return@LaunchedEffect
@@ -364,10 +378,12 @@ fun CandidateBar(
                 text = preeditBubbleText,
                 containerWidth = bubbleNodeSize.width.toFloat(),
                 paint = preeditBubblePaint,
-                horizontalPaddingPx = with(density) { 8.dp.toPx() },
-                verticalPaddingPx = with(density) { 3.dp.toPx() },
+                baseTextSizePx = with(density) { PREEDIT_BASE_TEXT_SP.sp.toPx() },
+                baseHorizontalPaddingPx = with(density) { 8.dp.toPx() },
+                baseVerticalPaddingPx = with(density) { 3.dp.toPx() },
                 bottomGapPx = with(density) { 2.dp.toPx() },
                 screenMarginPx = with(density) { 4.dp.toPx() },
+                scale = hitAreaScale,
             )
             val left = bubbleNodeOrigin.x + geometry.left
             val top = bubbleNodeOrigin.y + geometry.top
@@ -377,8 +393,16 @@ fun CandidateBar(
                     top = top.roundToInt(),
                     right = (left + geometry.width).roundToInt(),
                     bottom = (top + geometry.height).roundToInt(),
-                    charBoundsX = FloatArray(geometry.charXs.size) { i ->
-                        bubbleNodeOrigin.x + geometry.textLeft + geometry.charXs[i]
+                    lineStarts = IntArray(geometry.lines.size) { geometry.lines[it].startCharIndex },
+                    lineCharBoundsX = Array(geometry.lines.size) { li ->
+                        val line = geometry.lines[li]
+                        FloatArray(line.charXs.size) { i ->
+                            bubbleNodeOrigin.x + geometry.textLeft + line.charXs[i]
+                        }
+                    },
+                    lineCenterY = FloatArray(geometry.lines.size) { li ->
+                        val line = geometry.lines[li]
+                        bubbleNodeOrigin.y + geometry.top + line.top + line.height / 2f
                     },
                 )
             )
@@ -924,7 +948,11 @@ private fun Modifier.drawPreeditBubble(
     bubbleColor: Color,
     textColor: Color,
     textPaint: android.graphics.Paint,
-    caretOffset: Int = -1
+    caretOffset: Int = -1,
+    /** 放大倍数（编辑态 1.8，动画驱动）；1.0 = 原大小。 */
+    scale: Float = 1f,
+    /** 编辑态强调：加深底色 + 加粗竖线。 */
+    emphasized: Boolean = false,
 ): Modifier = composed {
     val density = LocalDensity.current
     val cornerRadiusPx = with(density) { 4.dp.toPx() }
@@ -932,7 +960,8 @@ private fun Modifier.drawPreeditBubble(
     val verticalPaddingPx = with(density) { 3.dp.toPx() }
     val bubbleBottomGapPx = with(density) { 2.dp.toPx() }
     val screenMarginPx = with(density) { 4.dp.toPx() }
-    val caretWidthPx = with(density) { 1.5.dp.toPx() }
+    val caretWidthPx = with(density) { if (emphasized) 2.6.dp.toPx() else 1.5.dp.toPx() }
+    val baseTextSizePx = with(density) { PREEDIT_BASE_TEXT_SP.sp.toPx() }
 
     // 气泡基色：优先用传入的主题背景色；其为全透明（CandidateBarVisuals 传
     // Color.Transparent，真实背景由外层绘制）时按候选文字亮度推导，
@@ -943,8 +972,8 @@ private fun Modifier.drawPreeditBubble(
     } else {
         if (isDarkTheme) Color(0xFF2D2F31) else Color(0xFFFAFAFA)
     }
-    // 半透明：62% 不透明度
-    val bubbleBgColor = bubbleBaseColor.copy(alpha = 0.62f)
+    // 打字态 62% 半透明；编辑态加深到 92%，让「正在改编码」一眼可辨
+    val bubbleBgColor = bubbleBaseColor.copy(alpha = if (emphasized) 0.92f else 0.62f)
 
     // 文本画笔由调用方提供（同一份实例也用于可点区域测宽，避免两处字号漂移）
     val bubbleTextPaint = textPaint
@@ -957,42 +986,41 @@ private fun Modifier.drawPreeditBubble(
             text = text,
             containerWidth = size.width,
             paint = bubbleTextPaint,
-            horizontalPaddingPx = horizontalPaddingPx,
-            verticalPaddingPx = verticalPaddingPx,
+            baseTextSizePx = baseTextSizePx,
+            baseHorizontalPaddingPx = horizontalPaddingPx,
+            baseVerticalPaddingPx = verticalPaddingPx,
             bottomGapPx = bubbleBottomGapPx,
             screenMarginPx = screenMarginPx,
+            scale = scale,
         )
-        val fontMetrics = bubbleTextPaint.fontMetrics
-        val clampedLeft = geometry.left
-        val top = geometry.top
-        val bubbleWidth = geometry.width
-        val bubbleHeight = geometry.height
 
         // 气泡主体
         drawRoundRect(
             color = bubbleBgColor,
-            topLeft = Offset(clampedLeft, top),
-            size = Size(bubbleWidth, bubbleHeight),
+            topLeft = Offset(geometry.left, geometry.top),
+            size = Size(geometry.width, geometry.height),
             cornerRadius = CornerRadius(cornerRadiusPx)
         )
 
-        // 文本垂直居中：基线 = 气泡顶 + (气泡高 - (ascent + descent)) / 2，
-        // ascent/descent 均为负/正相对基线的偏移，该式把字形区中点对准气泡中点。
+        // 多行文本：每行左对齐，基线按 firstBaseline + 行号 * 行距
         drawIntoCanvas { composeCanvas ->
-            val baselineY = top + (bubbleHeight - (fontMetrics.ascent + fontMetrics.descent)) / 2f
-            composeCanvas.nativeCanvas.drawText(text, clampedLeft + horizontalPaddingPx, baselineY, bubbleTextPaint)
+            val canvas = composeCanvas.nativeCanvas
+            geometry.lines.forEachIndexed { index, line ->
+                val baselineY = geometry.top + geometry.firstBaseline + index * geometry.lineSpacing
+                canvas.drawText(line.text, geometry.textLeft, baselineY, bubbleTextPaint)
+            }
         }
 
-        // 编码编辑光标：caret 在 0..文本长度 时在对应字符边界画竖线（末尾也画，
+        // 编码编辑光标：caret 在 0..文本长度 时在该行对应字符边界画竖线（末尾也画，
         // 编辑态停在末尾时用户仍能看出「在编辑」）；-1（默认打字态）不画，保持观感不变
         if (caretOffset in 0..text.length) {
-            val caretCharIndex = caretOffset.coerceIn(0, text.length)
-            val caretX = clampedLeft + horizontalPaddingPx +
-                bubbleTextPaint.measureText(text, 0, caretCharIndex)
+            val (line, local) = geometry.locate(caretOffset.coerceIn(0, text.length))
+            val caretX = geometry.textLeft + line.charXs[local]
+            val caretTop = geometry.top + line.top
             drawLine(
                 color = textColor,
-                start = Offset(caretX, top + verticalPaddingPx),
-                end = Offset(caretX, top + bubbleHeight - verticalPaddingPx),
+                start = Offset(caretX, caretTop + 1.dp.toPx()),
+                end = Offset(caretX, caretTop + line.height - 1.dp.toPx()),
                 strokeWidth = caretWidthPx
             )
         }
