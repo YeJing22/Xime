@@ -241,6 +241,9 @@ internal fun rememberImeKeyboardCallbacks(
                     service.moveCursor(direction)
                 }
             },
+            // 编码气泡可点区域（窗口坐标）：气泡画在候选栏顶边之外，必须并进窗口触摸区，
+            // 否则点击落在宿主应用里（服务层见 onComputeInsets 与 preeditBubbleTouch）
+            onPreeditTapArea = { area -> service.updatePreeditTapArea(area) },
             onGestureAction = { action, value ->
                 KeyActionRegistry.execute(action, KeyActionContext(service), value)
             },

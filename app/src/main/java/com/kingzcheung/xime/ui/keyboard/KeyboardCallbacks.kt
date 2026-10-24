@@ -117,6 +117,16 @@ data class KeyboardCallbacks(
      * @return 过滤后的 (候选词列表, 注释列表)
      */
     var onFilterT9Candidates: ((List<String>, List<String>) -> Pair<List<String>, List<String>>)? = null,
+    /**
+     * 编码气泡可点区域变化（窗口坐标，null = 不可点）。服务层据此把它并进 IME 窗口
+     * 触摸区——气泡画在候选栏顶边之外的宿主区域，不并入触摸区点击就收不到。
+     */
+    var onPreeditTapArea: ((PreeditTapArea?) -> Unit)? = null,
+    /**
+     * 用户点了编码气泡：参数是**编码显示串的字符索引**（含音节分隔符）。
+     * 服务层只负责原生命中判定，索引→编码位的换算由键盘层做（它持有编码文本与控制器）。
+     */
+    var onPreeditCodeTap: ((Int) -> Unit)? = null,
     /** 退格键按下时退出单字模式 */
     var onExitSingleCharFilter: (() -> Unit)? = null,
     /**

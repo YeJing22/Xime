@@ -175,6 +175,7 @@ class T9InputController(
     fun reset() {
         // 丢弃旧会话尚未执行的刷新 post，避免复位后被旧状态覆盖
         uiGeneration++
+        endCodeEdit()
         _selectionHistory = emptyList()
         firstOptions = emptyList()
         leftPanelState = LeftPanelState.IDLE
@@ -334,6 +335,11 @@ class T9InputController(
     }
 
     fun onDigitPressed(digit: String) {
+        // 编码编辑态：数字键=在这条编码的光标处插一位，不另起新输入
+        if (editCaretInternal >= 0) {
+            enqueue { insertDigitAtEditCaret(digit) }
+            return
+        }
         val code = digit[0].code
         enqueue {
             rimeEngine.processKey(code, 0)
@@ -346,6 +352,8 @@ class T9InputController(
     }
 
     fun onChoiceSelected(option: SyllableOption) {
+        // 左栏选音节＝重建音节边界，编辑态随之结束
+        endCodeEdit()
         enqueue {
             rimeEngine.t9SelectPinyinDirect(option.pinyin, option.digitLength)
             rimeEngine.t9FlushRimeInput()
@@ -368,6 +376,8 @@ class T9InputController(
         candidateText: String? = null,
         candidateTextLength: Int = 0,
     ): Boolean {
+        // 点候选＝退出编码编辑
+        endCodeEdit()
         awaitT9Queue()
         val isFullCommit = if (candidatePinyin != null) {
             val result = rimeEngine.t9SelectCandidate(candidatePinyin, candidateText, candidateTextLength)
@@ -404,6 +414,16 @@ class T9InputController(
      * @param callback 在 Main 线程调用，参数为退格结果。
      */
     fun onDeleted(callback: (DeleteResult) -> Unit) {
+        // 编码编辑态：退格删光标前一位，绝不转发去删上屏文字。
+        // 组合已被别的路径结束（引擎输入为空）时先退出编辑，落回普通退格。
+        if (editCaretInternal >= 0) {
+            if (currentDigitSequence().isEmpty()) {
+                endCodeEdit()
+            } else {
+                enqueue { deleteAtEditCaret(callback) }
+                return
+            }
+        }
         val shouldLaunch = synchronized(deleteCoalesceLock) {
             if (deleteJobActive) {
                 pendingDeleteCount++
@@ -505,6 +525,7 @@ class T9InputController(
     fun clearAll() {
         // 丢弃排队的过期刷新 post，避免清空后被旧状态覆盖
         uiGeneration++
+        endCodeEdit()
         firstOptions = emptyList()
         leftPanelState = LeftPanelState.IDLE
         selectedOption = null
@@ -533,29 +554,126 @@ class T9InputController(
     /** 当前编码的纯数字序列（字母音节折算成数字、丢弃分隔符），编辑态定位用。 */
     fun currentDigitSequence(): String = toDigitSequence(cachedInput)
 
-    /** 编辑态：在第 [index] 位前插入一位数字（index 以「字母/数字位」计）。 */
-    fun editInsertDigit(index: Int, digit: String) {
+    /**
+     * 编辑态光标（以编码位/数字位计，-1 = 非编辑态）。Compose 状态：气泡竖线按它重绘。
+     *
+     * 权威值在 [editCaretInternal]（队列内读写，保证连按不串位），这里只是给 UI 的镜像。
+     */
+    var codeEditCaret by mutableStateOf(-1)
+        private set
+
+    val isCodeEditing: Boolean get() = codeEditCaret >= 0
+
+    /** 队列内权威光标值（@Volatile：主线程只读判断是否在编辑态）。 */
+    @Volatile
+    private var editCaretInternal: Int = -1
+
+    /** 编辑中的整串数字（进入编辑态时快照，编辑期间以它为唯一真源，不回读引擎）。 */
+    @Volatile
+    private var editDigits: String? = null
+
+    /**
+     * 进入编码编辑态，光标停在第 [digitIndex] 位之前（0..位数）。
+     *
+     * 编码改过之后原音节边界不再成立，因此把当前输入串整体折算成数字序列作为编辑基准
+     * （已锁定的字母音节同样折算），后续按位插入/删除后整串重建。
+     */
+    fun beginCodeEdit(digitIndex: Int) {
         val digits = currentDigitSequence()
-        val at = index.coerceIn(0, digits.length)
-        applyEditedDigits(digits.substring(0, at) + digit + digits.substring(at))
+        if (digits.isEmpty()) return
+        val at = digitIndex.coerceIn(0, digits.length)
+        editDigits = digits
+        editCaretInternal = at
+        codeEditCaret = at
+        FileLogger.d(TAG, "code edit: begin caret=$at digits='$digits'")
     }
 
-    /** 编辑态：删除第 [index] 位之前的那一位（index 以「字母/数字位」计）。 */
-    fun editDeleteDigit(index: Int) {
-        val digits = currentDigitSequence()
-        if (index !in 1..digits.length) return
-        applyEditedDigits(digits.removeRange(index - 1, index))
-    }
-
-    private fun applyEditedDigits(digits: String) {
-        enqueue {
-            if (digits.isEmpty()) {
-                rimeEngine.t9ClearComposition(1)
-            } else {
-                rimeEngine.t9SetDigitSequence(digits)
-            }
-            refreshOnBackground()
+    /** 退出编码编辑态（上屏/选候选/上滑清空/换方案等一切非编辑操作）。 */
+    fun endCodeEdit() {
+        if (editCaretInternal < 0 && codeEditCaret < 0) return
+        // 权威值同步清（可能从后台线程调用），Compose 镜像只在主线程写
+        editCaretInternal = -1
+        editDigits = null
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            codeEditCaret = -1
+        } else {
+            mainHandler.post { codeEditCaret = -1 }
         }
+    }
+
+    /**
+     * 编辑态横向滑动移光标。返回 true = 已消费（调用方不再去移编辑器光标）。
+     * 越界钳制而不退出编辑态：滑到头继续滑不会掉出编辑。
+     */
+    fun moveCodeEditCaret(delta: Int): Boolean {
+        val at = editCaretInternal
+        if (at < 0) return false
+        val digits = editDigits ?: return false
+        val target = (at + delta).coerceIn(0, digits.length)
+        if (target == at) return true
+        editCaretInternal = target
+        codeEditCaret = target
+        return true
+    }
+
+    /** 队列内：整串数字重建（一次 set_input，不逐位 replay）。 */
+    private suspend fun pushEditedDigits(digits: String) {
+        if (digits.isEmpty()) {
+            rimeEngine.t9ClearComposition(1)
+        } else {
+            rimeEngine.t9SetDigitSequence(digits)
+        }
+    }
+
+    /** 把编辑态光标同步到 UI 镜像（Compose 状态只在主线程写）。 */
+    private fun postEditCaret() {
+        mainHandler.post { codeEditCaret = editCaretInternal }
+    }
+
+    /** 编辑态插入一位数字（队列内执行，调用前已在主线程判定进入编辑分支）。 */
+    private suspend fun insertDigitAtEditCaret(digit: String) {
+        val expected = editDigits
+        // 组合已被别的路径结束（空格上屏、切方案、宿主清空等）：退出编辑态，按新输入处理。
+        // 只在「引擎输入已空」时判定，避免本队列内刷新滞后导致误退出。
+        if (expected == null || (expected.isNotEmpty() && toDigitSequence(cachedInput).isEmpty())) {
+            endCodeEdit()
+            rimeEngine.processKey(digit[0].code, 0)
+            rimeEngine.t9FlushRimeInput()
+            refreshOnBackground()
+            return
+        }
+        val pos = editCaretInternal.coerceIn(0, expected.length)
+        val next = expected.substring(0, pos) + digit + expected.substring(pos)
+        editDigits = next
+        editCaretInternal = pos + 1
+        pushEditedDigits(next)
+        refreshOnBackground()
+        postEditCaret()
+        FileLogger.d(TAG, "code edit: insert $digit at $pos -> '$next'")
+    }
+
+    /** 编辑态退格：删光标前一位；删空则退出编辑态并清组合。 */
+    private suspend fun deleteAtEditCaret(callback: (DeleteResult) -> Unit) {
+        val digits = editDigits
+        val pos = editCaretInternal
+        if (digits == null || pos <= 0) {
+            // 已在编码最左端：仍回报 DELETED，阻断「转发去删上屏文字」
+            mainHandler.post { callback(DeleteResult.DELETED) }
+            return
+        }
+        val next = digits.removeRange(pos - 1, pos)
+        if (next.isEmpty()) {
+            endCodeEdit()
+            pushEditedDigits("")
+        } else {
+            editDigits = next
+            editCaretInternal = pos - 1
+            pushEditedDigits(next)
+        }
+        refreshOnBackground()
+        postEditCaret()
+        FileLogger.d(TAG, "code edit: delete at $pos -> '$next'")
+        mainHandler.post { callback(DeleteResult.DELETED) }
     }
 
     private fun updateFromRime() {

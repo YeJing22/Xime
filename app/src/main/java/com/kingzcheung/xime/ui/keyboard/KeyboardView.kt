@@ -251,6 +251,15 @@ fun KeyboardView(
         callbacks.onFilterT9Candidates = { candidates, comments ->
             Pair(candidates, comments)  // no-op: t9_processor handles filtering
         }
+        // 点编码气泡 → 进入编码编辑态。服务层回传的是**显示串字符索引**
+        // （气泡里有音节分隔符，不是编码位），这里折算成编码位（第几位数字）。
+        callbacks.onPreeditCodeTap = { displayCharIndex ->
+            val text = candidateState.value.preeditText
+            if (text.isNotEmpty()) {
+                val codeIndex = preeditCharIndexToCodeIndex(text, displayCharIndex)
+                t9Controller.beginCodeEdit(codeIndex)
+            }
+        }
         callbacks.onExitSingleCharFilter = {
             viewModel.setSingleCharFilter(false)
         }
@@ -738,8 +747,15 @@ fun KeyboardView(
                             callbacks.onAssociationSelect?.invoke(index)
                         }
                     },
+                    // 编码气泡可点区域（窗口坐标）→ 服务层并进窗口触摸区；
+                    // 气泡画在候选栏顶边之外，不并入触摸区点击就落到宿主应用里。
+                    onPreeditTapArea = { area -> callbacks.onPreeditTapArea?.invoke(area) },
                 ),
                 inlineSuggestions = inlineSuggestions,
+                // 九键「点进编码改拼音串」：编辑光标 + 气泡可点（仅编码显示在候选栏时才有气泡）
+                codeEditDigitCaret = t9Controller.codeEditCaret,
+                preeditTappable = keyboardState is KeyboardLayoutState.T9Pinyin &&
+                    candidateState.value.isComposing,
             )
 
             if (candidatePageExpanded) {
@@ -928,7 +944,13 @@ fun KeyboardView(
                 val mainType = (page as KeyboardPage.Main).type
                 when (mainType) {
                     MainType.FULL -> {
-                        val currentOnCursorMove = rememberUpdatedState(callbacks.onCursorMove)
+                        // 编码编辑态下横滑移的是**编码内**光标（九键按数字位、全键盘走服务层），
+                        // 已消费就不再去移编辑器光标，否则「改编码」和「移光标」两件事同时发生。
+                        val currentOnCursorMove = rememberUpdatedState<((Int) -> Unit)?> { direction ->
+                            if (!t9Controller.moveCodeEditCaret(direction)) {
+                                callbacks.onCursorMove?.invoke(direction)
+                            }
+                        }
                         val suppressCursorMove = remember { mutableStateOf(false) }
                         val cursorGestureActive = remember { mutableStateOf(false) }
                         // 触发距离 / 每格距离改为用户可调（设置 → 布局与显示 → 光标滑动）。

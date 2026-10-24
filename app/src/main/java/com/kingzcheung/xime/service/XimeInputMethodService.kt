@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
@@ -106,6 +107,7 @@ import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.settings.SyncManager
 import com.kingzcheung.xime.ui.keyboard.KeyboardView
+import com.kingzcheung.xime.ui.keyboard.PreeditTapArea
 import com.kingzcheung.xime.ui.keyboard.isT9Schema
 import com.kingzcheung.xime.ui.keyboard.isHandwritingSchema
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
@@ -354,6 +356,16 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     internal var editingCaretInput: String = ""
     /** 键盘回调引用，用于在 RIME selectCandidate 前同步通知 T9 控制器 */
     internal var keyboardCallbacks: KeyboardCallbacks? = null
+    /**
+     * 编码气泡的可点区域（窗口坐标）。气泡由候选栏以 drawBehind 负坐标画在候选栏顶边之外，
+     * 落在 IME 窗口的「不可触摸区」（= 宿主应用区域）。这里持有它的矩形，供
+     * [onComputeInsets] 把这块并进窗口触摸区，并由 inputArea 的原生触摸监听做命中断言。
+     * null = 不可点（不改变触摸区，行为与改动前一致）。
+     */
+    internal var preeditTapArea: PreeditTapArea? = null
+        private set
+    /** 气泡按下态：DOWN 命中后吞掉 MOVE/UP，避免半途划出仍触发。仅在主线程读写。 */
+    private var preeditTapTracking = false
     internal var isChineseMode = true
     /** 悬浮卡片实测矩形（窗口坐标，px）：FloatingKeyboardContainer 布局后回传，
      *  触摸区（onComputeInsets）的唯一真源；null = 尚未实测（走 FloatingCardGeometry 兜底） */
@@ -1873,6 +1885,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     // 栏外编码气泡越出容器顶边后进入 inputArea 空白区，
                     // inputArea 默认 clipChildren=true 会把越界部分裁掉。
                     area.clipChildren = false
+                    // 气泡落在 composeView 之外，Compose 收不到触摸：
+                    // 在满屏的 inputArea 上兜一层监听，只吃落在气泡矩形内的点击
+                    // （键盘按键由子级消费，不会走到这里）
+                    area.setOnTouchListener { v, ev -> handlePreeditBubbleTouch(v, ev) }
                 }
             // 容器在 inputArea 内底部对齐（gravity BOTTOM）：
             // 容器物理高度 = Compose 内容总高，小于全屏窗口时若默认 top-left
@@ -2830,6 +2846,74 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         }
     }
 
+    // ── 编码气泡可点（九键「点进编码改拼音串」）────────────────────────────────
+
+    /**
+     * 候选栏上报编码气泡的可点区域（主线程；null = 不可点）。
+     *
+     * 气泡画在候选栏顶边之外的宿主区域，按 `visibleTopInsets` 属于不可触摸区。
+     * 触摸区只在 traversal 时重算，因此区域变化后请求一次布局，让 [onComputeInsets]
+     * 以新矩形重新上报。区域未变则直接跳过（每次打字文本都会变，必须挡住重复请求）。
+     */
+    internal fun updatePreeditTapArea(area: PreeditTapArea?) {
+        val old = preeditTapArea
+        if (area == null || area.isEmpty) {
+            if (old == null) return
+            preeditTapArea = null
+        } else {
+            if (old != null && area.sameAs(old)) return
+            preeditTapArea = area
+        }
+        preeditTapTracking = false
+        FileLogger.d(
+            TAG,
+            "preedit tap area: ${preeditTapArea?.let { "(${it.left},${it.top})-(${it.right},${it.bottom}) chars=${it.charBoundsX.size - 1}" } ?: "null"}"
+        )
+        try {
+            window.window?.decorView?.requestLayout()
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * inputArea 的原生触摸监听：只吃落在编码气泡上的点击，其余一律放行。
+     * 气泡在 composeView 之外，Compose 收不到事件，只能在 View 层做命中断言。
+     */
+    private fun handlePreeditBubbleTouch(v: View, ev: MotionEvent): Boolean {
+        val area = preeditTapArea ?: return false
+        val loc = IntArray(2)
+        v.getLocationInWindow(loc)
+        val wx = ev.x + loc[0]
+        val wy = ev.y + loc[1]
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                preeditTapTracking = area.contains(wx, wy)
+                return preeditTapTracking
+            }
+
+            MotionEvent.ACTION_MOVE -> return preeditTapTracking
+
+            MotionEvent.ACTION_UP -> {
+                if (!preeditTapTracking) return false
+                preeditTapTracking = false
+                if (area.contains(wx, wy)) {
+                    // 回传**显示串字符索引**，编码位换算由键盘层做（它持有编码文本）
+                    val index = area.indexAt(wx)
+                    FileLogger.d(TAG, "preedit tap: x=$wx y=$wy -> charIndex=$index")
+                    feedbackManager.performVibration()
+                    keyboardCallbacks?.onPreeditCodeTap?.invoke(index)
+                }
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                preeditTapTracking = false
+                return false
+            }
+        }
+        return false
+    }
+
     override fun onComputeInsets(outInsets: Insets) {
         val state = uiState.value
         if (state.isCompact) {
@@ -2894,7 +2978,23 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 val topPx = loc[1].coerceAtLeast(0)
                 outInsets.contentTopInsets = topPx
                 outInsets.visibleTopInsets = topPx
-                outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_VISIBLE
+                val bubble = preeditTapArea
+                if (bubble != null && !bubble.isEmpty) {
+                    // 编码气泡在候选栏顶边之外（宿主区域）：整块键盘 + 气泡矩形并成触摸区，
+                    // 触摸区外的地方仍归宿主应用，键盘按键行为不变。
+                    outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
+                    val decor = window.window?.decorView
+                    val w = decor?.width?.takeIf { it > 0 }
+                        ?: resources.displayMetrics.widthPixels
+                    val h = decor?.height?.takeIf { it > 0 }
+                        ?: resources.displayMetrics.heightPixels
+                    outInsets.touchableRegion.set(0, topPx, w, h)
+                    outInsets.touchableRegion.union(
+                        android.graphics.Rect(bubble.left, bubble.top, bubble.right, bubble.bottom)
+                    )
+                } else {
+                    outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_VISIBLE
+                }
             } else {
                 super.onComputeInsets(outInsets)
             }
