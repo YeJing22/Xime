@@ -2865,7 +2865,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             preeditTapArea = area
         }
         preeditTapTracking = false
-        FileLogger.d(
+        // 每次编码变化都会重报（打字时逐键），属高频细节日志 → verbose
+        FileLogger.v(
             TAG,
             "preedit tap area: ${preeditTapArea?.let { "(${it.left},${it.top})-(${it.right},${it.bottom}) chars=${it.charCount} lines=${it.lineCount}" } ?: "null"}"
         )
@@ -2873,6 +2874,41 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             window.window?.decorView?.requestLayout()
         } catch (_: Exception) {
         }
+    }
+
+    /**
+     * 非九键中文键盘（全键盘/五笔等）点编码：把编码编辑光标设到显示串第 [displayIndex] 位。
+     *
+     * 26 键的组合态编辑链路本来就完整（`editingCaretPos` → ImeKeyRouter 插字/删字、
+     * moveCursor 横滑移光标、displayCaretOffset 自愈），这里只补「点哪儿」这个入口：
+     * 显示串索引 → raw input 偏移。
+     *
+     * 换算口径：全拼/五笔的 preedit 与 raw input 完全一致（含分隔符），直接用索引；
+     * 双拼等展开类方案两者不等长，退化为「数非分隔符字符」（与 displayCaretOffset
+     * 正向映射同一套假设，最多差一个分隔符的宽度）。
+     */
+    internal fun setPreeditCaretFromDisplayIndex(displayIndex: Int) {
+        val display = candidateState.value.preeditText
+        if (display.isEmpty()) return
+        val input = rimeEngine.getInput()
+        if (input.isEmpty()) return
+        val raw = if (input == display) {
+            displayIndex.coerceIn(0, input.length)
+        } else {
+            com.kingzcheung.xime.ui.keyboard.preeditCharIndexToCodeIndex(display, displayIndex)
+                .coerceIn(0, input.length)
+        }
+        // 末尾按既有约定不算编辑态（displayCaretOffset 对末尾返回 -1，且末尾插字本就是追加）；
+        // 开头（raw == 0）是合法编辑位，点最左边那一位要能插字。
+        if (raw >= input.length) {
+            editingCaretPos = -1
+            editingCaretInput = ""
+        } else {
+            editingCaretPos = raw
+            editingCaretInput = input
+        }
+        FileLogger.d(TAG, "preedit tap(non-T9): display=$displayIndex raw=$raw input='$input'")
+        updateUI()
     }
 
     /**

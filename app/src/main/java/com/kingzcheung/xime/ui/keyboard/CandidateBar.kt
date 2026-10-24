@@ -325,8 +325,11 @@ fun CandidateBar(
     } else {
         preeditBubbleCaret
     }
-    // 编辑态放大：点击编码后气泡弹到 PREEDIT_EDIT_SCALE 倍（商业输入法的「放大编辑」手感）
-    val isCodeEditing = codeEditDigitCaret >= 0
+    // 编辑态放大：点击编码后气泡弹到 PREEDIT_EDIT_SCALE 倍（商业输入法的「放大编辑」手感）。
+    // 两套编辑态都算：九键＝数字位光标（codeEditDigitCaret），其余键盘＝服务层
+    // editingCaretPos 经 displayCaretOffset 映射出的显示串光标（preeditCaretPos >= 0）。
+    val isCodeEditing = codeEditDigitCaret >= 0 ||
+        (((state as? CandidateBarState.ChineseCandidates)?.preeditCaretPos) ?: -1) >= 0
     val bubbleScale by animateFloatAsState(
         targetValue = if (isCodeEditing) PREEDIT_EDIT_SCALE else 1f,
         animationSpec = tween(durationMillis = 170),

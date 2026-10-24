@@ -127,6 +127,12 @@ data class KeyboardCallbacks(
      * 服务层只负责原生命中判定，索引→编码位的换算由键盘层做（它持有编码文本与控制器）。
      */
     var onPreeditCodeTap: ((Int) -> Unit)? = null,
+    /**
+     * 非九键中文键盘（全键盘/五笔等）点编码：把编码编辑光标设到显示串第 [displayIndex] 位。
+     * 服务层负责换算成 raw input 偏移并写入 editingCaretPos——26 键的插字/删字/横滑
+     * 早就有这条链路，这里只是补一个「点哪儿」的入口。
+     */
+    var onPreeditCaretSet: ((Int) -> Unit)? = null,
     /** 退格键按下时退出单字模式 */
     var onExitSingleCharFilter: (() -> Unit)? = null,
     /**

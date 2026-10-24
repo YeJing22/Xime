@@ -252,12 +252,19 @@ fun KeyboardView(
             Pair(candidates, comments)  // no-op: t9_processor handles filtering
         }
         // 点编码气泡 → 进入编码编辑态。服务层回传的是**显示串字符索引**
-        // （气泡里有音节分隔符，不是编码位），这里折算成编码位（第几位数字）。
+        // （气泡里有音节分隔符，不是编码位）。
+        // 九键：折算成编码位（第几位数字）交给 T9 控制器（整串数字重建）；
+        // 其余中文键盘（全键盘/五笔等）：交给服务层写 editingCaretPos——那边的
+        // 插字/删字/横滑编辑链路本来就有，只缺「点哪儿」这个入口。
         callbacks.onPreeditCodeTap = { displayCharIndex ->
             val text = candidateState.value.preeditText
             if (text.isNotEmpty()) {
-                val codeIndex = preeditCharIndexToCodeIndex(text, displayCharIndex)
-                t9Controller.beginCodeEdit(codeIndex)
+                if (keyboardState is KeyboardLayoutState.T9Pinyin) {
+                    val codeIndex = preeditCharIndexToCodeIndex(text, displayCharIndex)
+                    t9Controller.beginCodeEdit(codeIndex)
+                } else {
+                    callbacks.onPreeditCaretSet?.invoke(displayCharIndex)
+                }
             }
         }
         callbacks.onExitSingleCharFilter = {
@@ -754,8 +761,9 @@ fun KeyboardView(
                 inlineSuggestions = inlineSuggestions,
                 // 九键「点进编码改拼音串」：编辑光标 + 气泡可点（仅编码显示在候选栏时才有气泡）
                 codeEditDigitCaret = t9Controller.codeEditCaret,
-                preeditTappable = keyboardState is KeyboardLayoutState.T9Pinyin &&
-                    candidateState.value.isComposing,
+                // 编码「点进编辑」：九键走数字位编辑，其余中文键盘走 editingCaretPos。
+                // 英文/ASCII 不接（那边的插字分支本来就不生效）。
+                preeditTappable = candidateState.value.isComposing && !state.isAsciiMode,
             )
 
             if (candidatePageExpanded) {

@@ -244,6 +244,8 @@ internal fun rememberImeKeyboardCallbacks(
             // 编码气泡可点区域（窗口坐标）：气泡画在候选栏顶边之外，必须并进窗口触摸区，
             // 否则点击落在宿主应用里（服务层见 onComputeInsets 与 preeditBubbleTouch）
             onPreeditTapArea = { area -> service.updatePreeditTapArea(area) },
+            // 非九键中文键盘（全键盘/五笔等）点编码：设 editingCaretPos（26 键编辑链路复用）
+            onPreeditCaretSet = { displayIndex -> service.setPreeditCaretFromDisplayIndex(displayIndex) },
             onGestureAction = { action, value ->
                 KeyActionRegistry.execute(action, KeyActionContext(service), value)
             },
