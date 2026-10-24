@@ -894,6 +894,7 @@ class RimeEngine {
     private external fun nativeT9GetLeftPanelState(): String?
     private external fun nativeT9ClearComposition(mode: Int)
     private external fun nativeT9FlushRimeInput()
+    private external fun nativeT9SetDigitSequence(digits: String)
     private external fun nativeT9GetAndConsumeUndoneRightCommitCount(): Int
     private external fun nativeT9GetRemainingDigits(): String?
     private external fun nativeT9GetFirstSyllableOptions(digits: String, maxResults: Int): String?
@@ -967,6 +968,19 @@ class RimeEngine {
         if (!isInitialized) return
         tryLocked(Unit) {
             nativeT9ClearComposition(mode)
+        }
+    }
+
+    /**
+     * 编码编辑：用整串数字重建 T9 输入模型并整串重发。
+     *
+     * 会清空已选音节与分隔符（编码改动后原锁定失效）。用于「点进编码改拼音串」，
+     * 保证 C++ buffer 与 RIME input 同步，避免下一次数字键用旧 buffer 覆盖编辑结果。
+     */
+    fun t9SetDigitSequence(digits: String) {
+        if (!isInitialized) return
+        tryLocked(Unit) {
+            nativeT9SetDigitSequence(digits)
         }
     }
 

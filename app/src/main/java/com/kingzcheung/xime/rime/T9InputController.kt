@@ -50,6 +50,34 @@ class T9InputController(
         private const val TAG = "T9InputController"
         const val CLEAR_COMPOSITION_ONLY = "clear_composition"
         const val CLEAR_ALL = "clear_all"
+
+        /** 字母 → 九键数字位（ü/v 归 8，与 nv / lv 的读音一致）。 */
+        private fun letterToDigit(c: Char): Char? = when (c.lowercaseChar()) {
+            in 'a'..'c' -> '2'
+            in 'd'..'f' -> '3'
+            in 'g'..'i' -> '4'
+            in 'j'..'l' -> '5'
+            in 'm'..'o' -> '6'
+            in 'p'..'s' -> '7'
+            in 't'..'v', 'ü' -> '8'
+            in 'w'..'z' -> '9'
+            else -> null
+        }
+
+        /**
+         * 把 RIME 输入串折算成纯数字编码。
+         * 输入串形如 `liu'yu'7464`（已锁定音节是字母、未分配段是数字），
+         * 折算后为 `548987464`，与 T9Buffer.digit_sequence 等长同位。
+         */
+        fun toDigitSequence(input: String): String = buildString {
+            for (c in input) {
+                when {
+                    c.isDigit() -> append(c)
+                    c == '\'' || c == ' ' -> Unit
+                    else -> letterToDigit(c)?.let { append(it) }
+                }
+            }
+        }
     }
 
     enum class LeftPanelState { IDLE, INPUT, SELECTION }
@@ -491,6 +519,44 @@ class T9InputController(
     fun onEnterCommit() { clearAll() }
 
     fun isSelectedOptionInCurrentCandidates(): Boolean = selectedOption in firstOptions
+
+    // ── 编码编辑（点进编码改拼音串）──────────────────────────────────────────
+    //
+    // 九键的输入单位是数字，所以「字母级编辑」在九键上体现为：光标可以停在任意两个
+    // 字母之间，按数字键就在该位置插入一位编码、退格就删掉一位。显示层的字母由 RIME
+    // 用候选注释渲染，与数字位一一对应，因此「显示第几个字母」==「第几位数字」。
+    //
+    // 编辑期间不能用 processKey 逐位 replay（会触发 N 次 compose），改为整串重建：
+    // 直接把改好的数字串交给 ReplaceDigitSequence，一次 set_input 完成。
+    // 代价是已选音节/分隔符被清空——编码被改动后原音节边界本来就不再成立。
+
+    /** 当前编码的纯数字序列（字母音节折算成数字、丢弃分隔符），编辑态定位用。 */
+    fun currentDigitSequence(): String = toDigitSequence(cachedInput)
+
+    /** 编辑态：在第 [index] 位前插入一位数字（index 以「字母/数字位」计）。 */
+    fun editInsertDigit(index: Int, digit: String) {
+        val digits = currentDigitSequence()
+        val at = index.coerceIn(0, digits.length)
+        applyEditedDigits(digits.substring(0, at) + digit + digits.substring(at))
+    }
+
+    /** 编辑态：删除第 [index] 位之前的那一位（index 以「字母/数字位」计）。 */
+    fun editDeleteDigit(index: Int) {
+        val digits = currentDigitSequence()
+        if (index !in 1..digits.length) return
+        applyEditedDigits(digits.removeRange(index - 1, index))
+    }
+
+    private fun applyEditedDigits(digits: String) {
+        enqueue {
+            if (digits.isEmpty()) {
+                rimeEngine.t9ClearComposition(1)
+            } else {
+                rimeEngine.t9SetDigitSequence(digits)
+            }
+            refreshOnBackground()
+        }
+    }
 
     private fun updateFromRime() {
         // 同步刷新（右选路径）：使后台排队的过期刷新失效，避免旧状态 post 后执行覆盖。

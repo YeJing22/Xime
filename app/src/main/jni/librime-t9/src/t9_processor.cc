@@ -1205,6 +1205,33 @@ std::string T9Processor::GetLeftPanelState() const {
 // T8: ReplaceFullPinyin / ClearComposition
 // ════════════════════════════════════════
 
+void T9Processor::ReplaceDigitSequence(const std::string& digits) {
+    // 编码编辑：整串数字重建。
+    // 只保留「数字序列」这一层语义——已选音节（selections）、consumed、分隔符全部作废，
+    // 因为编码本身被改动了，原先锁定的音节边界不再成立（对应 Kotlin 侧清空左栏选择）。
+    // 不做逐位 replay（那会触发 N 次 compose），单次 set_input 后由调用方统一刷新。
+    input_buffer_ = T9Buffer(digits);
+    original_digit_sequence_ = digits;
+    separator_consumed_digits_.reset();
+    last_choice_consumed_digits_.reset();
+    last_rime_input_.clear();
+    pending_action_ = RimePendingAction::kNone;
+    pending_input_.clear();
+
+    if (digits.empty()) {
+        EnterIdle();
+        engine_->context()->Clear();
+        T9LOG("ReplaceDigitSequence: empty -> idle");
+        return;
+    }
+    // 先清 composition 再整串重设：与 ReplaceFullPinyin 同理，残留 segments 会让
+    // BuildSyllableGraph 找不到候选。
+    engine_->context()->Clear();
+    SyncRimeInput(digits);
+    T9LOG("ReplaceDigitSequence: '%s'", digits.c_str());
+}
+
+
 void T9Processor::ReplaceFullPinyin(const std::string& pinyin) {
     // 对应 Kotlin onT9ReplaceFullPinyin 回调
     // 调用方在 XimeInputMethodService 中根据 pinyin 值判断：

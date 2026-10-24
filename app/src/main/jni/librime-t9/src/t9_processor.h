@@ -115,6 +115,12 @@ public:
     // 批量替换 RIME 输入为完整拼音（对应 Kotlin onT9ReplaceFullPinyin）
     void ReplaceFullPinyin(const std::string& pinyin);
 
+    // ── 编码编辑（点进编码改拼音串）──
+    // 用整串数字重建输入模型：清空已选音节与分隔符（编码被改动后原锁定失效），
+    // 保留数字序列并整串重发给引擎。编辑态下每次插入/删除都走这里，
+    // 保证 buffer 与 RIME input 始终一致（否则下一次数字键会用旧 buffer 覆盖）。
+    void ReplaceDigitSequence(const std::string& digits);
+
     // 两种清理模式：mode=0 (CLEAR_COMPOSITION_ONLY), mode=1 (CLEAR_ALL)
     void ClearComposition(int mode);
 

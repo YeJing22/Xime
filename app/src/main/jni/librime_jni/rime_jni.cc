@@ -2994,6 +2994,25 @@ extern "C"
         proc->FlushRimeInput();
     }
 
+    // 编码编辑：用整串数字重建输入模型（清空已选音节 / 分隔符，整串重发给引擎）。
+    // 供「点进编码修改拼音串」使用：编辑态下每次插入/删除都整串重建，
+    // 保证 C++ buffer 与 RIME input 一致，否则下一次数字键会用旧 buffer 覆盖编辑结果。
+    JNIEXPORT void JNICALL
+    Java_com_kingzcheung_xime_rime_RimeEngine_nativeT9SetDigitSequence(
+        JNIEnv *env,
+        jobject thiz,
+        jstring digits)
+    {
+        rime::T9Processor *proc = rime::T9ProcessorRequire();
+        if (!proc)
+            return;
+        const char *chars = digits ? env->GetStringUTFChars(digits, nullptr) : nullptr;
+        std::string seq = chars ? chars : "";
+        if (chars)
+            env->ReleaseStringUTFChars(digits, chars);
+        proc->ReplaceDigitSequence(seq);
+    }
+
     // 获取并消费 P1 撤销 RightCommit 的计数。
     // 每次 P1 撤销自增 1，Kotlin 层每次查询后自减，避免重复消费。
     JNIEXPORT jint JNICALL
