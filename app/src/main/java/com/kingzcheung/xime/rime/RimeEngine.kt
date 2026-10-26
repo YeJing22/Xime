@@ -429,14 +429,34 @@ class RimeEngine {
         }
     }
 
+    /**
+     * 高亮候选但不提交（全局索引，跨页）。长按排序菜单在派发方案里的
+     * super_sequence 快捷键（Ctrl+j/k/p）之前，必须先把目标候选推成高亮候选 ——
+     * 该处理器只对「当前高亮候选」生效。
+     */
+    fun highlightCandidate(index: Int): Boolean {
+        if (index < 0) return false
+        return tryLocked(false) {
+            if (!nativeHasSession()) return@tryLocked false
+            nativeHighlightCandidate(index)
+        }
+    }
+
+    /** 高亮当前页候选（页内索引），由 librime 按当前页起点换算全局下标。 */
+    fun highlightCandidateOnCurrentPage(index: Int): Boolean {
+        if (index < 0) return false
+        return tryLocked(false) {
+            if (!nativeHasSession()) return@tryLocked false
+            nativeHighlightCandidateOnCurrentPage(index)
+        }
+    }
+
     fun pageDown(): Boolean {
         return tryLocked(false) {
             if (!nativeHasSession()) return@tryLocked false
             nativePageDown()
         }
-    }
-
-    fun pageUp(): Boolean {
+    }    fun pageUp(): Boolean {
         return tryLocked(false) {
             if (!nativeHasSession()) return@tryLocked false
             nativePageUp()
@@ -823,6 +843,8 @@ class RimeEngine {
     private external fun nativeSelectCandidateByGlobalIndex(index: Int): Boolean
     private external fun nativeDeleteCandidateOnCurrentPage(index: Int): Boolean
     private external fun nativeDeleteCandidateByGlobalIndex(index: Int): Boolean
+    private external fun nativeHighlightCandidate(index: Int): Boolean
+    private external fun nativeHighlightCandidateOnCurrentPage(index: Int): Boolean
     private external fun nativePageDown(): Boolean
     private external fun nativePageUp(): Boolean
     private external fun nativeHasNextPage(): Boolean

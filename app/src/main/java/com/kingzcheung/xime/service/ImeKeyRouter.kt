@@ -12,6 +12,7 @@ import com.kingzcheung.xime.keyboard.OverlayRoute
 import com.kingzcheung.xime.rime.RimeCandidate
 import com.kingzcheung.xime.rime.resolveRimeCandidateIndex
 import com.kingzcheung.xime.settings.SettingsPreferences
+import com.kingzcheung.xime.ui.keyboard.CandidateSortAction
 import com.kingzcheung.xime.ui.keyboard.KeyboardLayoutState
 import com.kingzcheung.xime.ui.keyboard.isT9Schema
 import com.kingzcheung.xime.util.FileLogger
@@ -34,6 +35,13 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
         /** 九键造词：连按两下反引号的去抖窗口（ms）。用户习惯连按两下才「开始造词」。 */
         const val PHRASE_BUILD_DEBOUNCE_MS = 800L
+
+        // librime / X11 修饰位（对应 rime KeyEvent::modifier），长按排序派发快捷键用
+        const val RIME_SHIFT_MASK = 1
+        const val RIME_LOCK_MASK = 2
+        const val RIME_CONTROL_MASK = 4
+        const val RIME_ALT_MASK = 8
+        const val RIME_SUPER_MASK = 16
     }
 
     /**
@@ -1706,6 +1714,130 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                 service.updateUI()
             }
         }
+    }
+
+    // ── 候选长按手动排序（对接方案里的 super_sequence） ──
+
+    /**
+     * 候选栏长按排序：先把目标候选设为高亮候选，再按方案配置派发
+     * super_sequence 的快捷键（默认 Pin=Ctrl+p / Up=Ctrl+j / Down=Ctrl+k）。
+     *
+     * 不自己改词条权重或排序库：super_sequence 只处理「高亮候选」，
+     * 它自己把结果写进方案的排序 userdb，所以必须由 lua 侧落地，
+     * 这样与桌面端快捷键完全等价（含后续被挤动的候选位置修正）。
+     */
+    internal fun sortCandidate(displayIndex: Int, action: CandidateSortAction) {
+        postRimeJob {
+            val state = service.candidateState.value
+            val text = state.candidates.getOrNull(displayIndex)
+            if (text.isNullOrEmpty()) return@postRimeJob
+            val meta = state.candidateActions.getOrNull(displayIndex)
+            // 外部候选（插件变换 / 智能纠错）不是实时会话候选，高亮会落到同序号的
+            // 真实候选上，排序结果与所见不一致，直接跳过。
+            if (meta != null && meta.isPluginCandidate) {
+                FileLogger.i(
+                    XimeInputMethodService.TAG,
+                    "SortCandidate: skip external candidate '$text' display=$displayIndex"
+                )
+                return@postRimeJob
+            }
+            val engineIndex = if (meta != null && meta.engineIndex >= 0) {
+                meta.engineIndex
+            } else {
+                resolveRimeCandidateIndex(displayIndex, text, service.rimeEngine.getCandidates().toList())
+            }
+            applySequenceSort(engineIndex, global = false, action, text)
+            withContext(Dispatchers.Main) {
+                service.updateUI()
+            }
+        }
+    }
+
+    /** 候选展开页长按排序：按跨页全局索引高亮，排序语义与候选栏一致。 */
+    internal fun sortCandidateGlobal(globalIndex: Int, action: CandidateSortAction) {
+        postRimeJob {
+            val state = service.candidateState.value
+            val text = state.expandedCandidates.getOrNull(globalIndex)?.text
+            if (text.isNullOrEmpty()) return@postRimeJob
+            val meta = state.expandedActions.getOrNull(globalIndex)
+            if (meta != null && meta.isPluginCandidate) {
+                FileLogger.i(
+                    XimeInputMethodService.TAG,
+                    "SortCandidateGlobal: skip external candidate index=$globalIndex"
+                )
+                return@postRimeJob
+            }
+            applySequenceSort(globalIndex, global = true, action, text)
+            withContext(Dispatchers.Main) {
+                service.updateUI()
+            }
+        }
+    }
+
+    private fun applySequenceSort(
+        index: Int,
+        global: Boolean,
+        action: CandidateSortAction,
+        text: String,
+    ) {
+        val engine = service.rimeEngine
+        val schema = engine.getCurrentSchema()
+        val key = when (action) {
+            CandidateSortAction.PIN -> engine.getSchemaString(schema, "super_sequence/pin")
+            CandidateSortAction.UP -> engine.getSchemaString(schema, "super_sequence/up")
+            CandidateSortAction.DOWN -> engine.getSchemaString(schema, "super_sequence/down")
+        }
+        val fallback = when (action) {
+            CandidateSortAction.PIN -> 'p'
+            CandidateSortAction.UP -> 'j'
+            CandidateSortAction.DOWN -> 'k'
+        }
+        val (keycode, mask) = parseSequenceKey(key, fallback)
+        // 顺序不能反：super_sequence 只作用于高亮候选。
+        val highlighted = if (global) engine.highlightCandidate(index)
+        else engine.highlightCandidateOnCurrentPage(index)
+        val handled = engine.processKey(keycode, mask)
+        FileLogger.i(
+            XimeInputMethodService.TAG,
+            "SortCandidate: action=$action text='$text' index=$index global=$global " +
+                "key=${key ?: "(default)"} highlighted=$highlighted handled=$handled"
+        )
+    }
+
+    /**
+     * 解析方案里的 super_sequence 键位写法（rime KeyEvent.repr 形式，如 `Control+j`）
+     * 为 librime 的 (keysym, modifier mask)。缺省/无法解析时回落到默认 Ctrl+字母。
+     */
+    private fun parseSequenceKey(expr: String?, fallbackChar: Char): Pair<Int, Int> {
+        val default = fallbackChar.code to RIME_CONTROL_MASK
+        val text = expr?.trim().orEmpty()
+        if (text.isEmpty()) return default
+        val parts = text.split("+").map { it.trim() }.filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return default
+        var mask = 0
+        for (i in 0 until parts.size - 1) {
+            when (parts[i].lowercase()) {
+                "control", "ctrl" -> mask = mask or RIME_CONTROL_MASK
+                "shift" -> mask = mask or RIME_SHIFT_MASK
+                "alt", "mod1" -> mask = mask or RIME_ALT_MASK
+                "super", "mod4", "meta" -> mask = mask or RIME_SUPER_MASK
+                "lock", "caps" -> mask = mask or RIME_LOCK_MASK
+            }
+        }
+        val keyName = parts.last()
+        val keycode = if (keyName.length == 1) {
+            keyName[0].code
+        } else {
+            when (keyName.lowercase()) {
+                "space" -> 0x20
+                "return", "enter" -> 0xFF0D
+                "tab" -> 0xFF09
+                "escape" -> 0xFF1B
+                "backspace" -> 0xFF08
+                else -> fallbackChar.code
+            }
+        }
+        return keycode to mask
     }
 
 }

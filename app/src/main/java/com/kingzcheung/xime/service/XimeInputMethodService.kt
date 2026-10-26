@@ -396,6 +396,42 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         }
     }
 
+    // ── 候选长按手动排序：方案能力探测 ──
+    // 探针结果按方案 id 缓存（方案切换 id 就变，天然失效）；部署完成时
+    // 由 deploymentCallback 清空，避免「刚给方案加上 super_sequence 但要重启才生效」。
+    private var sortProbeSchema: String = ""
+    private var sortProbeResult: Boolean = false
+
+    /**
+     * 当前方案是否启用了手动排序（engine/processors 里挂了 super_sequence）。
+     * 长按候选的「置顶 / 前移 / 后移」直接派发该 lua 的快捷键，方案没挂就只保留删除。
+     */
+    internal fun isCandidateSortAvailable(): Boolean {
+        val schema = try {
+            rimeEngine.getCurrentSchema()
+        } catch (_: Throwable) {
+            ""
+        }
+        if (schema.isEmpty()) return false
+        if (schema == sortProbeSchema) return sortProbeResult
+        val active = try {
+            rimeEngine.getSchemaList(schema, "engine/processors")
+                .any { it.contains("super_sequence") }
+        } catch (_: Throwable) {
+            false
+        }
+        sortProbeSchema = schema
+        sortProbeResult = active
+        FileLogger.i(TAG, "isCandidateSortAvailable: schema=$schema active=$active")
+        return active
+    }
+
+    /** 部署/换方案后清掉能力探针缓存。 */
+    internal fun invalidateSortProbe() {
+        sortProbeSchema = ""
+        sortProbeResult = false
+    }
+
     /** 刷新展开页的跨页全量候选；非展开态清空以省内存。编码变化与展开动作时调用 */
     internal fun refreshExpandedCandidates() {
         val needFull = keyboardViewModel.candidatePageExpanded.value ||
@@ -733,6 +769,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         )
         
         RimeEngine.setDeploymentCallback { isDeploying, message ->
+            if (!isDeploying) invalidateSortProbe()
             serviceScope.launch(Dispatchers.Main) {
                 uiState.value = uiState.value.copy(
                     isDeploying = isDeploying,
@@ -2602,6 +2639,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        // 键盘收起（含失焦收键盘）时关掉长按候选的操作层：视图会被复用，
+        // 不清会残留到下次弹出（onWindowHidden 不一定每次都走）。
+        keyboardViewModel.dismissCandidateMenu()
         // 手写模型轻量，按"用键盘时加载、键盘收起即卸载"管理：输入会话结束
         // （收起键盘/焦点离开）即释放，:inference 侧同步卸载模型；未初始化时
         // release() 幂等空操作。下次落笔由 predict 自愈或布局重建重载。
@@ -2647,6 +2687,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             keyboardViewModel.closeOverlay()
             page = keyboardViewModel.page.value
         }
+        // 长按候选的操作层（置顶/前移/后移/删除）同样是会话内的临时态，
+        // 键盘收起时一并收掉，否则下次弹出会停在浮层上。
+        keyboardViewModel.dismissCandidateMenu()
         calculatorEngine.clear()
         rimeEngine.clearComposition()
         t9PartialSegments.clear()

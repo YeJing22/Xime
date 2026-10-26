@@ -5,6 +5,24 @@ import com.kingzcheung.xime.rime.RimeComposition
 import com.kingzcheung.xime.rime.RimeProcessResult
 import com.kingzcheung.xime.viewmodel.SchemaSwitchUiState
 
+/**
+ * 候选长按手动排序动作。
+ *
+ * 不自己实现排序：直接对接方案里的 super_sequence（万象 lua），
+ * 由它把「置顶 / 前移 / 后移」落到它自己的 userdb 记录上，
+ * 与桌面端 Ctrl+p / Ctrl+j / Ctrl+k 完全同一条链路。
+ */
+enum class CandidateSortAction {
+    /** 置顶：super_sequence/pin，默认 Control+p */
+    PIN,
+
+    /** 前移一位：super_sequence/up，默认 Control+j */
+    UP,
+
+    /** 后移一位：super_sequence/down，默认 Control+k */
+    DOWN,
+}
+
 data class KeyboardCallbacks(
     val onKeyPress: (String, Boolean) -> Unit,
     val onKeyPressDown: ((String) -> Unit)? = null,
@@ -19,6 +37,18 @@ data class KeyboardCallbacks(
     val onGlobalCandidateSelect: ((Int) -> Unit)? = null,
     /** 候选展开页长按删除自造词：globalIndex 为跨页全量候选列表中的索引。 */
     val onGlobalCandidateDelete: ((Int) -> Unit)? = null,
+    /**
+     * 候选栏长按排序（index 为候选栏显示索引）：内部先高亮该候选，
+     * 再按方案 super_sequence 配置派发 Ctrl+j/k/p。
+     */
+    val onCandidateSort: ((Int, CandidateSortAction) -> Unit)? = null,
+    /** 候选展开页长按排序：globalIndex 为跨页全量索引（高亮走全局索引）。 */
+    val onGlobalCandidateSort: ((Int, CandidateSortAction) -> Unit)? = null,
+    /**
+     * 当前方案是否启用了手动排序（engine/processors 含 super_sequence）。
+     * false/未接入 = 长按仍走原来的「删除自造词」确认弹窗。
+     */
+    val isCandidateSortAvailable: (() -> Boolean)? = null,
     /** 用户展开候选页时请求服务层拉取跨页全量候选（本地分页数据源）。 */
     val onRequestExpandedCandidates: (() -> Unit)? = null,
     val onAssociationSelect: ((Int) -> Unit)? = null,

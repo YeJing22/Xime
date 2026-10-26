@@ -155,6 +155,8 @@ fun KeyboardView(
     val page by viewModel.page.collectAsStateWithLifecycle()
     val candidatePageExpanded by viewModel.candidatePageExpanded.collectAsStateWithLifecycle()
     val singleCharFilter by viewModel.singleCharFilter.collectAsStateWithLifecycle()
+    // 键盘隐藏/会话结束时服务层自增该计数，用于收掉长按操作层（见下方 LaunchedEffect）
+    val candidateMenuDismissSignal by viewModel.candidateMenuDismissSignal.collectAsStateWithLifecycle()
 
     // 候选展开页自动收起：编码删空（无候选也无联想）时不留空页。
     // 展开态是候选栏的在位扩展（非 Overlay），删除实时更新页内候选，删空即回到键盘。
@@ -353,10 +355,16 @@ fun KeyboardView(
         }
     ) {
         Box {
-        // 长按候选删除自造词：确认覆盖层状态（键盘视图内渲染，不弹独立
-        // 窗口——焦点型弹窗会抢焦点导致 IME 被系统收起）
-        // 长按删除待确认项：词文本 + 确认后执行（候选栏/展开页共用同一确认覆盖层）
-        var deletePending by remember { mutableStateOf<DeletePendingWord?>(null) }
+        // 长按候选弹出操作层：方案挂了 super_sequence 时给「置顶/前移/后移/删除」，
+        // 否则只保留原来的「删除自造词」确认。键盘视图内渲染，不弹独立窗口——
+        // 焦点型弹窗会抢焦点导致 IME 被系统收起。
+        var candidateMenu by remember { mutableStateOf<CandidateMenuTarget?>(null) }
+        // 收起键盘时自动退出操作层：IME 的视图会被系统复用（不是销毁重建），
+        // local 态不清就会「收起再打开仍停在排序浮层」。服务层在 onWindowHidden /
+        // onFinishInputView / 会话结束都会自增信号，首次组合（signal=0）不动。
+        LaunchedEffect(candidateMenuDismissSignal) {
+            if (candidateMenuDismissSignal > 0) candidateMenu = null
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -656,7 +664,7 @@ fun KeyboardView(
                             ?: normalEntry?.second
                             ?: candidateState.value.candidates.getOrNull(index)
                         if (!word.isNullOrEmpty()) {
-                            deletePending = DeletePendingWord(word) {
+                            val delete: () -> Unit = {
                                 if (railEntry != null) {
                                     callbacks.onGlobalCandidateDelete?.invoke(railEntry.first)
                                 } else if (normalEntry != null) {
@@ -669,6 +677,33 @@ fun KeyboardView(
                                     callbacks.onCandidateDelete?.invoke(index)
                                 }
                             }
+                            // 单字筛选态显示的是一份过滤后的子列表，与引擎候选页
+                            // 不同源；高亮会落到同序号的另一个候选上，故筛选态不排序。
+                            val sortable = normalEntry == null &&
+                                callbacks.isCandidateSortAvailable?.invoke() == true
+                            val barHasPrev = candidateState.value.hasPrevPage
+                            val barHasNext = candidateState.value.hasNextPage
+                            val sortHandler: ((CandidateSortAction) -> Unit)? =
+                                if (!sortable) null else { sortAction ->
+                                    if (railEntry != null) {
+                                        callbacks.onGlobalCandidateSort?.invoke(railEntry.first, sortAction)
+                                    } else {
+                                        callbacks.onCandidateSort?.invoke(index, sortAction)
+                                    }
+                                }
+                            candidateMenu = CandidateMenuTarget(
+                                word = word,
+                                supportsSort = sortable,
+                                canSortUp = if (railEntry != null) railEntry.first > 0
+                                else index > 0 || barHasPrev,
+                                canSortDown = if (railEntry != null) {
+                                    railEntry.first < candidateState.value.expandedCandidates.lastIndex
+                                } else {
+                                    index < candidateState.value.candidates.lastIndex || barHasNext
+                                },
+                                onSort = sortHandler,
+                                onDelete = delete,
+                            )
                         }
                     },
                     onClearAssociation = {
@@ -880,14 +915,27 @@ fun KeyboardView(
                             viewModel.setCandidatePageExpanded(false)
                         },
                         onCandidateLongPress = { entry ->
-                            // 长按删除自造词：与候选栏共用确认弹窗
+                            // 长按：与候选栏共用操作层；排序按跨页全局索引高亮
                             val word = candidateState.value.expandedCandidates
                                 .getOrNull(entry.globalIndex)?.text
                             if (!word.isNullOrEmpty()) {
                                 onHapticFeedback?.invoke()
-                                deletePending = DeletePendingWord(word) {
-                                    callbacks.onGlobalCandidateDelete?.invoke(entry.globalIndex)
-                                }
+                                val sortable = callbacks.isCandidateSortAvailable?.invoke() == true
+                                val sortHandler: ((CandidateSortAction) -> Unit)? =
+                                    if (!sortable) null else { sortAction ->
+                                        callbacks.onGlobalCandidateSort?.invoke(entry.globalIndex, sortAction)
+                                    }
+                                candidateMenu = CandidateMenuTarget(
+                                    word = word,
+                                    supportsSort = sortable,
+                                    canSortUp = entry.globalIndex > 0,
+                                    canSortDown = entry.globalIndex <
+                                        candidateState.value.expandedCandidates.lastIndex,
+                                    onSort = sortHandler,
+                                    onDelete = {
+                                        callbacks.onGlobalCandidateDelete?.invoke(entry.globalIndex)
+                                    },
+                                )
                             }
                         },
                         onToggleSingleCharFilter = {
@@ -1554,10 +1602,12 @@ fun KeyboardView(
             }
         }
 
-        // 长按候选删除自造词：键盘视图内确认覆盖层（同窗口不夺焦点，
-        // 避免焦点型弹窗导致 IME 被系统收起）；确认后按来源分发——
-        // 候选栏走 delete_candidate_on_current_page，展开页走全局索引删除。
-        deletePending?.let { pending ->
+        // 长按候选操作层：键盘视图内渲染（同窗口不夺焦点，避免焦点型弹窗导致
+        // IME 被系统收起）。方案挂了 super_sequence 时给「置顶/前移/后移/删除」，
+        // 三个排序动作只是把高亮候选推给该 lua 再派发它的快捷键，排序记录由 lua 落库；
+        // 方案没挂（九键/其它方案）时退回原来的「删除自造词」确认。
+        candidateMenu?.let { menu ->
+            val dismiss = { candidateMenu = null }
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -1565,46 +1615,96 @@ fun KeyboardView(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { deletePending = null },
+                    ) { dismiss() },
                 contentAlignment = Alignment.Center
             ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.widthIn(max = 300.dp),
+                    modifier = Modifier.widthIn(max = 320.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
                 ) {
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                         Text(
-                            text = "删除自造词",
+                            text = if (menu.supportsSort) "候选操作" else "删除自造词",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "将「${pending.word}」从用户词典中移除？",
+                            text = if (menu.supportsSort) {
+                                "「${menu.word}」"
+                            } else {
+                                "将「${menu.word}」从用户词典中移除？"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(12.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(onClick = {
-                                onHapticFeedback?.invoke()
-                                deletePending = null
-                            }) {
-                                Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (menu.supportsSort) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CandidateMenuAction(
+                                    label = "置顶",
+                                    enabled = true,
+                                    onClick = {
+                                        onHapticFeedback?.invoke()
+                                        dismiss()
+                                        menu.onSort?.invoke(CandidateSortAction.PIN)
+                                    }
+                                )
+                                CandidateMenuAction(
+                                    label = "前移",
+                                    enabled = menu.canSortUp,
+                                    onClick = {
+                                        onHapticFeedback?.invoke()
+                                        dismiss()
+                                        menu.onSort?.invoke(CandidateSortAction.UP)
+                                    }
+                                )
+                                CandidateMenuAction(
+                                    label = "后移",
+                                    enabled = menu.canSortDown,
+                                    onClick = {
+                                        onHapticFeedback?.invoke()
+                                        dismiss()
+                                        menu.onSort?.invoke(CandidateSortAction.DOWN)
+                                    }
+                                )
+                                CandidateMenuAction(
+                                    label = "删除",
+                                    enabled = true,
+                                    destructive = true,
+                                    onClick = {
+                                        onHapticFeedback?.invoke()
+                                        dismiss()
+                                        menu.onDelete()
+                                    }
+                                )
                             }
-                            Spacer(Modifier.width(4.dp))
-                            TextButton(onClick = {
-                                onHapticFeedback?.invoke()
-                                deletePending = null
-                                pending.onConfirm()
-                            }) {
-                                Text("删除", color = MaterialTheme.colorScheme.error)
+                        } else {
+                            Row(
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(onClick = {
+                                    onHapticFeedback?.invoke()
+                                    dismiss()
+                                }) {
+                                    Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Spacer(Modifier.width(4.dp))
+                                TextButton(onClick = {
+                                    onHapticFeedback?.invoke()
+                                    dismiss()
+                                    menu.onDelete()
+                                }) {
+                                    Text("删除", color = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }
@@ -1816,11 +1916,39 @@ fun KeyboardView(
 
 
 
-/** 长按删除待确认项：词文本 + 用户确认后执行的删除动作（候选栏/展开页共用）。 */
-private data class DeletePendingWord(
+/**
+ * 长按候选的操作层目标（候选栏/展开页共用）。
+ *
+ * [supportsSort] = 当前方案挂了 super_sequence（手动排序），此时展示
+ * 置顶/前移/后移/删除 四个动作；否则只保留删除自造词的确认。
+ * [canSortUp]/[canSortDown] 仅用于按钮置灰，真正的边界由 lua 侧夹取。
+ */
+private data class CandidateMenuTarget(
     val word: String,
-    val onConfirm: () -> Unit,
+    val supportsSort: Boolean,
+    val canSortUp: Boolean,
+    val canSortDown: Boolean,
+    val onSort: ((CandidateSortAction) -> Unit)? = null,
+    val onDelete: () -> Unit,
 )
+
+/** 操作层里的一个文字动作按钮（排序动作 / 删除）。 */
+@Composable
+private fun CandidateMenuAction(
+    label: String,
+    enabled: Boolean,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val color = when {
+        !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        destructive -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
+    TextButton(onClick = onClick, enabled = enabled) {
+        Text(label, color = color, style = MaterialTheme.typography.labelLarge)
+    }
+}
 
 /**
  * 面板类键盘（数字 / 常用符号）上的 shift / caps 键：`caps` 功能键 id 会发 "shift_caps"，

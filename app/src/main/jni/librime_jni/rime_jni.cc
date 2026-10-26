@@ -566,6 +566,37 @@ public:
         return result;
     }
 
+    // 高亮候选（不提交，全局索引）：长按排序菜单要把目标候选交给方案里的
+    // super_sequence 处理器，而 Ctrl+j/k/p 只作用于「高亮候选」，所以必须先挪高亮。
+    // 全局索引 = 跨页候选列表位置；Highlight 内部 Prepare(index+1) 会把该候选
+    // 所在页一并准备好（selected_index 是全局下标，翻页也按它算）。
+    bool highlightCandidate(int index)
+    {
+        if (!rime || !session_id_ || index < 0)
+        {
+            LOGD("highlightCandidate: invalid state, index=%d", index);
+            return false;
+        }
+        bool result = rime->highlight_candidate(session_id_, static_cast<size_t>(index));
+        LOGD("highlightCandidate: index=%d -> %d", index, result ? 1 : 0);
+        return result;
+    }
+
+    // 高亮当前页候选（页内索引）：候选栏显示索引与引擎页内索引对齐时用这条，
+    // 由 librime 自己按当前页起点换算成全局下标。
+    bool highlightCandidateOnCurrentPage(int index)
+    {
+        if (!rime || !session_id_ || index < 0)
+        {
+            LOGD("highlightCandidateOnCurrentPage: invalid state, index=%d", index);
+            return false;
+        }
+        bool result =
+            rime->highlight_candidate_on_current_page(session_id_, static_cast<size_t>(index));
+        LOGD("highlightCandidateOnCurrentPage: index=%d -> %d", index, result ? 1 : 0);
+        return result;
+    }
+
     // ---- 旁路会话：只读查询任意编码的候选，不干扰主会话组合 ----
     void destroyBypassSession()
     {
@@ -2013,6 +2044,26 @@ extern "C"
         jint index)
     {
         return Rime::Instance().deleteCandidateByGlobalIndex(index) ? JNI_TRUE : JNI_FALSE;
+    }
+
+    // 高亮候选（不提交）：长按排序菜单在派发 Ctrl+j/k/p 前把目标候选推给
+    // super_sequence；全局索引版本供候选展开页，页内索引版本供候选栏。
+    JNIEXPORT jboolean JNICALL
+    Java_com_kingzcheung_xime_rime_RimeEngine_nativeHighlightCandidate(
+        JNIEnv *env,
+        jobject thiz,
+        jint index)
+    {
+        return Rime::Instance().highlightCandidate(index) ? JNI_TRUE : JNI_FALSE;
+    }
+
+    JNIEXPORT jboolean JNICALL
+    Java_com_kingzcheung_xime_rime_RimeEngine_nativeHighlightCandidateOnCurrentPage(
+        JNIEnv *env,
+        jobject thiz,
+        jint index)
+    {
+        return Rime::Instance().highlightCandidateOnCurrentPage(index) ? JNI_TRUE : JNI_FALSE;
     }
 
     // 翻页 - 下一页

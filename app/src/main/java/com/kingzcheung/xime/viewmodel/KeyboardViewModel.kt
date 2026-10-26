@@ -151,6 +151,18 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         // 主键盘 danzi 键可随时开关只看单字，收起展开页后保持用户设置
     }
 
+    // ── 候选长按操作层（置顶/前移/后移/删除）的关闭信号 ──
+    // 浮层本身是键盘视图里的 local 状态（要携带候选索引与动作闭包，不适合进 VM），
+    // 但键盘收起/输入会话结束时必须能把它清掉：视图会被系统复用而不是销毁，
+    // 不清就会「收起键盘再打开仍停在排序浮层」。这里用自增计数广播关闭请求。
+    private val _candidateMenuDismissSignal = MutableStateFlow(0)
+    val candidateMenuDismissSignal: StateFlow<Int> = _candidateMenuDismissSignal.asStateFlow()
+
+    /** 请求键盘视图关闭长按操作层（键盘隐藏 / 会话结束）。 */
+    fun dismissCandidateMenu() {
+        _candidateMenuDismissSignal.value += 1
+    }
+
     // ── 展开页翻页联动 ──
     // 硬件键盘 DPAD 上/下经此事件流驱动展开页滚动一屏
 

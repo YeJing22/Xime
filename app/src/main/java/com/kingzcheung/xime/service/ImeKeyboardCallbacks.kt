@@ -239,6 +239,15 @@ internal fun rememberImeKeyboardCallbacks(
             onGlobalCandidateDelete = { globalIndex ->
                 service.keyRouter.deleteCandidateGlobal(globalIndex)
             },
+            // 长按候选：手动排序（置顶/前移/后移）直接派发方案里 super_sequence 的
+            // Ctrl+p / Ctrl+j / Ctrl+k，排序记录由该 lua 自己写库，App 不复制逻辑。
+            onCandidateSort = { index, action ->
+                service.keyRouter.sortCandidate(index, action)
+            },
+            onGlobalCandidateSort = { globalIndex, action ->
+                service.keyRouter.sortCandidateGlobal(globalIndex, action)
+            },
+            isCandidateSortAvailable = { service.isCandidateSortAvailable() },
             onRequestExpandedCandidates = { service.refreshExpandedCandidates() },
             onCursorMove = { direction ->
                 if (direction != 0) {
