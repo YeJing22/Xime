@@ -151,6 +151,15 @@ fun CandidateBar(
     codeEditDigitCaret: Int = -1,
     /** 编码气泡是否可点（点击进入编辑态）。false 时不上报可点区域，触摸行为不变。 */
     preeditTappable: Boolean = false,
+    /**
+     * 无编码时借用顶部气泡显示的常驻状态文案（当前只有九键造词模式用：`〔造词中〕`）。
+     *
+     * 为什么放气泡：九键造词开关只能用手势切，而 Toast 在 QQ/微信里会被输入法窗口盖住
+     * ——用户滑完看到的是"毫无反应"，据此误判功能没生效（2026-10-25 实测）。
+     * 只在**没有真实编码**时替换：有编码时气泡显示拼音，加前缀会破坏
+     * `codeIndexToPreeditCharIndex` 的字符→编码位映射（点进编码改拼音会错位）。
+     */
+    phraseBuildHint: String = "",
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = !isFloatingMode && configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -461,6 +470,11 @@ fun CandidateBar(
         // 栏内不再为编码保留布局空间——打字态与联想态的候选行共用同一垂直位置。
         preeditBubbleText = displayText
         preeditBubbleCaret = (state as? CandidateBarState.ChineseCandidates)?.preeditCaretPos ?: -1
+        // 造词模式常显提示（无编码时才借用气泡，有编码时气泡归拼音，见参数注释）
+        if (preeditBubbleText.isEmpty() && phraseBuildHint.isNotEmpty()) {
+            preeditBubbleText = phraseBuildHint
+            preeditBubbleCaret = -1
+        }
 
         Row(
             modifier = Modifier

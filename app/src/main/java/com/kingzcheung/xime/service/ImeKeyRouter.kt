@@ -1,5 +1,6 @@
 package com.kingzcheung.xime.service
 
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
@@ -30,6 +31,45 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     private companion object {
         /** 纠错插件产出候选的标注（correction_translator 的 SimpleCandidate comment）。 */
         const val CORRECTION_COMMENT = "纠错"
+
+        /** 九键造词：连按两下反引号的去抖窗口（ms）。用户习惯连按两下才「开始造词」。 */
+        const val PHRASE_BUILD_DEBOUNCE_MS = 800L
+    }
+
+    /**
+     * 九键造词模式（2026-10-25）。
+     *
+     * 为什么不用全键盘那套「`` 前缀 + add_user_dict」：九键方案挂了 `t9_processor`，
+     * 每个数字键都会用自身 digit buffer 重建引擎 input（`Context::set_input`），
+     * 任何非数字前缀（``）都会被抹掉，recognizer 永远匹配不到；而只放数字又会让
+     * 造出来的词带数字码，全键盘查不到。
+     *
+     * 所以九键走「Kotlin 侧标记 + 提交时写库」：开关只决定「这次上屏要不要落库」，
+     * 码仍由 t9_processor 转成拼音字母，落库目标由 C++ 固定为共享的 zc 用户词库
+     * （`user_dict_set` 负责召回，全键盘与九键都能查）。
+     * 关闭时完全不写库 —— 同时满足「不自动记录自造词」。
+     */
+    @Volatile
+    var t9PhraseBuild: Boolean = false
+        private set
+
+    /** 上一次造词开关的时间戳（去抖用）。 */
+    private var t9PhraseBuildToggledAt = 0L
+
+    /**
+     * 造词开关的唯一写入口：同时镜像到 [XimeInputMethodService.uiState]。
+     *
+     * 为什么必须镜像：九键没有实体反引号键，开关只能靠手势切，而 Toast 在部分宿主
+     * （QQ/微信）里会被输入法窗口盖住看不到（2026-10-25 实测：日志里 `T9 phrase build`
+     * 连续翻转三次，用户看到的却是"完全没反应"）。镜像后候选栏顶部气泡会常显
+     * 「〔造词中〕」，开关状态不再依赖 Toast。
+     */
+    private fun setT9PhraseBuild(on: Boolean) {
+        if (t9PhraseBuild == on) return
+        t9PhraseBuild = on
+        service.mainHandler.post {
+            service.uiState.value = service.uiState.value.copy(t9PhraseBuildOn = on)
+        }
     }
 
 
@@ -89,10 +129,44 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         return newCandidates to newActions
     }
 
+    /**
+     * 切换九键造词模式（反引号手势触发）。
+     *
+     * 去抖：用户习惯「连按两下反引号再开始造词」，800ms 内的第二下视为同一次操作，
+     * 否则会出现「开了又立刻关上」。隔一段时间再按则是正常关闭。
+     *
+     * 反馈走候选栏气泡（[InputUIState.t9PhraseBuildOn]），不再用 Toast：Toast 在 QQ/微信
+     * 里会被输入法窗口盖住，用户看到的是"滑了没反应"，据此误判功能没生效（2026-10-25 实测）。
+     */
+    private fun toggleT9PhraseBuild() {
+        val now = SystemClock.uptimeMillis()
+        if (now - t9PhraseBuildToggledAt < PHRASE_BUILD_DEBOUNCE_MS) return
+        t9PhraseBuildToggledAt = now
+        setT9PhraseBuild(!t9PhraseBuild)
+    }
+
+    /**
+     * 九键退格把编码删空后的收尾：复位造词标记。
+     *
+     * 不复位的话：开造词 → 打一半 → 全删 → 重新正常输入 → 上屏时会被当成
+     * 「造词上屏」写进 zc，等于把普通输入记成自造词。只在真的删掉字符并删空时
+     * 才由键盘层上报（刚切到造词模式时编码本就是空的，不触发）。
+     * 只清标记、不动词库，可在任意线程调用。
+     */
+    internal fun onT9CodeDeletedToEmpty() {
+        setT9PhraseBuild(false)
+    }
+
     internal fun handleKeyPress(key: String, isShifted: Boolean) {
         // 空键无任何按键语义，且下游 Rime 路由按 key[0] 取码（key.lowercase()[0]），
         // 空串会越界崩溃（2026-09-14 真机实证：滑动手势 commit 值为空时触发）。
         if (key.isEmpty()) return
+        // 九键造词开关：九键没有实体反引号键，用户用手势 send_rime 打 `。
+        // 这里把它解释成「切换造词模式」，不写进 rime 编码（原因见 t9PhraseBuild 注释）。
+        if (key == "`" && isT9Schema(service.uiState.value.currentSchemaId)) {
+            toggleT9PhraseBuild()
+            return
+        }
         // 任何非删除键的新输入 = 英文待处理文本不再处于「删空」状态（复位权威标记，
         // 使下一次英文输入的长按退格可正常删空后进入空闲删上屏语义）
         if (key != "delete") service.englishPendingCleared = false
@@ -813,6 +887,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
     /** 回车类按键收尾：清空候选态（enter / newline 共用），T9 方案额外复位分段选择状态。 */
     private suspend fun resetEnterLikeCandidates(schemaId: String) {
+        // 回车/换行结束本轮输入 = 放弃造词标记
+        setT9PhraseBuild(false)
         withContext(Dispatchers.Main) {
             service.candidateState.value = service.candidateState.value.copy(
                 inputText = "",
@@ -1268,10 +1344,13 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     t9SelectedCandidatePinyin = ""
                 )
             }
-            // 用户词典调频：记忆实际上屏文本（后台线程，rimeLock 保护）。
-            if (isT9 && fullCommitText.isNotEmpty() && fullCommitPinyin.isNotEmpty()) {
+            // 造词落库（后台线程，rimeLock 保护）：只有「造词模式」才写，正常打字一律不写
+            // —— 满足「不自动调频 / 不自动记录自造词」。C++ 侧固定写入共享 zc 词库。
+            if (isT9 && t9PhraseBuild && fullCommitText.isNotEmpty() && fullCommitPinyin.isNotEmpty()) {
                 service.rimeEngine.t9Memorize(fullCommitText, fullCommitPinyin)
             }
+            // 一次造词只对一个上屏结果负责：本次 full commit 后关闭造词模式。
+            if (isT9) setT9PhraseBuild(false)
             // T9 跳过了 service.rimeEngine.commit()，需显式清除 RIME composition，
             // 防止残留状态影响后续输入（在 service.keyProcessingDispatcher 上执行）。
             if (isT9) service.rimeEngine.clearComposition()
@@ -1361,6 +1440,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     private suspend fun clearInputStateForKeys() {
         service.calculatorEngine.clear()
         updateCalculatorCandidates()
+        // 清空输入 = 放弃本次造词（否则标记会残留到下一轮，误把普通上屏的词写进词库）
+        setT9PhraseBuild(false)
         service.t9PartialSegments.clear()
         service.rimeEngine.clearComposition()
         service.candidateState.value = service.candidateState.value.copy(

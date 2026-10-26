@@ -240,6 +240,10 @@ fun T9KeyboardLayout(
                     if (longPress && !stale) {
                         t9BackspaceDeletedInput = true
                     }
+                    // 编码被删空：通知服务层复位「九键造词模式」标记。
+                    // 只在本次真的删掉字符后缓冲为空时上报——刚开造词时缓冲本就是空的，
+                    // 那种情况不会走到这里（没有可删内容时 C++ 回报 NOT_CONSUMED）。
+                    if (controller.inputBuffer.isEmpty()) callbacks.onT9CodeCleared?.invoke()
                 }
             }
         }

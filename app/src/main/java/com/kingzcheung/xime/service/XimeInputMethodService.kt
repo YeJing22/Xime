@@ -1718,6 +1718,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     floatingOffsetX = state.floatingOffsetX,
                                     floatingOffsetY = state.floatingOffsetY,
                                     t9ResetSignal = state.t9ResetSignal,
+                                    t9PhraseBuildOn = state.t9PhraseBuildOn,
                                     swipeCancelEpoch = state.swipeCancelEpoch,
                                     t9RightCandidateSelectedCount = state.t9RightCandidateSelectedCount,
                                     t9SelectedCandidatePinyin = state.t9SelectedCandidatePinyin,

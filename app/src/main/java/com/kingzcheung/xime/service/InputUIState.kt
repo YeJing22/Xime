@@ -44,6 +44,12 @@ data class InputUIState(
     /** 本次 inputSessionId 变化是否为 restarting（同一编辑框刷新）：键盘 UI 据此跳过 ascii 记忆 reset。 */
     val isInputSessionRestarting: Boolean = false,
     val t9ResetSignal: Long = 0,
+    /**
+     * 九键「造词模式」是否开启（由 [ImeKeyRouter.t9PhraseBuild] 镜像，唯一写入口是
+     * 手势触发的 toggle）。候选栏据此在无编码时把顶部气泡显示为「〔造词中〕」——
+     * 九键没有实体反引号键、Toast 又会被输入法窗口盖住，不给常显状态用户无法判断开没开。
+     */
+    val t9PhraseBuildOn: Boolean = false,
     val swipeCancelEpoch: Long = 0,
     val t9RightCandidateSelectedCount: Long = 0,
     val t9SelectedCandidatePinyin: String = "",

@@ -136,6 +136,12 @@ data class KeyboardCallbacks(
     /** 退格键按下时退出单字模式 */
     var onExitSingleCharFilter: (() -> Unit)? = null,
     /**
+     * 九键退格把编码删空（数字缓冲变空）：服务层据此复位「九键造词模式」标记。
+     * 不这么做会出现：开造词 → 打一半 → 全删 → 重新正常输入 → 上屏被误当成自造词写库。
+     * 注意只在「真的删掉了一个字符且删空」时上报——刚开造词时编码本就是空的，不能算。
+     */
+    var onT9CodeCleared: (() -> Unit)? = null,
+    /**
      * T9 键盘状态变更后通知服务层刷新 UI（候选区、preedit 等）。
      * 携带 flush 后一次取回的 composition，服务层直接应用，避免内部重复 getComposition。
      */

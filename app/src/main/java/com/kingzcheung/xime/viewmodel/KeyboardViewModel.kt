@@ -86,6 +86,11 @@ data class KeyboardUiState(
     val floatingOffsetX: Int = 0,
     val floatingOffsetY: Int = 0,
     val t9ResetSignal: Long = 0L,
+    /**
+     * 九键造词模式是否开启：候选栏在无编码时把顶部气泡显示为「〔造词中〕」。
+     * 九键开关只能靠手势切，Toast 在 QQ/微信里被输入法窗口盖住看不到 → 必须常显在界面上。
+     */
+    val t9PhraseBuildOn: Boolean = false,
     val swipeCancelEpoch: Long = 0L,
     val t9RightCandidateSelectedCount: Long = 0L,
     val t9SelectedCandidatePinyin: String = "",

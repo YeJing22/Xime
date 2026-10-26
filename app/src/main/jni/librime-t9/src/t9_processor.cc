@@ -99,10 +99,33 @@ T9Processor::T9Processor(const Ticket& ticket) : Processor(ticket) {
             user_dict_->Load();
             if (dict_) user_dict_->Attach(dict_->primary_table(), dict_->prism());
         }
+        // 造词目标库 zc（2026-10-25）：与 add_user_dict / user_dict_set 翻译器的 zc 实例
+        // 共享同一个 LevelDB（组件池按 dict_name 池化），所以这里只建实例、不做 Attach。
+        // 注意不能用 Create(Ticket) —— 那读的是 translator/user_dict（=wanxiang），
+        // 而造词必须落在与全键盘共用的 zc 上。
+        // Require() 的静态类型是 Class::Component（只有 Create(Ticket)），
+        // 命名建库的 Create(name, db_class) 在 UserDictionaryComponent 上，需下转。
+        auto* dict_component = dynamic_cast<UserDictionaryComponent*>(user_dictionary);
+        if (dict_component) {
+            phrase_dict_.reset(dict_component->Create("zc", "userdb"));
+            if (phrase_dict_) {
+                // 必须 Attach：UserDictionary::UpdateEntry 依赖 TranslateCodeToString，
+                // 而后者第一行就是 `if (!table_) return false;`（还要按 table 的音节表把
+                // SyllableId 反查成拼写）。不挂表时写入会静默失败 —— 2026-10-25 首次实现
+                // 就踩了这个坑，表现为「造词后 zc 里什么都没有」。
+                if (dict_) phrase_dict_->Attach(dict_->primary_table(), dict_->prism());
+                phrase_dict_->Load();
+            } else {
+                LOG(WARNING) << "[T9Dict] phrase dict 'zc' create failed";
+            }
+        } else {
+            LOG(WARNING) << "[T9Dict] user_dictionary component cast failed";
+        }
     }
-    T9LOG("T9Processor created (integrated T1-T6), manual_delimiter='%c', leftPanelMode=%d, userDict=%s",
+    T9LOG("T9Processor created (integrated T1-T6), manual_delimiter='%c', leftPanelMode=%d, userDict=%s, phraseDict=%s",
           manual_delimiter_, static_cast<int>(left_panel_mode_),
-          (user_dict_ && user_dict_->loaded()) ? "on" : "off");
+          (user_dict_ && user_dict_->loaded()) ? "on" : "off",
+          (phrase_dict_ && phrase_dict_->loaded()) ? "on" : "off");
 }
 
 T9Processor::~T9Processor() {
@@ -718,6 +741,30 @@ bool T9Processor::WriteDictEntry(const std::string& text,
     return false;
 }
 
+bool T9Processor::WritePhraseEntry(const std::string& text,
+                                   const Code& code,
+                                   int commits) {
+    const bool ready =
+        phrase_dict_ && phrase_dict_->loaded() && !phrase_dict_->readonly();
+    if (!ready || text.empty() || code.empty()) {
+        // 成功路径完全静默，只在真的写不进去时留一行（曾因漏 Attach 静默失败一整轮排查）。
+        LOG(WARNING) << "[T9Dict] phrase write skipped: ready=" << ready
+                     << " text_len=" << text.size() << " syllables=" << code.size();
+        return false;
+    }
+    DictEntry entry;
+    entry.text = text;
+    entry.code = code;
+    // 与 WriteDictEntry 同理：zc 实例与 add_user_dict / user_dict_set 各自的实例
+    // 共享同一个 LevelDB，但 tick_ 独立缓存，写前 Load() 防 tick 倒退。
+    phrase_dict_->Load();
+    if (phrase_dict_->UpdateEntry(entry, commits))
+        return true;
+    LOG(WARNING) << "[T9Dict] phrase write failed: '" << text
+                 << "' commits=" << commits;
+    return false;
+}
+
 bool T9Processor::UpdateDictEntry(const std::string& text,
                                   const std::string& pinyin,
                                   int commits) {
@@ -755,10 +802,23 @@ bool T9Processor::MemorizeEntry(const std::string& text,
     // 召回不到重输场景（卢广仲案例：第二次输入候选列表与未学习时完全相同）。
     // 仅当拼音无法解析为音节码（英文/符号混入）时才退回数字词典。
     DictEntry entry;
-    bool userdb_ok = false;
+    // 仅 T9_ENABLE_VERBOSE_LOG 构建下被 T9_DICT_LOG 读取（默认宏展开为空）。
+    [[maybe_unused]] bool userdb_ok = false;
     const bool resolvable = BuildEntryForPinyin(text, pinyin, &entry);
     if (resolvable) {
-        userdb_ok = WriteDictEntry(text, entry.code, 1);
+        // 2026-10-25：写 zc（与全键盘共用的造词库），而非主翻译器词库 wanxiang。
+        // 原因：九键方案的 translator/enable_user_dict 为 false（用户要求关闭自动调频），
+        // 主词库即写进去也不可召回；zc 由 user_dict_set 翻译器负责前端召回，
+        // 全键盘（prism wanxiang）与九键（prism wanxiang_t9）都能查，实现造词互通。
+        // 是否写、什么时候写由 Kotlin 侧「造词模式」标记决定，本函数不再承担自动学习。
+        userdb_ok = WritePhraseEntry(text, entry.code);
+        // 记下实际写入的 (text, code)：撤销段时按此精确回滚 zc（见 ForgetEntry）。
+        if (userdb_ok) {
+            phrase_last_text_ = text;
+            phrase_last_code_ = entry.code;
+        }
+        // 不回落到主词库：主 translator 的 enable_user_dict 为 false，写进去也召不回，
+        // 只会污染 wanxiang.userdb，还会把真实失败伪装成成功。
     } else if (!text.empty() && !digits.empty()) {
         T9DigitUserDict::Instance().Memorize(digits, text, pinyin);
     }
@@ -775,19 +835,37 @@ bool T9Processor::MemorizeEntry(const std::string& text,
 bool T9Processor::ForgetEntry(const std::string& text,
                               const std::string& pinyin) {
     // 撤销段：弹出段模型中最右选捕获的 (text, code)（Kotlin 撤销段时驱动，
-    // 与段模型生命周期一致）。text + 音节数双重校验：匹配才用捕获码回滚，
-    // 否则回退拼音解析（防止写错 key 而无法真正回滚原调频条目）。
+    // 与段模型生命周期一致）。
     auto capture = undo_model_.PopLastCommitCapture();
+
+    // 造词回滚（2026-10-25）：九键唯一的写库入口是 MemorizeEntry → WritePhraseEntry(zc)，
+    // 所以只有真正写进 zc 的那个词才需要减权。用 text + 实际写入的 Code 精确比对，
+    // 不重新按拼音解析——避免写入码与回滚码不一致导致减不掉（或减错条目）。
+    // 撤销段拿到的常常是词里的一段（如造「祝庆市」时撤销「祝」），那时 zc 里没有
+    // 对应条目，直接什么都不写：既不减 zc，也不再往主词库塞 commits=-1 的脏条目
+    // （主 translator 的 enable_user_dict 已关，写进去召不回、只会被同步导出污染）。
+    if (!text.empty() && text == phrase_last_text_ && !phrase_last_code_.empty()) {
+        Code code = phrase_last_code_;
+        phrase_last_text_.clear();
+        phrase_last_code_.clear();
+        return WritePhraseEntry(text, code, -1);
+    }
+
     if (capture) {
         auto pinyin_syllables = ParseSyllables(pinyin);
         if (capture->first == text && !pinyin_syllables.empty() &&
             capture->second.size() == pinyin_syllables.size()) {
-            // T9SyllableCode → rime::Code（同型互转）
-            Code code(capture->second.begin(), capture->second.end());
-            return WriteDictEntry(text, code, -1);
+            // 捕获码与词一致但没写进过 zc：说明这次提交本就没入库（造词中途撤销一段，
+            // 整词还没上屏；或普通输入下主 translator 已关闭 enable_user_dict）。
+            // 只在捕获码确实属于「写过的库」时才减权，否则什么都不写。
+            T9LOG(">> ForgetEntry skipped (not in zc): '%s'", text.c_str());
+            return true;
         }
     }
-    return UpdateDictEntry(text, pinyin, -1);
+    // 无捕获可对：同样只清段模型状态，不往主词库写 commits=-1 的脏条目
+    // （主 translator 的 enable_user_dict 为 false，写进去召不回，只会被同步导出污染）。
+    T9LOG(">> ForgetEntry skipped (no capture): '%s'", text.c_str());
+    return true;
 }
 
 int T9Processor::QueryRimeConsumedDigits(

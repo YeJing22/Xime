@@ -190,6 +190,12 @@ private:
     bool UpdateDictEntry(const std::string& text, const std::string& pinyin, int commits);
     // 使用已解析的 Code 直接写/回滚用户词典（MemorizeEntry 的右选码捕获路径复用）。
     bool WriteDictEntry(const std::string& text, const Code& code, int commits);
+    // 造词写入/回滚：与全键盘共用的 zc 用户词库（phrase_dict_）。
+    // 与 WriteDictEntry 的区别只在目标库：WriteDictEntry 写主翻译器词库（wanxiang），
+    // 被 translator/enable_user_dict: false 屏蔽后不可见；zc 由 user_dict_set 翻译器
+    // 负责召回，全键盘/九键都能读，是实现「两键盘造词互通」的唯一落点。
+    // commits：+1 记忆（造词上屏）、-1 回滚（撤销段）。
+    bool WritePhraseEntry(const std::string& text, const Code& code, int commits = 1);
 
     // 方案 A（消费算法优化）：查询 RIME 候选的实际匹配结束位置，
     // 换算为 T9 应消费的数字位数（RIME input[0:end) 中数字字符数，跳过分隔符）。
@@ -242,6 +248,17 @@ private:
     // 由 Kotlin 在 full commit 时调用 MemorizeEntry/ForgetEntry 写入（UpdateEntry）。
     the<Dictionary> dict_;
     the<UserDictionary> user_dict_;
+    // 造词写入目标（全键盘共用的 zc 用户词库，2026-10-25）：
+    // 与 add_user_dict 翻译器的 zc 实例通过组件池共享同一个 LevelDB（按 dict_name 池化），
+    // 因此九键造出来的词全键盘立即可查，反之亦然。
+    // 必须 Attach(table, prism)：UpdateEntry → TranslateCodeToString 依赖 table_ 把
+    // SyllableId 反查成拼写，缺了会静默写失败（2026-10-25 踩过）。
+    the<UserDictionary> phrase_dict_;
+    // 最近一次写进 zc 的造词（text + 实际写入的 Code），供 ForgetEntry 精确回滚：
+    // 撤销段拿到的可能是词里的一段（如「祝」），而 zc 里只有整词条目，
+    // 按 text 比对不上就说明无需回滚（不再往主词库写 commits=-1 的脏条目）。
+    std::string phrase_last_text_;
+    Code phrase_last_code_;
     // 音节→SyllableId 映射（惰性构建，与 UserDictionary::Lookup 的 RecruitEntry
     // 构造方式一致：GetSyllabary 返回顺序即 id）。用于把拼音音节转为原生 Code。
     std::unordered_map<std::string, SyllableId> syllabary_map_;

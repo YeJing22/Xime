@@ -764,6 +764,9 @@ fun KeyboardView(
                 // 编码「点进编辑」：九键走数字位编辑，其余中文键盘走 editingCaretPos。
                 // 英文/ASCII 不接（那边的插字分支本来就不生效）。
                 preeditTappable = candidateState.value.isComposing && !state.isAsciiMode,
+                // 九键造词模式常显状态：无编码时把顶部气泡显示为「〔造词中〕」。
+                // 之前只有 Toast，而 Toast 在 QQ/微信里被输入法窗口盖住 → 用户以为手势没反应。
+                phraseBuildHint = if (state.t9PhraseBuildOn) "〔造词中〕" else "",
             )
 
             if (candidatePageExpanded) {

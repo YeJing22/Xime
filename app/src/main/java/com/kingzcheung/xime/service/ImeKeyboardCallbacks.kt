@@ -60,6 +60,11 @@ internal fun rememberImeKeyboardCallbacks(
             onCandidateSelect = { index ->
                 service.keyRouter.selectCandidate(index)
             },
+            onT9CodeCleared = {
+                // 九键退格把编码删空：复位造词标记（否则删空后重新打的正常输入，
+                // 上屏时会被当成自造词写进 zc）。只清标记，不动库。
+                service.keyRouter.onT9CodeDeletedToEmpty()
+            },
             onCandidateDelete = { index ->
                 service.keyRouter.deleteCandidate(index)
             },
