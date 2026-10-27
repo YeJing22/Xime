@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.ContentValues
 import android.content.Intent
 import android.os.Build
@@ -158,7 +162,7 @@ class HandwritingCaptureViewModel(app: android.app.Application) : AndroidViewMod
     fun exportShare() {
         viewModelScope.launch {
             if (_samples.value.isEmpty()) {
-                _events.emit(CaptureEvent.Error("暂无采集样本"))
+                _events.emit(CaptureEvent.Error(tr(R.string.s_zanwucaijiyangben)))
                 return@launch
             }
             try {
@@ -168,11 +172,11 @@ class HandwritingCaptureViewModel(app: android.app.Application) : AndroidViewMod
                     "${getApplication<android.app.Application>().packageName}.fileprovider",
                     file,
                 )
-                _events.emit(CaptureEvent.Share(uri, "Xime 手写采集数据"))
+                _events.emit(CaptureEvent.Share(uri, tr(R.string.s_xime_shouxiecaijishuju)))
             } catch (e: Exception) {
                 Log.e(TAG, "exportShare failed", e)
                 FileLogger.e(TAG, "exportShare failed", e)
-                _events.emit(CaptureEvent.Error("导出失败: ${e.message}"))
+                _events.emit(CaptureEvent.Error(tr(R.string.s_daochushibai_2, e.message)))
             }
         }
     }
@@ -180,7 +184,7 @@ class HandwritingCaptureViewModel(app: android.app.Application) : AndroidViewMod
     fun exportToDownloads() {
         viewModelScope.launch {
             if (_samples.value.isEmpty()) {
-                _events.emit(CaptureEvent.Error("暂无采集样本"))
+                _events.emit(CaptureEvent.Error(tr(R.string.s_zanwucaijiyangben)))
                 return@launch
             }
             try {
@@ -190,7 +194,7 @@ class HandwritingCaptureViewModel(app: android.app.Application) : AndroidViewMod
             } catch (e: Exception) {
                 Log.e(TAG, "exportToDownloads failed", e)
                 FileLogger.e(TAG, "exportToDownloads failed", e)
-                _events.emit(CaptureEvent.Error("保存失败: ${e.message}"))
+                _events.emit(CaptureEvent.Error(tr(R.string.s_baocunshibai_2, e.message)))
             }
         }
     }
@@ -250,9 +254,9 @@ fun HandwritingCaptureScreen(onBack: () -> Unit) {
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         clipData = android.content.ClipData.newRawUri(null, event.uri)
                     }
-                    context.startActivity(Intent.createChooser(shareIntent, "分享采集数据"))
+                    context.startActivity(Intent.createChooser(shareIntent, tr(R.string.s_fenxiangcaijishuju)))
                 }
-                is CaptureEvent.Saved -> snackbarHostState.showSnackbar("已保存到 ${event.path}")
+                is CaptureEvent.Saved -> snackbarHostState.showSnackbar(tr(R.string.s_yibaocundao, event.path))
                 is CaptureEvent.Error -> snackbarHostState.showSnackbar(event.message)
             }
         }
@@ -273,10 +277,10 @@ fun HandwritingCaptureScreen(onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("手写数据采集") },
+                title = { Text(tr(R.string.s_shouxieshujucaiji)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -284,27 +288,27 @@ fun HandwritingCaptureScreen(onBack: () -> Unit) {
                 ),
                 actions = {
                     Text(
-                        text = "已采 ${samples.size}",
+                        text = tr(R.string.s_yicai, samples.size),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 4.dp),
                     )
                     IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                        Icon(Icons.Filled.MoreVert, contentDescription = tr(R.string.s_gengduo))
                     }
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                         DropdownMenuItem(
-                            text = { Text("分享 JSON") },
+                            text = { Text(tr(R.string.s_fenxiang_json)) },
                             leadingIcon = { Icon(Icons.Filled.IosShare, contentDescription = null) },
                             onClick = { menuExpanded = false; viewModel.exportShare() },
                         )
                         DropdownMenuItem(
-                            text = { Text("保存到下载") },
+                            text = { Text(tr(R.string.s_baocundaoxiazai)) },
                             leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
                             onClick = { menuExpanded = false; viewModel.exportToDownloads() },
                         )
                         DropdownMenuItem(
-                            text = { Text("清空样本") },
+                            text = { Text(tr(R.string.s_qingkongyangben)) },
                             leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                             onClick = { menuExpanded = false; viewModel.clearAll() },
                         )
@@ -323,8 +327,8 @@ fun HandwritingCaptureScreen(onBack: () -> Unit) {
                 value = sourceText,
                 onValueChange = { sourceText = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("粘贴要采集的文本") },
-                placeholder = { Text("粘贴一段话，逐字采集笔迹") },
+                label = { Text(tr(R.string.s_zhantieyaocaijidewenben)) },
+                placeholder = { Text(tr(R.string.s_zhantieyiduanhua_zhuzicaijibiji)) },
                 singleLine = false,
                 maxLines = 2,
                 textStyle = MaterialTheme.typography.bodyMedium,
@@ -332,9 +336,9 @@ fun HandwritingCaptureScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(
                 text = if (targetChars.isEmpty()) {
-                    "共 0 个目标字"
+                    tr(R.string.s_gong_0_gemubiaozi)
                 } else {
-                    "共 ${targetChars.size} 个目标字，剩余 ${remaining.size} 个"
+                    tr(R.string.s_gong_gemubiaozi_shengyu_ge, targetChars.size, remaining.size)
                 },
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -460,15 +464,15 @@ private fun HandwritingCaptureEditor(
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    text = if (candidates.isEmpty()) "写完显示识别预览" else "识别: " +
-                        candidates.joinToString("  ") { it.char } + "  (确认后按目标字「$target」记样本)",
+                    text = if (candidates.isEmpty()) tr(R.string.s_xiewanxianshishibieyulan) else tr(R.string.s_shibie) +
+                        candidates.joinToString("  ") { it.char } + tr(R.string.s_querenhouanmubiaozi_jiyangben, target),
                     fontSize = 12.sp,
                     color = if (candidates.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onSurface,
                 )
                 if (existingCount > 0) {
                     Text(
-                        text = "已采 ${existingCount} 个样本，确认后新增第 ${existingCount + 1} 个",
+                        text = tr(R.string.s_yicai_geyangben_querenhouxinze_4269b, existingCount, existingCount + 1),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -558,7 +562,7 @@ private fun HandwritingCaptureEditor(
                 },
                 enabled = strokes.isNotEmpty(),
             ) {
-                Text("重写")
+                Text(tr(R.string.s_zhongxie))
             }
             Spacer(Modifier.width(12.dp))
             Button(
@@ -583,12 +587,12 @@ private fun HandwritingCaptureEditor(
                 enabled = strokes.isNotEmpty(),
                 modifier = Modifier.weight(1f),
             ) {
-                Text("确认并下一个")
+                Text(tr(R.string.s_querenbingxiayige))
             }
             if (existingCount > 0) {
                 Spacer(Modifier.width(12.dp))
                 TextButton(onClick = onDelete) {
-                    Text("删除该字样本", color = MaterialTheme.colorScheme.error)
+                    Text(tr(R.string.s_shanchugaiziyangben), color = MaterialTheme.colorScheme.error)
                 }
             }
         }

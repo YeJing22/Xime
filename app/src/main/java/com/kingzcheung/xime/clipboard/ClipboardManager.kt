@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.clipboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ContentResolver
@@ -270,9 +274,9 @@ class ClipboardManager private constructor(private val context: Context) {
     private fun notifyImageRejected(reason: ClipboardImageStore.RejectReason, limits: ImageLimits) {
         val message = when (reason) {
             ClipboardImageStore.RejectReason.TOO_LARGE_BYTES ->
-                "图片超过 ${limits.maxBytes / 1024 / 1024}MB，未保存到剪贴板"
+                tr(R.string.s_tupianchaoguo_mb_weibaocundaoj_71361, limits.maxBytes / 1024 / 1024)
             ClipboardImageStore.RejectReason.TOO_LARGE_DIMENSION ->
-                "图片尺寸超过 ${limits.maxEdge}px，未保存到剪贴板"
+                tr(R.string.s_tupianchicunchaoguo_px_weibaoc_b335c, limits.maxEdge)
         }
         val now = System.currentTimeMillis()
         if (now - lastRejectToastAt < REJECT_TOAST_INTERVAL_MS) return

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
@@ -94,7 +98,7 @@ fun SettingsScreen(
         composable(SettingsRoutes.SchemaImported) {
             SchemaLocalContent(
                 onBack = { navController.popBackStack() },
-                title = "已导入",
+                title = tr(R.string.s_yidaoru),
             )
         }
         composable(SettingsRoutes.ModelLocal) {

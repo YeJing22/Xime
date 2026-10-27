@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -293,7 +297,7 @@ object SchemaManifestManager {
             return@withContext UninstallResult(
                 success = false,
                 manifestExisted = false,
-                message = "清单不存在，请使用传统方式删除",
+                message = tr(R.string.s_qingdanbucunzai_qingshiyongchu_f9baa),
             )
         }
 
@@ -391,11 +395,11 @@ object SchemaManifestManager {
             UninstallResult(
                 success = true,
                 deletedFiles = deletedCount,
-                message = "已删除 $deletedCount 个文件",
+                message = tr(R.string.s_yishanchu_gewenjian, deletedCount),
             )
         } catch (e: Exception) {
             Log.e(TAG, "uninstall failed for $schemeId", e)
-            UninstallResult(success = false, message = "卸载失败: ${e.message}")
+            UninstallResult(success = false, message = tr(R.string.s_xiezaishibai, e.message))
         }
     }
 
@@ -539,7 +543,7 @@ object SchemaManifestManager {
 
                     val manifest = JSONObject().apply {
                         put("schemeId", BUILTIN_PACKAGE_ID)
-                        put("displayName", "系统内置方案")
+                        put("displayName", tr(R.string.s_xitongneizhifangan))
                         put("version", "")
                         put("installedAt", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).format(Date()))
                         put("fromMarket", false)
@@ -678,7 +682,7 @@ object SchemaManifestManager {
         } else {
             val manifest = JSONObject().apply {
                 put("schemeId", BUILTIN_PACKAGE_ID)
-                put("displayName", "系统内置方案")
+                put("displayName", tr(R.string.s_xitongneizhifangan))
                 put("version", "")
                 put("installedAt",
                     SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).format(Date()))

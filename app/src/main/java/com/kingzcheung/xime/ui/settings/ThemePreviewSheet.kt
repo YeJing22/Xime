@@ -1,5 +1,10 @@
 package com.kingzcheung.xime.ui.settings
 
+
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,7 +107,7 @@ fun ThemePreviewSheet(
                         .height(48.dp),
                     shape = RoundedCornerShape(24.dp),
                 ) {
-                    Text("取消", fontSize = 16.sp)
+                    Text(tr(R.string.s_quxiao), fontSize = 16.sp)
                 }
                 Button(
                     onClick = onApply,
@@ -111,7 +116,7 @@ fun ThemePreviewSheet(
                         .height(48.dp),
                     shape = RoundedCornerShape(24.dp),
                 ) {
-                    Text("应用", fontSize = 16.sp)
+                    Text(tr(R.string.s_yingyong), fontSize = 16.sp)
                 }
             }
         }
@@ -121,8 +126,8 @@ fun ThemePreviewSheet(
 private data class PreviewPage(val label: String, val isDark: Boolean)
 
 private val PREVIEW_PAGES = listOf(
-    PreviewPage("浅色", false),
-    PreviewPage("深色", true),
+    PreviewPage(tr(R.string.s_qianse), false),
+    PreviewPage(tr(R.string.s_shense), true),
 )
 
 @Composable
@@ -321,9 +326,9 @@ private fun ThemeKeyboardPreview(
                     ) {
                         PreviewKey("?123", specialKeyColor, specialTextColor, 1.2f,extraModifier = Modifier.padding(0.5.dp, 2.dp))
                         PreviewKey("，", keyColor, textColor, 0.8f,extraModifier = Modifier.padding(0.5.dp, 2.dp))
-                        PreviewKey("空格", keyColor, textColor, 3f, fontSize = 9.sp,extraModifier = Modifier.padding(0.5.dp, 2.dp))
-                        PreviewKey("中/En", specialKeyColor, specialTextColor, 0.8f, fontSize = 8.sp,extraModifier = Modifier.padding(0.5.dp, 2.dp))
-                        PreviewKey("确定", specialKeyColor, specialTextColor, 1.2f,extraModifier = Modifier.padding(0.5.dp, 2.dp))
+                        PreviewKey(tr(R.string.s_kongge), keyColor, textColor, 3f, fontSize = 9.sp,extraModifier = Modifier.padding(0.5.dp, 2.dp))
+                        PreviewKey(tr(R.string.s_zhong_en), specialKeyColor, specialTextColor, 0.8f, fontSize = 8.sp,extraModifier = Modifier.padding(0.5.dp, 2.dp))
+                        PreviewKey(tr(R.string.s_queding), specialKeyColor, specialTextColor, 1.2f,extraModifier = Modifier.padding(0.5.dp, 2.dp))
                     }
                 }
             }
@@ -350,7 +355,7 @@ private fun CandidateBarPreview(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PreviewCandidate(
-                text = "曦码",
+                text = tr(R.string.s_xima),
                 isSelected = true,
                 accent = accent,
                 textColor = textColor,
@@ -359,7 +364,7 @@ private fun CandidateBarPreview(
             )
             Spacer(modifier = Modifier.width(4.dp))
             PreviewCandidate(
-                text = "输入法",
+                text = tr(R.string.s_shurufa),
                 isSelected = false,
                 accent = accent,
                 textColor = textColor,

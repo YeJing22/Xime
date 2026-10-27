@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +81,7 @@ object AppInfo {
     
     val dependencies = listOf(
         LicenseItem(
-            name = "曦码",
+            name = tr(R.string.s_xima),
             license = "GPL-3.0",
             url = "https://github.com/ximeiorg/Xime"
         ),
@@ -157,7 +161,7 @@ fun AboutContent(
         if (captureTapCount >= 7) {
             captureTapCount = 0
             devUnlocked = true
-            android.widget.Toast.makeText(context, "已解锁开发者入口", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(context, tr(R.string.s_yijiesuokaifazherukou), android.widget.Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -165,12 +169,12 @@ fun AboutContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("关于") },
+                title = { Text(tr(R.string.s_guanyu)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -202,25 +206,25 @@ fun AboutContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "曦码（Xime）",
+                            text = tr(R.string.s_xima_xime),
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "基于Rime 构建，支持五笔/拼音/自定义方案。",
+                            text = tr(R.string.s_jiyurime_goujian_zhichiwubi_pi_a444c),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "版本 ${AppInfo.versionName} (${AppInfo.versionCode})",
+                            text = tr(R.string.s_banben, AppInfo.versionName, AppInfo.versionCode),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "构建: ${AppInfo.gitHash}",
+                            text = tr(R.string.s_goujian, AppInfo.gitHash),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -241,7 +245,7 @@ fun AboutContent(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "查看最新版本",
+                                text = tr(R.string.s_chakanzuixinbanben),
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -263,7 +267,7 @@ fun AboutContent(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "作者",
+                            text = tr(R.string.s_zuozhe),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -327,7 +331,7 @@ fun AboutContent(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "源代码",
+                                text = tr(R.string.s_yuandaima),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -357,7 +361,7 @@ fun AboutContent(
                     Column {
                         SettingsItem(
                             icon = Icons.TwoTone.PrivacyTip,
-                            title = "隐私策略",
+                            title = tr(R.string.s_yinsicelve),
                             onClick = onNavigateToPrivacy
                         )
                         HorizontalDivider(
@@ -367,7 +371,7 @@ fun AboutContent(
                         )
                         SettingsItem(
                             icon = Icons.TwoTone.Description,
-                            title = "开源许可证",
+                            title = tr(R.string.s_kaiyuanxukezheng),
                             onClick = onNavigateToLicenses
                         )
                         HorizontalDivider(
@@ -377,7 +381,7 @@ fun AboutContent(
                         )
                         SettingsItem(
                             icon = Icons.TwoTone.BugReport,
-                            title = "日志查看器",
+                            title = tr(R.string.s_rizhichakanqi),
                             onClick = onNavigateToLogViewer
                         )
                         HorizontalDivider(
@@ -387,7 +391,7 @@ fun AboutContent(
                         )
                         SettingsItem(
                             icon = Icons.TwoTone.Storage,
-                            title = "存储空间",
+                            title = tr(R.string.s_cunchukongjian),
                             onClick = onNavigateToStorageSpace
                         )
                         if (devUnlocked) {
@@ -398,7 +402,7 @@ fun AboutContent(
                             )
                             SettingsItem(
                                 icon = Icons.Default.Code,
-                                title = "开发者选项",
+                                title = tr(R.string.s_kaifazhexuanxiang),
                                 onClick = onNavigateToDeveloper
                             )
                         }
@@ -410,7 +414,7 @@ fun AboutContent(
                             )
                             SettingsItem(
                                 icon = Icons.TwoTone.BugReport,
-                                title = "调试日志",
+                                title = tr(R.string.s_diaoshirizhi),
                                 onClick = {},
                                 trailing = {
                                     Switch(
@@ -442,13 +446,13 @@ fun AboutContent(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "设备信息",
+                            text = tr(R.string.s_shebeixinxi),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        InfoRow(label = "系统版本", value = AppInfo.androidVersion)
-                        InfoRow(label = "设备型号", value = AppInfo.deviceModel)
+                        InfoRow(label = tr(R.string.s_xitongbanben), value = AppInfo.androidVersion)
+                        InfoRow(label = tr(R.string.s_shebeixinghao), value = AppInfo.deviceModel)
                     }
                 }
             }
@@ -523,12 +527,12 @@ fun PrivacyPolicyContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("隐私策略") },
+                title = { Text(tr(R.string.s_yinsicelve)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -555,45 +559,45 @@ fun PrivacyPolicyContent(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "曦码隐私策略",
+                            text = tr(R.string.s_ximayinsicelve),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         PrivacySection(
-                            title = "数据收集",
-                            content = "曦码不收集任何个人身份信息。您的输入内容仅用于提供输入法功能，不会被上传到服务器或分享给第三方。"
+                            title = tr(R.string.s_shujushouji),
+                            content = tr(R.string.s_ximabushoujirenhegerenshenfenx_7e0f8)
                         )
                         
                         PrivacySection(
-                            title = "本地存储",
-                            content = "曦码将用户设置、用户词库和剪贴板历史存储在您的设备本地，不会上传到云端。您可以随时清除这些数据。"
+                            title = tr(R.string.s_bendicunchu),
+                            content = tr(R.string.s_ximajiangyonghushezhi_yonghuci_e9dfb)
                         )
                         
                         PrivacySection(
-                            title = "网络权限",
-                            content = "曦码需要网络权限用于下载联想模型。下载完成后，模型将在本地运行，您的输入内容不会被上传。"
+                            title = tr(R.string.s_wangluoquanxian),
+                            content = tr(R.string.s_ximaxuyaowangluoquanxianyongyu_5544d)
                         )
                         
                         PrivacySection(
-                            title = "输入内容",
-                            content = "您的所有输入内容仅保存在本地设备上。曦码使用开源的 Rime 输入引擎，所有处理均在本地完成。"
+                            title = tr(R.string.s_shuruneirong),
+                            content = tr(R.string.s_nindesuoyoushuruneirongjinbaoc_31812)
                         )
                         
                         PrivacySection(
-                            title = "剪贴板",
-                            content = "剪贴板功能仅在您的设备本地运行。您可以随时查看、删除或清除剪贴板历史记录。"
+                            title = tr(R.string.s_jiantieban),
+                            content = tr(R.string.s_jiantiebangongnengjinzainindes_cfa37)
                         )
                         
                         PrivacySection(
-                            title = "开源",
-                            content = "曦码是开源软件，源代码公开可审计。您可以在 GitHub 上查看完整源代码。"
+                            title = tr(R.string.s_kaiyuan),
+                            content = tr(R.string.s_ximashikaiyuanruanjian_yuandai_3c8a7)
                         )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "更新日期：2026年4月",
+                            text = tr(R.string.s_gengxinriqi_2026nian4yue),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -633,12 +637,12 @@ fun LicensesContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("开源许可证") },
+                title = { Text(tr(R.string.s_kaiyuanxukezheng)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },

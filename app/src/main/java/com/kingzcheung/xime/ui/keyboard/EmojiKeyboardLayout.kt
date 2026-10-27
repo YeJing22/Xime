@@ -1,5 +1,11 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.i18n.localizeData
+
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -93,7 +99,7 @@ fun EmojiKeyboardLayout(
     val recentEmojis = remember {
         RecentUsageStore.get(context, RecentUsageStore.KEY_RECENT_EMOJIS)
     }
-    val recentCategory = EmojiCategory(name = "最近使用", icon = "🕘", emojis = recentEmojis)
+    val recentCategory = EmojiCategory(name = tr(R.string.s_zuijinshiyong), icon = "🕘", emojis = recentEmojis)
     val displayBuiltinCategories = remember(builtinCategories) {
         listOf(recentCategory) + builtinCategories
     }
@@ -157,7 +163,7 @@ fun EmojiKeyboardLayout(
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowLeft,
-                        contentDescription = "返回",
+                        contentDescription = tr(R.string.s_fanhui),
                         tint = textColor,
                         modifier = Modifier.size(24.dp)
                     )
@@ -337,13 +343,13 @@ fun EmojiKeyboardLayout(
                                             if (success) {
                                                 Toast.makeText(
                                                     context,
-                                                    "已复制表情，可粘贴发送",
+                                                    tr(R.string.s_yifuzhibiaoqing_kezhantiefasong),
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             } else {
                                                 Toast.makeText(
                                                     context,
-                                                    "复制失败",
+                                                    tr(R.string.s_fuzhishibai),
                                                     Toast.LENGTH_SHORT
                                                 ).show()
                                             }
@@ -369,7 +375,7 @@ fun EmojiKeyboardLayout(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "暂无最近使用",
+                        text = tr(R.string.s_zanwuzuijinshiyong),
                         color = textColor.copy(alpha = 0.5f),
                         fontSize = 14.sp
                     )
@@ -429,7 +435,7 @@ fun EmojiKeyboardLayout(
                         if (category.isPlugin) {
                             // 插件子分类：显示分类名，不用 pluginIcon（那是插件级图标）
                             EmojiCategoryTab(
-                                icon = category.name,
+                                icon = localizeData(category.name),
                                 pluginIcon = null,
                                 isSelected = index == selectedSubCategoryIndex,
                                 onClick = {
@@ -463,7 +469,7 @@ fun EmojiKeyboardLayout(
             }
 
             KeyButton(
-                text = "删除",
+                text = tr(R.string.s_shanchu),
                 onClick = { onEmojiSelect("delete") },
                 backgroundColor = backgroundColor,
                 textColor = textColor,

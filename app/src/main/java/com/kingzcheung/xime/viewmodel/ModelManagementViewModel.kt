@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -185,7 +189,7 @@ class ModelManagementViewModel(application: Application) : AndroidViewModel(appl
                     )
                 }
                 if (downloaded) {
-                    _uiState.update { s -> s.copy(toastMessage = "模型下载完成") }
+                    _uiState.update { s -> s.copy(toastMessage = tr(R.string.s_moxingxiazaiwancheng)) }
                     // 下载/更新成功立即重算可更新计数（Tab 角标与设置主页角标实时刷新）
                     MarketUpdateChecker.refreshNow(context)
                 }
@@ -208,7 +212,7 @@ class ModelManagementViewModel(application: Application) : AndroidViewModel(appl
                         it.copy(isDownloaded = false, diskSize = 0, installedVersion = null)
                     }
                 }
-                _uiState.update { s -> s.copy(toastMessage = "模型已删除") }
+                _uiState.update { s -> s.copy(toastMessage = tr(R.string.s_moxingyishanchu)) }
                 // 删除后该项不再计入可更新，立即重算角标
                 MarketUpdateChecker.refreshNow(context)
             }

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.text.format.Formatter
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,7 +92,7 @@ fun StorageSpaceScreen(
     pendingClear?.let { target ->
         AlertDialog(
             onDismissRequest = { pendingClear = null },
-            title = { Text("清理${target.title}") },
+            title = { Text(tr(R.string.s_qingli, target.title)) },
             text = { Text(clearConfirmText(target.id)) },
             confirmButton = {
                 TextButton(
@@ -96,10 +100,10 @@ fun StorageSpaceScreen(
                         viewModel.clear(target.id, target.title)
                         pendingClear = null
                     }
-                ) { Text("清理") }
+                ) { Text(tr(R.string.s_qingli_2)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingClear = null }) { Text("取消") }
+                TextButton(onClick = { pendingClear = null }) { Text(tr(R.string.s_quxiao)) }
             }
         )
     }
@@ -108,12 +112,12 @@ fun StorageSpaceScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("存储空间") },
+                title = { Text(tr(R.string.s_cunchukongjian)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -140,7 +144,7 @@ fun StorageSpaceScreen(
                 ) {
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                         Text(
-                            text = "数据目录占用",
+                            text = tr(R.string.s_shujumuluzhanyong),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -150,7 +154,7 @@ fun StorageSpaceScreen(
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "正在扫描…",
+                                    text = tr(R.string.s_zhengzaisaomiao),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -164,7 +168,7 @@ fun StorageSpaceScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "仅统计应用数据目录，不含应用本体",
+                                text = tr(R.string.s_jintongjiyingyongshujumulu_buh_06782),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -246,7 +250,7 @@ fun StorageSpaceScreen(
                                                 strokeWidth = 2.dp
                                             )
                                         } else {
-                                            Text("清理")
+                                            Text(tr(R.string.s_qingli_2))
                                         }
                                     }
                                 }
@@ -272,20 +276,20 @@ private fun categoryIcon(id: String): ImageVector = when (id) {
 }
 
 /** 剪贴板类目清理确认文案（清理剪贴板历史的唯一入口：关于 → 存储空间）。 */
-internal const val CLIPBOARD_CLEAR_CONFIRM_TEXT =
-    "将清空本地剪贴板历史记录与已复制的图片（保留快捷发送与置顶内容），且不可恢复。确定继续吗？"
+internal fun clipboardClearConfirmText(): String =
+    tr(R.string.s_jiangqingkongbendijiantiebanli_c4244)
 
 private fun clearConfirmText(id: String): String = when (id) {
     StorageStats.ID_MODELS ->
-        "将删除所有已下载的离线模型（联想 / 手写 / 语音识别），对应功能在重新下载模型前不可用。确定继续吗？"
+        tr(R.string.s_jiangshanchusuoyouyixiazaideli_16cee)
     StorageStats.ID_SCHEMA_CACHE ->
-        "将删除输入方案的编译缓存与编译日志，不会影响词库和自定义配置；下次启动输入法时会自动重新编译。确定继续吗？"
+        tr(R.string.s_jiangshanchushurufangandebiany_b1f06)
     StorageStats.ID_MARKET_PACKAGES ->
-        "将删除方案市场中已下载的安装包（内置方案除外）。已安装的方案不受影响，但重新安装时需要重新下载。确定继续吗？"
-    StorageStats.ID_CLIPBOARD -> CLIPBOARD_CLEAR_CONFIRM_TEXT
+        tr(R.string.s_jiangshanchufanganshichangzhon_72ec1)
+    StorageStats.ID_CLIPBOARD -> clipboardClearConfirmText()
     StorageStats.ID_LOGS ->
-        "将删除历史运行日志（保留当日日志）。确定继续吗？"
+        tr(R.string.s_jiangshanchulishiyunxingrizhi_83024)
     StorageStats.ID_CACHE ->
-        "将删除图片与临时文件缓存，清理后首次加载会稍慢。确定继续吗？"
-    else -> "确定清理吗？"
+        tr(R.string.s_jiangshanchutupianyulinshiwenj_f20ba)
+    else -> tr(R.string.s_quedingqinglima)
 }

@@ -1,5 +1,11 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.i18n.localizeData
+
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -79,7 +85,7 @@ fun SymbolKeyboardLayout(
         RecentUsageStore.get(context, RecentUsageStore.KEY_RECENT_SYMBOLS)
     }
     val displayCategories = remember {
-        listOf(SymbolCategory(name = "最近使用", id = "recentSymbols", symbols = recentSymbols)) +
+        listOf(SymbolCategory(name = tr(R.string.s_zuijinshiyong), id = "recentSymbols", symbols = recentSymbols)) +
             SymbolData.categories
     }
     // 图标按钮容器色 = 功能键底色（与面板的返回/删除键同色，不再自造 lerp 色调）
@@ -127,7 +133,7 @@ fun SymbolKeyboardLayout(
             ) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowLeft,
-                    contentDescription = "返回",
+                    contentDescription = tr(R.string.s_fanhui),
                     tint = textColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -155,7 +161,7 @@ fun SymbolKeyboardLayout(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "暂无最近使用",
+                            text = tr(R.string.s_zanwuzuijinshiyong),
                             color = textColor.copy(alpha = 0.5f),
                             fontSize = 14.sp
                         )
@@ -213,7 +219,7 @@ fun SymbolKeyboardLayout(
             ) {
                 displayCategories.forEachIndexed { index, category ->
                     SymbolCategoryTab(
-                        name = category.name,
+                        name = localizeData(category.name),
                         isSelected = index == pagerState.currentPage,
                         onClick = {
                             onHapticFeedback?.invoke()
@@ -227,7 +233,7 @@ fun SymbolKeyboardLayout(
             }
 
             KeyButton(
-                text = "删除",
+                text = tr(R.string.s_shanchu),
                 onClick = { onSelect("delete") },
                 backgroundColor = specialKeyBgColor,
                 textColor = specialKeyTextColor,

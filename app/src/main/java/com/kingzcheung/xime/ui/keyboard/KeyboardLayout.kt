@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.i18n.tr
+
 import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -53,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import com.kingzcheung.xime.correction.KeyTapLogger
+import com.kingzcheung.xime.R
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.isTablet
 import com.kingzcheung.xime.settings.DisplayMode
@@ -88,6 +91,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -176,7 +180,7 @@ fun KeyboardLayout(
         // 语音转文本开关关闭时不响应任何语音入口
         if (isSttEnabled) {
             if (!PermissionHelper.hasRecordAudioPermission(context)) {
-                Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, tr(R.string.s_xuyaomaikefengquanxiancainengs_3b6e4), Toast.LENGTH_SHORT).show()
                 PermissionHelper.requestRecordAudioPermission(context)
             } else {
                 onVoiceModeChange?.invoke(true)
@@ -403,7 +407,7 @@ fun KeyboardLayout(
             ) {
                 Icon(
                     imageVector = Icons.Default.Mic,
-                    contentDescription = "语音输入",
+                    contentDescription = tr(R.string.s_yuyinshuru),
                     tint = keyTextColor.copy(alpha = 0.6f),
                     modifier = Modifier.size(64.dp)
                 )
@@ -924,6 +928,8 @@ internal fun FunctionKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier) 
         // 面板专用功能键（数字/常用符号键盘；行为内置，与旧硬编码面板一致）
         "back" -> PanelBackCell(env, modifier)
         "back_right" -> PanelBackCell(env, modifier, id = "back_right")
+        // 我方：数字面板「123」键用 KeyButton 渲染，才能吃到自定义边框/阴影/圆角配置
+        // （官方 3.4.0 改回 PanelTextCell 并接了 i18n，此处保留我方渲染方式）
         "number" -> KeyButton(
             text = "123",
             onClick = { env.onGestureAction?.invoke(GestureAction.SWITCH_ROUTE, "number") },
@@ -935,9 +941,9 @@ internal fun FunctionKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier) 
             shadowElevation = env.shadowElevation,
             shadowShapeRadius = env.shadowShapeRadius,
         )
-        "open_symbols" -> PanelTextCell("open_symbols", "符号", "symbol", special = true, env, modifier)
-        "space_bar" -> PanelTextCell("space_bar", "空格", "space", special = true, env, modifier)
-        "space_key" -> PanelTextCell("space_key", "空格", "space", special = false, env, modifier)
+        "open_symbols" -> PanelTextCell("open_symbols", stringResource(R.string.keyboard_symbol), "symbol", special = true, env, modifier)
+        "space_bar" -> PanelTextCell("space_bar", stringResource(R.string.keyboard_space), "space", special = true, env, modifier)
+        "space_key" -> PanelTextCell("space_key", stringResource(R.string.keyboard_space), "space", special = false, env, modifier)
         else -> FileLogger.w("XimeKeyboard", "功能键 id \"$id\" 没有对应组件，该键不会显示：请改用受支持的 id")
     }
 }
@@ -990,10 +996,10 @@ private fun PanelActionCell(
             }
         },
         a11yDescription = when (id) {
-            "symbol" -> "符号"
-            "emoji" -> "表情"
-            "voice" -> "语音输入"
-            "tab" -> "Tab 键"
+            "symbol" -> tr(R.string.s_fuhao)
+            "emoji" -> tr(R.string.s_biaoqing)
+            "voice" -> tr(R.string.s_yuyinshuru)
+            "tab" -> tr(R.string.s_tab_jian)
             else -> null
         },
         onPress = { env.onKeyPressDown?.invoke(value) },
@@ -1037,7 +1043,7 @@ private fun CursorMoveCell(direction: Int, env: QwertyRowEnv, modifier: Modifier
         backgroundColor = env.specialKeyBackgroundColor,
         iconColor = env.specialKeyTextColor,
         modifier = modifier,
-        a11yDescription = if (direction < 0) "光标左移" else "光标右移",
+        a11yDescription = if (direction < 0) tr(R.string.s_guangbiaozuoyi) else tr(R.string.s_guangbiaoyouyi),
         onSwipe = gestures.onUp,
         onSwipeDown = gestures.onDown,
         onSwipeLeft = gestures.onLeft,
@@ -1145,8 +1151,8 @@ private fun CapsCell(env: QwertyRowEnv, modifier: Modifier) {
         iconColor = env.specialKeyTextColor,
         modifier = modifier,
         isHighlighted = isCaps,
-        a11yDescription = "大写锁定",
-        a11yState = if (isCaps) "已锁定" else "未锁定",
+        a11yDescription = tr(R.string.s_daxiesuoding),
+        a11yState = if (isCaps) tr(R.string.s_yisuoding) else tr(R.string.s_weisuoding),
         onSwipe = capsGestures.onUp,
         onSwipeDown = capsGestures.onDown,
         onSwipeLeft = capsGestures.onLeft,
@@ -1282,8 +1288,8 @@ private fun DeleteCell(env: QwertyRowEnv, modifier: Modifier) {
     val delTap = delBinding?.tap ?: KeyAction(GestureAction.DELETE)
     val delLong = delBinding?.longPress?.values?.firstOrNull()
         ?: KeyAction(GestureAction.DELETE)
-    val delUp = delBinding?.swipeUp ?: KeyAction(GestureAction.CLEAR_ALL, label = "上滑清空")
-    val delDown = delBinding?.swipeDown ?: KeyAction(GestureAction.UNDO_CLEAR, label = "下滑撤回")
+    val delUp = delBinding?.swipeUp ?: KeyAction(GestureAction.CLEAR_ALL, label = tr(R.string.s_shanghuaqingkong))
+    val delDown = delBinding?.swipeDown ?: KeyAction(GestureAction.UNDO_CLEAR, label = tr(R.string.s_xiahuachehui))
     val delLeft = delBinding?.swipeLeft ?: KeyAction(GestureAction.COMMAND, "clear_composition")
     val delRight = delBinding?.swipeRight ?: KeyAction(GestureAction.COMMAND, "clear_composition")
     SwipeableIconKeyButton(
@@ -1292,8 +1298,8 @@ private fun DeleteCell(env: QwertyRowEnv, modifier: Modifier) {
         backgroundColor = env.specialKeyBackgroundColor,
         iconColor = env.specialKeyTextColor,
         modifier = modifier,
-        a11yDescription = "退格",
-        swipeText = delRight.label.ifEmpty { "清空" },
+        a11yDescription = tr(R.string.s_tuige),
+        swipeText = delRight.label.ifEmpty { tr(R.string.s_qingkong) },
         onSwipe = { invokeKeyAction(delRight, env.onKeyPress, env.onCommitText, env.onGestureAction) },
         onLongClick = { invokeKeyAction(delLong, env.onKeyPress, env.onCommitText, env.onGestureAction) },
         onPress = { env.onKeyPressDown?.invoke("delete") },
@@ -1430,8 +1436,8 @@ private fun CommaCell(env: QwertyRowEnv, modifier: Modifier) {
             backgroundColor = env.keyBackgroundColor,
             iconColor = env.keyTextColor,
             modifier = modifier,
-            a11yDescription = "中英切换",
-            a11yState = if (env.isAsciiMode) "当前英文" else "当前中文",
+            a11yDescription = tr(R.string.s_zhongyingqiehuan),
+            a11yState = if (env.isAsciiMode) tr(R.string.s_dangqianyingwen) else tr(R.string.s_dangqianzhongwen),
             onSwipe = k2Gestures.onUp,
             onSwipeDown = k2Gestures.onDown,
             onSwipeLeft = k2Gestures.onLeft,
@@ -1482,7 +1488,7 @@ private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
     val k4TapAction = k4KeyGesture?.tap?.action
     val isEarthDefaultTap = k4KeyGesture?.tap == null
     val k4TapValue = k4KeyGesture?.tap?.value?.takeIf { it.isNotEmpty() } ?: "ime_switch"
-    val k4TapLabel = k4KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() } ?: "中"
+    val k4TapLabel = k4KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() } ?: tr(R.string.s_zhong)
     val k4Icon: Painter? = k4KeyGesture?.tap?.icon?.takeIf { it.isNotEmpty() }?.let { iconName ->
         val iv = when (iconName) {
             "language", "globe" -> Icons.Default.Language
@@ -1558,8 +1564,8 @@ private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
             backgroundColor = env.keyBackgroundColor,
             iconColor = env.keyTextColor,
             modifier = modifier,
-            a11yDescription = "中英切换",
-            a11yState = if (env.isAsciiMode) "当前英文" else "当前中文",
+            a11yDescription = tr(R.string.s_zhongyingqiehuan),
+            a11yState = if (env.isAsciiMode) tr(R.string.s_dangqianyingwen) else tr(R.string.s_dangqianzhongwen),
             onSwipe = k4Gestures.onUp,
             onSwipeDown = k4Gestures.onDown,
             onSwipeLeft = k4Gestures.onLeft,
@@ -1979,11 +1985,11 @@ private fun ShiftCapsKeyButton(
             )
             .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape)
             .keySemantics(
-                "大小写切换",
+                tr(R.string.s_daxiaoxieqiehuan),
                 when (shiftMode) {
-                    ShiftMode.CAPS -> "大写锁定"
-                    ShiftMode.SINGLE -> "大写"
-                    ShiftMode.OFF -> "小写"
+                    ShiftMode.CAPS -> tr(R.string.s_daxiesuoding)
+                    ShiftMode.SINGLE -> tr(R.string.s_daxie)
+                    ShiftMode.OFF -> tr(R.string.s_xiaoxie)
                 },
             ) {
                 if (currentOnTap != null) currentOnTap?.invoke() else onKeyPress("shift_single")
@@ -2324,7 +2330,7 @@ private fun SpaceKey(
                         } else if (isSttEnabled) {
                             // 语音转文本开关关闭时长按不触发语音
                             if (!PermissionHelper.hasRecordAudioPermission(context)) {
-                                Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, tr(R.string.s_xuyaomaikefengquanxiancainengs_3b6e4), Toast.LENGTH_SHORT).show()
                                 PermissionHelper.requestRecordAudioPermission(context)
                             } else {
                                 currentOnVoiceModeChange?.invoke(true)
@@ -2359,9 +2365,9 @@ private fun SpaceKey(
                 RoundedCornerShape(LocalKeyCornerRadius.current))
             .keySemantics(
                 when {
-                    voiceSticky -> "轻触结束语音"
-                    isVoiceMode -> "语音输入"
-                    else -> "空格"
+                    voiceSticky -> tr(R.string.s_qingchujieshuyuyin)
+                    isVoiceMode -> tr(R.string.s_yuyinshuru)
+                    else -> tr(R.string.s_kongge)
                 },
                 null,
             ) {
@@ -2373,7 +2379,7 @@ private fun SpaceKey(
         when {
             voiceSticky -> {
                 Text(
-                    text = "轻触结束语音",
+                    text = tr(R.string.s_qingchujieshuyuyin),
                     color = keyTextColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
@@ -2384,7 +2390,7 @@ private fun SpaceKey(
             isVoiceMode -> {
                 Icon(
                     imageVector = Icons.Default.Mic,
-                    contentDescription = "语音输入",
+                    contentDescription = tr(R.string.s_yuyinshuru),
                     tint = keyTextColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -2403,13 +2409,13 @@ private fun SpaceKey(
                 if (isSttEnabled) {
                     Icon(
                         painter = painterResource(com.kingzcheung.xime.R.drawable.voice),
-                        contentDescription = "语音输入",
+                        contentDescription = tr(R.string.s_yuyinshuru),
                         tint = keyTextColor.copy(alpha = 0.3f),
                         modifier = Modifier.size(18.dp).align(Alignment.BottomStart).padding(start = 6.dp, bottom = 2.dp)
                     )
                 } else {
                     Text(
-                        text = "空格",
+                        text = tr(R.string.s_kongge),
                         color = keyTextColor.copy(alpha = 0.3f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Normal,

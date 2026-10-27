@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -29,9 +33,9 @@ data class LocalPackageItem(
     val isImport: Boolean get() = packageId.startsWith("import_")
     val statusLabel: String
         get() = when {
-            installed && downloaded -> "已安装"
-            installed -> "已安装"
-            downloaded -> "已下载"
+            installed && downloaded -> tr(R.string.s_yianzhuang)
+            installed -> tr(R.string.s_yianzhuang)
+            downloaded -> tr(R.string.s_yixiazai)
             else -> ""
         }
 }
@@ -131,7 +135,7 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SchemaLocalViewModel", "installPackage exception", e)
-                InstallFromDirResult(success = false, failureReason = "安装异常: ${e.message}")
+                InstallFromDirResult(success = false, failureReason = tr(R.string.s_anzhuangyichang, e.message))
             }
             if (result.success) {
                 // 装完即部署，用户常忘记点「部署」
@@ -139,10 +143,10 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                 val deployed = deployAfterInstall()
                 _uiState.update { st -> st.copy(installingId = null, phase = null) }
                 val msg = buildString {
-                    append(if (deployed) "已安装「${item.displayName}」并完成部署"
-                           else "已安装「${item.displayName}」，请点「部署」生效")
+                    append(if (deployed) tr(R.string.s_yianzhuang_bingwanchengbushu, item.displayName)
+                           else tr(R.string.s_yianzhuang_qingdian_bushu_shen_cf341, item.displayName))
                     if (result.parseFailures.isNotEmpty()) {
-                        append("\n以下方案解析失败：")
+                        append(tr(R.string.s_nyixiafanganjiexishibai))
                         result.parseFailures.forEach { append("\n  · $it") }
                     }
                 }
@@ -169,7 +173,7 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                 }
             } else {
                 _uiState.update { st -> st.copy(installingId = null, phase = null) }
-                showToast(result.failureReason ?: "安装失败")
+                showToast(result.failureReason ?: tr(R.string.s_anzhuangshibai))
             }
             loadLocalPackages()
         }
@@ -198,7 +202,7 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                     _uiState.update {
                         it.copy(installingId = null, phase = null, conflictPackageId = null, conflictingSchemeIds = emptyList())
                     }
-                    showToast("卸载冲突方案「$sid」失败，安装已取消")
+                    showToast(tr(R.string.s_xiezaichongtufangan_shibai_anz_ab29f, sid))
                     loadLocalPackages()
                     return@launch
                 }
@@ -215,7 +219,7 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SchemaLocalViewModel", "confirmInstallWithUninstall exception", e)
-                InstallFromDirResult(success = false, failureReason = "安装异常: ${e.message}")
+                InstallFromDirResult(success = false, failureReason = tr(R.string.s_anzhuangyichang, e.message))
             }
             if (result.success) {
                 _uiState.update { st -> st.copy(phase = LocalPackagePhase.DEPLOYING) }
@@ -224,10 +228,10 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                     st.copy(installingId = null, phase = null, conflictingSchemeIds = emptyList())
                 }
                 val msg = buildString {
-                    append(if (deployed) "已安装「${item.displayName}」并完成部署"
-                           else "已安装「${item.displayName}」，请点「部署」生效")
+                    append(if (deployed) tr(R.string.s_yianzhuang_bingwanchengbushu, item.displayName)
+                           else tr(R.string.s_yianzhuang_qingdian_bushu_shen_cf341, item.displayName))
                     if (result.parseFailures.isNotEmpty()) {
-                        append("\n以下方案解析失败：")
+                        append(tr(R.string.s_nyixiafanganjiexishibai))
                         result.parseFailures.forEach { append("\n  · $it") }
                     }
                 }
@@ -237,9 +241,11 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                 val reason = if (result.failureReason != null) {
                     result.failureReason
                 } else if (result.conflicts.isNotEmpty()) {
-                    result.conflicts.joinToString("、") { "${it.fileName}（已被 ${it.claimedBy.joinToString("、")} 使用）" }
+                    result.conflicts.joinToString("、") { conflict ->
+                        tr(R.string.s_wenjian_chongtu_shiyong, conflict.fileName, conflict.claimedBy.joinToString("、"))
+                    }
                 } else {
-                    "安装失败"
+                    tr(R.string.s_anzhuangshibai)
                 }
                 showToast(reason)
             }
@@ -257,13 +263,13 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun deleteDownloaded(item: LocalPackageItem) {
-        if (item.packageId == "builtin") { showToast("内置方案不可删除"); return }
+        if (item.packageId == "builtin") { showToast(tr(R.string.s_neizhifanganbukeshanchu)); return }
         viewModelScope.launch {
             val ok = withContext(Dispatchers.IO) {
                 val dir = SchemaManager.getMarketDir(context, item.packageId)
                 if (dir.exists()) { dir.deleteRecursively(); true } else false
             }
-            showToast(if (ok) "已删除" else "删除失败")
+            showToast(if (ok) tr(R.string.s_yishanchu_2) else tr(R.string.s_shanchushibai))
             if (ok) MarketUpdateChecker.refreshNow(context)
             loadLocalPackages()
         }
@@ -284,7 +290,7 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
                     SchemaManager.cleanRimeDir(context)
                 }
             }
-            showToast("已卸载")
+            showToast(tr(R.string.s_yixiezai))
             MarketUpdateChecker.refreshNow(context)
             loadLocalPackages()
         }

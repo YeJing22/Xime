@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.speech
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import com.kingzcheung.xime.service.AsrInferenceClient
 import com.kingzcheung.xime.util.FileLogger
@@ -18,8 +22,8 @@ class OfflineAsrBackend(private val context: Context) : AsrBackend {
     }
 
     override val name: String
-        get() = AsrModelManager(context).getSelectedModelInfo()?.let { "${it.name}（离线）" }
-            ?: "本地离线识别"
+        get() = AsrModelManager(context).getSelectedModelInfo()?.let { tr(R.string.s_lixian, it.name) }
+            ?: tr(R.string.s_bendilixianshibie)
 
     private val client = AsrInferenceClient(context)
     private var initialized = false
@@ -90,7 +94,7 @@ class OfflineAsrBackend(private val context: Context) : AsrBackend {
             val modelManager = AsrModelManager(context)
             if (!modelManager.isModelReady()) {
                 FileLogger.e(TAG, "ASR model not downloaded")
-                errorCallback?.invoke("离线语音模型未下载，请在设置中先下载")
+                errorCallback?.invoke(tr(R.string.s_lixianyuyinmoxingweixiazai_qin_5346e))
                 return false
             }
             // 每次会话开始都重新 startAsr：服务端会 nativeReset 并重设回调，

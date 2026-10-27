@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -78,7 +82,7 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
         val enabled = _uiState.value.enabledSchemas.toMutableList()
         if (schema.schemaId in enabled) {
             if (enabled.size <= 1) {
-                showToast("至少启用一个方案")
+                showToast(tr(R.string.s_zhishaoqiyongyigefangan))
                 return
             }
             enabled.remove(schema.schemaId)
@@ -104,14 +108,14 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
                 // 部署/编译进行中 switchSchema 不阻塞返回 false，避免主线程等待
                 val switched = RimeEngine.getInstance().switchSchema(schema.schemaId)
                 if (switched) {
-                    showToast("已切换到${schema.name}")
+                    showToast(tr(R.string.s_yiqiehuandao, schema.name))
                 } else {
                     rollbackSchemaSelection(previous)
-                    showToast("词库部署中，请稍后再切换方案")
+                    showToast(tr(R.string.s_cikubushuzhong_qingshaohouzaiq_7d5ce))
                 }
             } else {
                 rollbackSchemaSelection(previous)
-                showToast("请点击「部署」按钮")
+                showToast(tr(R.string.s_qingdianji_bushu_anniu))
             }
         }
     }
@@ -135,9 +139,9 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
                     showToast(
                         when {
                             result.conflicts.isNotEmpty() -> conflictMessage(result.conflicts)
-                            !result.success -> "导入失败"
-                            result.installedDirect -> "导入成功，已放入 rime 目录"
-                            else -> "导入成功，可在列表中安装"
+                            !result.success -> tr(R.string.s_daorushibai)
+                            result.installedDirect -> tr(R.string.s_daoruchenggong_yifangru_rime_mulu)
+                            else -> tr(R.string.s_daoruchenggong_kezailiebiaozho_f4ac5)
                         }
                     )
                 }
@@ -145,10 +149,10 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
                     withContext(Dispatchers.IO) { PluginManager.loadEnabledPlugins() }
                     refresh()
                     _importCompleted.tryEmit(Unit)
-                    showToast("插件「${result.pluginInfo?.name}」安装成功")
+                    showToast(tr(R.string.s_chajian_anzhuangchenggong, result.pluginInfo?.name))
                 }
-                is ImportManager.ImportResult.Failed -> showToast("导入失败：${result.reason}")
-                is ImportManager.ImportResult.Unsupported -> showToast("不支持的文件类型")
+                is ImportManager.ImportResult.Failed -> showToast(tr(R.string.s_daorushibai_2, result.reason))
+                is ImportManager.ImportResult.Unsupported -> showToast(tr(R.string.s_buzhichidewenjianleixing))
             }
         }
     }
@@ -180,7 +184,7 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
             _uiState.update { it.copy(showUninstallDialog = false) }
             refresh()
             loadMarketPackages()
-            showToast("已卸载")
+            showToast(tr(R.string.s_yixiezai))
             // 卸载后该项不再计入可更新，立即重算角标
             MarketUpdateChecker.refreshNow(context)
         }
@@ -198,8 +202,8 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
             showToast(
                 when {
                     result.conflicts.isNotEmpty() -> conflictMessage(result.conflicts)
-                    result.success -> "导入成功"
-                    else -> "下载或解压失败，请检查链接"
+                    result.success -> tr(R.string.s_daoruchenggong)
+                    else -> tr(R.string.s_xiazaihuojieyashibai_qingjianc_5e8b6)
                 }
             )
         }
@@ -208,8 +212,8 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
     /** 冲突提示：同名文件已被其他方案以不同内容安装，拒绝覆盖。 */
     private fun conflictMessage(conflicts: List<FileConflictInfo>): String {
         val first = conflicts.first()
-        val owner = first.claimedBy.firstOrNull() ?: "其他方案"
-        return "导入失败：${first.fileName} 已由「$owner」以不同内容安装，为避免覆盖已取消"
+        val owner = first.claimedBy.firstOrNull() ?: tr(R.string.s_qitafangan)
+        return tr(R.string.s_daorushibai_yiyou_yibutongneir_887fd, first.fileName, owner)
     }
 
     fun deploySchema() {
@@ -238,10 +242,10 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
             }
             showToast(
                 when {
-                    !success -> "部署失败"
-                    missing.isEmpty() -> "部署完成"
+                    !success -> tr(R.string.s_bushushibai)
+                    missing.isEmpty() -> tr(R.string.s_bushuwancheng)
                     // 反查词典由它自己的方案编译：缺产物时运行期会报 table.bin 不存在
-                    else -> "部署完成，反查词典未编译：${missing.joinToString("、")}（需安装并启用对应方案）"
+                    else -> tr(R.string.s_bushuwancheng_fanchacidian, missing.joinToString("、"))
                 }
             )
             refresh()

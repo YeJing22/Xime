@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -65,7 +69,7 @@ object BackupManager {
             null
         } else {
             Log.w(TAG, "Backup: 引擎未就绪，使用现有自造词快照（可能非最新）")
-            "（自造词快照未刷新：需先唤起键盘一次）"
+            tr(R.string.s_zizaocikuaizhaoweishuaxin_xuxi_b6784)
         }
 
         // 流式打包到 cacheDir：包体不驻留内存（含方案词典与插件包时可达数十 MB）
@@ -101,7 +105,7 @@ object BackupManager {
      */
     suspend fun restore(context: Context, plugin: BackupPlugin, id: String): Result<Unit> {
         val download = plugin.pullBackup(id)
-            ?: return Result.failure(Exception("下载备份包失败"))
+            ?: return Result.failure(Exception(tr(R.string.s_xiazaibeifenbaoshibai)))
         return try {
             restoreFromArchive(context, download.file)
         } finally {
@@ -120,10 +124,10 @@ object BackupManager {
         return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
                 temp.outputStream().use { output -> input.copyTo(output) }
-            } ?: return Result.failure(Exception("无法读取所选文件"))
+            } ?: return Result.failure(Exception(tr(R.string.s_wufaduqusuoxuanwenjian)))
             if (!isBackupPackage(temp)) {
                 return Result.failure(
-                    IllegalArgumentException("这不是完整方案包（缺少 ${META_PREFIX} 元数据）；词条快照请用「导入快照」")
+                    IllegalArgumentException(tr(R.string.s_zhebushiwanzhengfanganbao_ques_352a8, META_PREFIX))
                 )
             }
             restoreFromArchive(context, temp)
@@ -192,9 +196,12 @@ object BackupManager {
                     SettingsPreferences.setPendingDictMerge(context, true)
                 }
         }
-        // default.custom.yaml 已随包恢复（启用方案列表）：重新镜像进 default.yaml。
-        // default.yaml 本身不进包（派生基座），避免恢复时把旧版本基座一起盖回来。
+        // default.custom.yaml 已随包恢复。旧格式包内含 app 托管的 schema_list：
+        // 强制迁移一次（列表进 prefs、从文件剥离；新格式文件无块则为无操作），
+        // 再从 prefs 镜像进 default.yaml。default.yaml 本身不进包（派生基座），
+        // 避免恢复时把旧版本基座一起盖回来。
         try {
+            SchemaManager.migrateDefaultCustomSchemaList(context, force = true)
             SchemaManager.applyEnabledSchemasToDefaultYaml(context)
         } catch (e: Exception) {
             Log.e(TAG, "Restore: 重新镜像 schema_list 失败", e)
@@ -272,6 +279,7 @@ object BackupManager {
             val manifestsDir = SchemaManifestManager.getManifestsDir(filesDir)
             var entryCount = 0
             var dictSnapshotCount = 0
+            var skippedUserDbEntries = 0
             ZipInputStream(rawInput).use { zis ->
                 while (true) {
                     val entry = zis.nextEntry ?: break
@@ -314,13 +322,21 @@ object BackupManager {
                     // 显式拒绝绝对路径（File(parent, "/abs") 在 Unix 下会被拼接为 parent/abs，
                     // canonical 检查拦不住；此处按契约直接拒绝）
                     if (File(name).isAbsolute) {
-                        return Result.failure(Exception("备份包包含非法路径: $name"))
+                        return Result.failure(Exception(tr(R.string.s_beifenbaobaohanfeifalujing, name)))
                     }
                     val canonicalRoot = rimeDir.canonicalPath + File.separator
                     if (target.canonicalPath != canonicalRoot.removeSuffix(File.separator) &&
                         !target.canonicalPath.startsWith(canonicalRoot)
                     ) {
-                        return Result.failure(Exception("备份包包含非法路径: $name"))
+                        return Result.failure(Exception(tr(R.string.s_beifenbaobaohanfeifalujing, name)))
+                    }
+                    // 词库**只合并不覆盖**：包内若带 leveldb 用户词典（旧版本打的包会带），
+                    // 落盘就是整库覆盖，本机新打的词当场消失。词库统一由
+                    // `sync/*.userdb.txt` 快照按时间戳合并进来（见 [afterRestore]）。
+                    if (isUserDbLeveldbEntry(name)) {
+                        skippedUserDbEntries++
+                        zis.closeEntry()
+                        continue
                     }
                     target.parentFile?.mkdirs()
                     target.outputStream().use { zis.copyTo(it) }
@@ -330,6 +346,9 @@ object BackupManager {
                 }
             }
             if (entryCount == 0) return Result.failure(Exception("备份包为空"))
+            if (skippedUserDbEntries > 0) {
+                Log.i(TAG, "Restore: 跳过包内 leveldb 用户词典 $skippedUserDbEntries 个条目（词库走快照合并）")
+            }
             return Result.success(RestoreOutcome(entryCount, dictSnapshotCount))
         } catch (e: Exception) {
             return Result.failure(e)
@@ -340,13 +359,28 @@ object BackupManager {
     private fun isSafeId(id: String): Boolean =
         id.isNotBlank() && !id.contains('/') && !id.contains('\\') && id != "." && id != ".."
 
+    /**
+     * 包内条目是否是 leveldb 用户词典（`<词典名>.userdb/` 目录下的文件，或 `*.db*`）。
+     *
+     * 恢复时**一律跳过**：这类文件落盘等于整库覆盖，会吃掉本机新打的词。
+     * 词库只走 `sync/<id>/<词典名>.userdb.txt` 快照，由 librime 按时间戳合并
+     * （`UserDbMerger` 取 commits/dee 最大值，只增不减）。纯函数，单测锚定。
+     *
+     * 注意别误伤快照 `.userdb.txt`：它以 `.userdb.txt` 结尾，不是 `.userdb` 段。
+     */
+    internal fun isUserDbLeveldbEntry(relativePath: String): Boolean {
+        val path = relativePath.replace('\\', '/')
+        if (path.split('/').any { it.endsWith(".userdb") }) return true
+        return path.endsWith(".db") || path.endsWith(".db-wal") || path.endsWith(".db-shm")
+    }
+
     /** 目标必须落在 baseDir 内（防元数据条目穿越），否则抛异常中止恢复。 */
     private fun writeChecked(target: File, baseDir: File, data: ByteArray) {
         val canonicalBase = baseDir.canonicalPath + File.separator
         if (File(target.name).isAbsolute ||
             !(target.canonicalPath + File.separator).startsWith(canonicalBase)
         ) {
-            throw SecurityException("备份包包含非法路径: ${target.name}")
+            throw SecurityException(tr(R.string.s_beifenbaobaohanfeifalujing, target.name))
         }
         target.parentFile?.mkdirs()
         target.writeBytes(data)

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -76,7 +80,7 @@ fun CandidateBarOverlayPanel(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "关闭",
+                        contentDescription = tr(R.string.s_guanbi),
                         tint = closeButtonColor,
                         modifier = Modifier.size(18.dp)
                     )

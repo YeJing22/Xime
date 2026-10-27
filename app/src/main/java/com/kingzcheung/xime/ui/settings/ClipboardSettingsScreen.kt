@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -98,12 +102,12 @@ fun ClipboardSettingsContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("剪贴板") },
+                title = { Text(tr(R.string.s_jiantieban)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -124,12 +128,12 @@ fun ClipboardSettingsContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SettingsSection(
-                title = "图片记录",
+                title = tr(R.string.s_tupianjilu),
                 content = {
                     SettingsToggleItem(
                         icon = Icons.TwoTone.Image,
-                        title = "收集复制的图片",
-                        subtitle = "复制图片时保存到剪贴板历史，可在候选栏与剪贴板面板中选用",
+                        title = tr(R.string.s_shoujifuzhidetupian),
+                        subtitle = tr(R.string.s_fuzhitupianshibaocundaojiantie_6d667),
                         checked = captureEnabled,
                         onCheckedChange = { checked ->
                             captureEnabled = checked
@@ -138,7 +142,7 @@ fun ClipboardSettingsContent(
                     )
                     if (!captureEnabled) {
                         Text(
-                            text = "已关闭：只收集文字，复制图片不会再进入剪贴板历史。",
+                            text = tr(R.string.s_yiguanbi_zhishoujiwenzi_fuzhit_8bf4d),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
@@ -148,12 +152,12 @@ fun ClipboardSettingsContent(
             )
 
             SettingsSection(
-                title = "敏感内容",
+                title = tr(R.string.s_minganneirong),
                 content = {
                     SettingsToggleItem(
                         icon = Icons.TwoTone.Lock,
-                        title = "记录密码等敏感内容",
-                        subtitle = "默认不保存密码管理器标记为敏感的剪贴板（密码、卡号等）",
+                        title = tr(R.string.s_jilumimadengminganneirong),
+                        subtitle = tr(R.string.s_morenbubaocunmimaguanliqibiaoj_9d5df),
                         checked = sensitiveCaptureEnabled,
                         onCheckedChange = { checked ->
                             sensitiveCaptureEnabled = checked
@@ -162,7 +166,7 @@ fun ClipboardSettingsContent(
                     )
                     if (sensitiveCaptureEnabled) {
                         Text(
-                            text = "已开启：敏感内容会保存进历史，启用剪贴板同步时也会上传。",
+                            text = tr(R.string.s_yikaiqi_minganneironghuibaocun_3f987),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
@@ -172,7 +176,7 @@ fun ClipboardSettingsContent(
             )
 
             SettingsSection(
-                title = "图片上限",
+                title = tr(R.string.s_tupianshangxian),
                 content = {
                     Column(
                         modifier = Modifier.padding(
@@ -184,7 +188,7 @@ fun ClipboardSettingsContent(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "单张最大体积",
+                                text = tr(R.string.s_danzhangzuidatiji),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
@@ -207,7 +211,7 @@ fun ClipboardSettingsContent(
                             steps = 18
                         )
                         Text(
-                            text = "超过上限的图片不会被保存（不压缩、不改画质）",
+                            text = tr(R.string.s_chaoguoshangxiandetupianbuhuib_f2e2d),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -230,15 +234,15 @@ fun ClipboardSettingsContent(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "图片占用",
+                            text = tr(R.string.s_tupianzhanyong),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
                             text = usage?.let {
-                                "${it.count} 张 · ${Formatter.formatFileSize(context, it.fileBytes)}"
-                            } ?: "统计中…",
+                                tr(R.string.s_zhang, it.count, Formatter.formatFileSize(context, it.fileBytes))
+                            } ?: tr(R.string.s_tongjizhong),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -247,25 +251,25 @@ fun ClipboardSettingsContent(
             )
 
             SettingsSection(
-                title = "同步",
+                title = tr(R.string.s_tongbu),
                 content = {
                     // 开关就地上提到本页（原先藏在子页里），整行点击进子页做"选服务 + 配置"
                     val activePlugin = activeSyncPlugin
                     val subtitle = when {
-                        !syncOn -> "通过插件与远端设备双向同步剪贴板 · 点按进入服务与配置"
-                        activePlugin == null -> "已启用 · 未选择同步服务 · 点按进入服务与配置"
+                        !syncOn -> tr(R.string.s_tongguochajianyuyuanduanshebei_430fe)
+                        activePlugin == null -> tr(R.string.s_yiqiyong_weixuanzetongbufuwu_d_e4fe4)
                         else -> {
                             // 能力按实际生效插件说明，避免出现"文案说仅文字、其实能同步图片"
                             val supportsImages =
                                 activePlugin.capabilities?.clipboardSync?.attachments == true
                             "已启用 · ${activePlugin.name}（${
-                                if (supportsImages) "文字与图片" else "仅文字"
+                                if (supportsImages) tr(R.string.s_wenziyutupian) else tr(R.string.s_jinwenzi)
                             }） · 点按进入服务与配置"
                         }
                     }
                     SettingsToggleItem(
                         icon = Icons.TwoTone.Sync,
-                        title = "剪贴板同步",
+                        title = tr(R.string.s_jiantiebantongbu),
                         subtitle = subtitle,
                         checked = syncOn,
                         onCheckedChange = { checked ->

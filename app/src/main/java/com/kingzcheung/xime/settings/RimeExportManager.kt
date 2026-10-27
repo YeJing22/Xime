@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -57,7 +61,7 @@ object RimeExportManager {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             clipData = android.content.ClipData.newRawUri(null, uri)
         }
-        val chooser = Intent.createChooser(intent, "分享文件")
+        val chooser = Intent.createChooser(intent, tr(R.string.s_fenxiangwenjian))
         context.startActivity(chooser)
     }
 
@@ -96,15 +100,43 @@ object RimeExportManager {
      *
      * @return Pair(文件名, 落盘文件)；**调用方负责删除**该文件
      */
+    /**
+     * 完整备份包文件名：`Xime完整备份-<机型>-<yyyy-MM-dd>.zip`。
+     *
+     * **必须带设备标识**：云端是"同名覆盖写"（WebDAV 用 PUT + `Overwrite: T`），
+     * 而云端目录是所有设备共用的。只按日期命名会让两台设备同一天产生同名包——
+     * 后备份的设备直接覆盖前一台，用户看到的是"云端只有一份、互相覆盖"，
+     * 恢复时也就只剩最后备份那台设备的词库。
+     *
+     * 同一台设备同一天再备份仍是同名（覆盖当天的旧包），这是有意的：一天一份。
+     *
+     * @param model 设备机型（[android.os.Build.MODEL]）；取不到时退化为只按日期
+     * @param date 形如 `2026-10-23`
+     */
+    internal fun backupFileName(model: String?, date: String): String {
+        val tag = deviceTag(model)
+        return if (tag.isEmpty()) "Xime完整备份-$date.zip" else "Xime完整备份-$tag-$date.zip"
+    }
+
+    /** 机型转文件名安全片段：去非法字符与空白，长度截断（纯函数，单测锚定）。 */
+    internal fun deviceTag(model: String?): String {
+        if (model.isNullOrBlank()) return ""
+        return model.trim()
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .replace(Regex("\\s+"), "")
+            .take(24)
+            .trim('_')
+    }
+
     fun buildArchiveToFile(context: Context): Result<Pair<String, File>> {
         val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val fileName = "Xime完整备份-$dateStr.zip"
+        val fileName = backupFileName(Build.MODEL, dateStr)
         val cacheDir = File(context.cacheDir, "backup-export").apply { mkdirs() }
         val archive = File(cacheDir, fileName)
         return try {
             val rimeDir = File(context.filesDir, "rime")
             if (!rimeDir.exists()) {
-                return Result.failure(Exception("Rime 目录不存在"))
+                return Result.failure(Exception(tr(R.string.s_rime_mulubucunzai)))
             }
             val installationId = SettingsPreferences.getRimeInstallationId(context)
 
@@ -137,7 +169,7 @@ object RimeExportManager {
 
             if (archive.length() == 0L) {
                 archive.delete()
-                return Result.failure(Exception("没有可导出的文件"))
+                return Result.failure(Exception(tr(R.string.s_meiyoukedaochudewenjian)))
             }
             Result.success(fileName to archive)
         } catch (e: Exception) {

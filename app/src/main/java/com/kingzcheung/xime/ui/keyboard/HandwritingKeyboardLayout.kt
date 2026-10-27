@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -279,7 +283,7 @@ fun HandwritingKeyboardLayout(
                 .padding(end = buttonGap, top = buttonGap, bottom = barHeight + buttonGap),
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            listOf("，", "。", "？", "！", "删除").forEachIndexed { i, text ->
+            listOf("，", "。", "？", "！", tr(R.string.s_shanchu)).forEachIndexed { i, text ->
                 val pressed = pressedButton == i
                 Box(
                     modifier = Modifier.weight(1f).fillMaxWidth().padding(keyPadding)
@@ -303,14 +307,14 @@ fun HandwritingKeyboardLayout(
                 .padding(start = sidePadding, end = sidePadding, bottom = buttonGap),
             horizontalArrangement = Arrangement.spacedBy(buttonGap)
         ) {
-            listOf("符号" to "symbol", "123" to "number", "空格" to "space",
-                  "ABC" to "ime_switch", "换行" to "enter"
+            listOf(tr(R.string.s_fuhao) to "symbol", "123" to "number", tr(R.string.s_kongge) to "space",
+                  "ABC" to "ime_switch", tr(R.string.s_huanxing) to "enter"
             ).forEachIndexed { i, (text, action) ->
                 val idx = i + 5
-                val bg = if (text == "符号" || text == "换行") specialKeyBackgroundColor else keyBackgroundColor
-                val txtColor = if (text == "符号" || text == "换行") specialKeyTextColor else keyTextColor
+                val bg = if (text == tr(R.string.s_fuhao) || text == tr(R.string.s_huanxing)) specialKeyBackgroundColor else keyBackgroundColor
+                val txtColor = if (text == tr(R.string.s_fuhao) || text == tr(R.string.s_huanxing)) specialKeyTextColor else keyTextColor
                 val w = when (text) {
-                    "空格" -> 1.8f
+                    tr(R.string.s_kongge) -> 1.8f
                     "123", "ABC" -> 0.7f
                     else -> 1f
                 }
@@ -350,7 +354,7 @@ fun HandwritingKeyboardLayout(
 
         val buttonActions = remember {
             listOf(
-                listOf("，" to "，", "。" to "。", "？" to "？", "！" to "！", "删除" to "delete"),
+                listOf("，" to "，", "。" to "。", "？" to "？", "！" to "！", tr(R.string.s_shanchu) to "delete"),
                 emptyList()
             )
         }

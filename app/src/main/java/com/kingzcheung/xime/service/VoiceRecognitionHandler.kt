@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.service
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -154,7 +158,7 @@ class VoiceRecognitionHandler(
         // 用户开启"本地识别"且当前构建支持离线语音时，优先显示本地引擎名
         if (SettingsPreferences.isSttUseLocal(context)) {
             // 本地引擎显示当前生效模型名；未下载任何模型时用通用名（不默认指定某个模型）
-            return AsrBackendFactory.getLocalName(context) ?: "本地离线识别"
+            return AsrBackendFactory.getLocalName(context) ?: tr(R.string.s_bendilixianshibie)
         }
         val enabledPlugins = ExtensionManager.getEnabledAsrPlugins(context)
         if (enabledPlugins.isNotEmpty()) {
@@ -166,7 +170,7 @@ class VoiceRecognitionHandler(
                     .firstOrNull { it.id == selected.first }?.name ?: selected.first
             }
         }
-        return "未配置"
+        return tr(R.string.s_weipeizhi)
     }
 
     private var lastPartialText = ""

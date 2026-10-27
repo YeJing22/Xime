@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -152,7 +156,7 @@ fun PanelKeyboardLayout(
         isVoiceMode = false,
         isVoiceSticky = false,
         schemaName = "",
-        enterKeyText = "确定",
+        enterKeyText = tr(R.string.s_queding),
         suppressCursorMove = suppressCursorMove,
         processSwipeState = { state, bounds -> processSwipeState(state, bounds) },
         configVersion = 0,
@@ -514,7 +518,7 @@ internal fun PanelBackCell(env: QwertyRowEnv, modifier: Modifier = Modifier, id:
             backgroundColor = env.specialKeyBackgroundColor,
             iconColor = env.specialKeyTextColor,
             modifier = modifier,
-            a11yDescription = "返回字母键盘",
+            a11yDescription = tr(R.string.s_fanhuizimujianpan),
             onPress = { env.onKeyPressDown?.invoke("abc") },
             shadowEnabled = env.shadowEnabled,
             shadowElevation = env.shadowElevation,

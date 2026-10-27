@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,15 +39,15 @@ fun PluginSettingsContent(
     val pluginInfo = remember(pluginId) { ExtensionManager.getAllInstalledPlugins().find { it.id == pluginId } }
 
     if (pluginInfo == null) {
-        PluginDetailFrame(title = "插件设置", onBack = onBack) {
-            Text("插件未找到")
+        PluginDetailFrame(title = tr(R.string.s_chajianshezhi), onBack = onBack) {
+            Text(tr(R.string.s_chajianweizhaodao))
         }
         return
     }
 
     if (pluginInstance == null) {
         PluginDetailFrame(title = pluginInfo.name, onBack = onBack) {
-            Text("插件未加载，请在插件中心启用后重试")
+            Text(tr(R.string.s_chajianweijiazai_qingzaichajia_b7dd6))
         }
         return
     }
@@ -79,7 +83,7 @@ fun PluginSettingsContent(
                         (pluginInstance as EmojiPlugin).openSettings(context)
                         onBack()
                     } catch (e: Exception) {
-                        Toast.makeText(context, "无法打开插件设置: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, tr(R.string.s_wufadakaichajianshezhi, e.message), Toast.LENGTH_LONG).show()
                         onBack()
                     }
                 }
@@ -88,7 +92,7 @@ fun PluginSettingsContent(
 
         else -> {
             PluginDetailFrame(title = pluginInfo.name, onBack = onBack) {
-                Text("该插件没有设置界面")
+                Text(tr(R.string.s_gaichajianmeiyoushezhijiemian))
             }
         }
     }
@@ -110,7 +114,7 @@ private fun PluginDetailFrame(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },

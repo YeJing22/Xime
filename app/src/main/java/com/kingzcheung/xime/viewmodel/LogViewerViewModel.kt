@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import android.content.ContentValues
 import android.content.Intent
@@ -111,7 +115,7 @@ class LogViewerViewModel(application: Application) : AndroidViewModel(applicatio
                 Log.e(TAG, "Error reading log file", e)
                 _uiState.update { it.copy(
                     isLoading = false,
-                    errorMsg = "读取日志失败: ${e.message}"
+                    errorMsg = tr(R.string.s_duqurizhishibai, e.message)
                 )}
             }
         }
@@ -164,12 +168,12 @@ class LogViewerViewModel(application: Application) : AndroidViewModel(applicatio
                 )
                 _events.emit(LogViewerEvent.ShareFile(
                     uri = uri,
-                    subject = "Xime 日志 - ${file.name}",
+                    subject = tr(R.string.s_xime_rizhi, file.name),
                     mimeType = "text/plain"
                 ))
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to share log file", e)
-                _events.emit(LogViewerEvent.ShowError("分享失败: ${e.message}"))
+                _events.emit(LogViewerEvent.ShowError(tr(R.string.s_fenxiangshibai, e.message)))
             }
         }
     }
@@ -201,7 +205,7 @@ class LogViewerViewModel(application: Application) : AndroidViewModel(applicatio
                 _events.emit(LogViewerEvent.SavedToDownloads("Download/${file.name}"))
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save log file", e)
-                _events.emit(LogViewerEvent.ShowError("保存失败: ${e.message}"))
+                _events.emit(LogViewerEvent.ShowError(tr(R.string.s_baocunshibai_2, e.message)))
             }
         }
     }

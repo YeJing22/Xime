@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.speech
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.Manifest
 import android.content.Context
 import android.media.AudioFormat
@@ -117,7 +121,7 @@ class SpeechRecognitionManager(private val context: Context) {
                     val ok = preload()
                     if (!ok || synchronized(preloadLock) { backend } == null) {
                         mainHandler.post {
-                            errorCallback?.invoke("无法初始化语音引擎，请检查本地模型或在线语音插件配置", true)
+                            errorCallback?.invoke(tr(R.string.s_wufachushihuayuyinyinqing_qing_18041), true)
                             setState(RecognitionState.ERROR)
                         }
                         return@Thread
@@ -386,7 +390,7 @@ class SpeechRecognitionManager(private val context: Context) {
 
         val backend = plugin.createBackend(context.applicationContext)
         val pluginName = ExtensionManager.getAllInstalledPlugins()
-            .firstOrNull { it.id == selected?.first }?.name ?: selected?.first ?: "语音识别"
+            .firstOrNull { it.id == selected?.first }?.name ?: selected?.first ?: tr(R.string.s_yuyinshibie)
         return PluginAsrBackendAdapter(pluginName, backend)
     }
 
@@ -437,7 +441,7 @@ class SpeechRecognitionManager(private val context: Context) {
         override fun run() {
             val audioRecord = preStarted ?: (createAudioRecord() ?: run {
                 mainHandler.post {
-                    errorCallback?.invoke("无法启动录音", false)
+                    errorCallback?.invoke(tr(R.string.s_wufaqidongluyin), false)
                     setState(RecognitionState.ERROR)
                 }
                 return
@@ -448,7 +452,7 @@ class SpeechRecognitionManager(private val context: Context) {
                 audioRecord.stop()
                 audioRecord.release()
                 mainHandler.post {
-                    errorCallback?.invoke("启动引擎失败", false)
+                    errorCallback?.invoke(tr(R.string.s_qidongyinqingshibai), false)
                     setState(RecognitionState.ERROR)
                 }
                 return

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -78,13 +82,13 @@ object SyncManager {
     fun syncNow(context: Context): Result<Unit> {
         ensureInstallationYaml(context)
         if (!RimeEngine.isInitialized()) {
-            return Result.failure(IllegalStateException("输入法引擎尚未初始化，请先在任意输入框唤起键盘一次"))
+            return Result.failure(IllegalStateException(tr(R.string.s_shurufayinqingshangweichushihu_e6f01)))
         }
         return if (RimeEngine.getInstance().syncUserData()) {
             SettingsPreferences.setLastRimeSyncAt(context, System.currentTimeMillis())
             Result.success(Unit)
         } else {
-            Result.failure(IllegalStateException("同步未完成，详见应用日志"))
+            Result.failure(IllegalStateException(tr(R.string.s_tongbuweiwancheng_xiangjianyin_4b4f4)))
         }
     }
 
@@ -112,7 +116,7 @@ object SyncManager {
      */
     internal fun mergeSnapshotFiles(files: List<File>): Result<Int> {
         if (!RimeEngine.isInitialized()) {
-            return Result.failure(IllegalStateException("输入法引擎尚未初始化，请先在任意输入框唤起键盘一次"))
+            return Result.failure(IllegalStateException(tr(R.string.s_shurufayinqingshangweichushihu_e6f01)))
         }
         var merged = 0
         for (file in files) {
@@ -240,7 +244,7 @@ object SyncManager {
                 if (rel.isEmpty()) continue
                 val target = File(baseDir, rel)
                 if (!target.canonicalPath.startsWith(canonicalBase)) {
-                    throw SecurityException("路径穿越: ${entry.name}")
+                    throw SecurityException(tr(R.string.s_lujingchuanyue, entry.name))
                 }
                 // 只落盘词库快照：其它条目既不参与合并，也不该进 sync 目录被再次打包
                 if (!rel.endsWith(SNAPSHOT_EXTENSION)) continue
@@ -353,7 +357,7 @@ object SyncManager {
      * 三种格式列序不同，识别错了会静默把码与词写反，故无法识别时明确失败。
      */
     fun importSnapshots(context: Context, uris: List<Uri>): Result<SnapshotImportResult> {
-        if (uris.isEmpty()) return Result.failure(IllegalArgumentException("未选择文件"))
+        if (uris.isEmpty()) return Result.failure(IllegalArgumentException(tr(R.string.s_weixuanzewenjian)))
         // 暂存目录放 cacheDir：绝不能落在 rime/sync 里，否则导入内容会被下次同步一起打包，
         // 且每次导入都会在自己的上一层再套一层 imported/<uuid>/（目录无限套娃）。
         val targetDir = File(File(context.cacheDir, "sync-import"), UUID.randomUUID().toString())
@@ -363,7 +367,7 @@ object SyncManager {
             var importedEntries = 0
             for (uri in uris) {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    ?: return Result.failure(IllegalStateException("无法读取所选文件"))
+                    ?: return Result.failure(IllegalStateException(tr(R.string.s_wufaduqusuoxuanwenjian)))
                 val raw = queryDisplayName(context, uri) ?: "snapshot.userdb.txt"
                 val safeName = raw.substringAfterLast('/').replace(Regex("[\\\\/:*?\"<>|]"), "_")
                 when (classifySnapshotFile(safeName, bytes)) {
@@ -373,7 +377,7 @@ object SyncManager {
                         val target = snapshotTargetName(safeName, bytes)
                             ?: return Result.failure(
                                 IllegalArgumentException(
-                                    "「$safeName」不是可识别的词库快照（应为 <词典名>.userdb.txt）"
+                                    tr(R.string.s_bushikeshibiedecikukuaizhao_yi_b09c3, safeName)
                                 )
                             )
                         File(targetDir, target).writeBytes(bytes)
@@ -383,17 +387,17 @@ object SyncManager {
                     SnapshotFileKind.CODE_TABLE -> {
                         val dict = codeTableDictName(safeName, bytes)
                             ?: return Result.failure(
-                                IllegalArgumentException("「$safeName」没能识别出目标词库，请重命名为 <词典名>.txt")
+                                IllegalArgumentException(tr(R.string.s_wenjianming_shibie_shibai, safeName))
                             )
                         if (!com.kingzcheung.xime.rime.RimeEngine.isInitialized()) {
                             return Result.failure(
-                                IllegalStateException("导入词条码表需要引擎就绪，请先唤起键盘一次")
+                                IllegalStateException(tr(R.string.s_daorucitiaomabiaoxuyaoyinqingj_53f7d))
                             )
                         }
                         val count = UserDictIoManager.importFrom(context, dict, uri).getOrElse { e ->
                             return Result.failure(
                                 IllegalArgumentException(
-                                    "「$safeName」是词条码表，但导入词库「$dict」失败：${e.message}"
+                                    tr(R.string.s_shicitiaomabiao_dandaoruciku_s_5b20b, safeName, dict, e.message)
                                 )
                             )
                         }
@@ -402,14 +406,14 @@ object SyncManager {
 
                     SnapshotFileKind.UNKNOWN -> return Result.failure(
                         IllegalArgumentException(
-                            "无法识别「$safeName」：支持快照包 zip、<词典名>.userdb.txt 词库快照、" +
-                                "<词典名>.txt 词条码表"
+                            tr(R.string.s_wufashibie_zhichikuaizhaobao_z_ebab7, safeName) +
+                                tr(R.string.s_cidianming_txt_citiaomabiao)
                         )
                     )
                 }
             }
             if (snapshotFiles == 0 && importedEntries == 0) {
-                return Result.failure(IllegalArgumentException("所选文件中没有可导入的内容"))
+                return Result.failure(IllegalArgumentException(tr(R.string.s_suoxuanwenjianzhongmeiyoukedao_82e20)))
             }
             // 快照逐个直接合并（本机还没有该用户词库时也能建库并合并，见 mergeSnapshots）；
             // 码表已在 Import 里直接入库
@@ -438,11 +442,11 @@ object SyncManager {
         // 先流式打包到 cacheDir（大目录不驻留内存），再搬运到 Downloads
         val tempZip = File(context.cacheDir, fileName)
         if (packSyncDirToFile(rimeDir, tempZip) == 0) {
-            return Result.failure(IllegalStateException("sync 目录为空，请先执行一次同步"))
+            return Result.failure(IllegalStateException(tr(R.string.s_sync_muluweikong_qingxianzhixi_4ba71)))
         }
         return try {
             if (RimeExportManager.saveSyncArchive(context, fileName, tempZip)) Result.success(fileName)
-            else Result.failure(IllegalStateException("保存到下载目录失败"))
+            else Result.failure(IllegalStateException(tr(R.string.s_baocundaoxiazaimulushibai)))
         } finally {
             tempZip.delete()
         }
@@ -466,7 +470,7 @@ object SyncManager {
         syncNow(context).getOrElse { return Result.failure(it) }
 
         val entries = plugin.listBackups()
-            ?: return Result.failure(IllegalStateException("获取远端列表失败"))
+            ?: return Result.failure(IllegalStateException(tr(R.string.s_huoquyuanduanliebiaoshibai)))
         val myName = "$REMOTE_SYNC_PREFIX${SettingsPreferences.getRimeInstallationId(context)}.zip"
         val others = entries.filter { isRemoteSyncEntry(it.name) && it.name != myName }
 
@@ -489,7 +493,7 @@ object SyncManager {
         // 推送本机包：流式打包到 cacheDir（包体不进内存），推完即删
         val snapshot = File(context.cacheDir, myName)
         if (packSyncDirToFile(rimeDir, snapshot) == 0) {
-            return Result.failure(IllegalStateException("本地快照为空"))
+            return Result.failure(IllegalStateException(tr(R.string.s_bendikuaizhaoweikong)))
         }
         val push = try {
             plugin.pushBackup(myName, snapshot)
@@ -497,7 +501,7 @@ object SyncManager {
             snapshot.delete()
         }
         if (!push.ok) {
-            return Result.failure(IllegalStateException(push.message ?: "上传快照失败"))
+            return Result.failure(IllegalStateException(push.message ?: tr(R.string.s_shangchuankuaizhaoshibai)))
         }
         return Result.success(pulled)
     }

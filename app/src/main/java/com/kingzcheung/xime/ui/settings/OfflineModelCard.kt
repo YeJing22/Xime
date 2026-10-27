@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -115,12 +119,12 @@ internal fun OfflineModelCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "离线语音识别",
+                        text = tr(R.string.s_lixianyuyinshibie),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = model?.let { "${it.name} · ${it.size}" } ?: "尚未安装模型",
+                        text = model?.let { "${it.name} · ${it.size}" } ?: tr(R.string.s_shangweianzhuangmoxing),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -143,7 +147,7 @@ internal fun OfflineModelCard(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "已安装",
+                                text = tr(R.string.s_yianzhuang),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Medium
@@ -155,7 +159,7 @@ internal fun OfflineModelCard(
                 when {
                     switchable -> {
                         Text(
-                            text = "切换",
+                            text = tr(R.string.s_qiehuan),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -168,7 +172,7 @@ internal fun OfflineModelCard(
                     // 无已安装模型：右侧给出去下载入口，与整卡点击一致
                     installedModels.isEmpty() -> {
                         Text(
-                            text = "去下载",
+                            text = tr(R.string.s_quxiazai),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -183,9 +187,9 @@ internal fun OfflineModelCard(
 
             Text(
                 text = if (model != null)
-                    "使用「${model.name}」离线识别，无网络也能用，识别在独立进程运行。"
+                    tr(R.string.s_shiyong_lixianshibie_wuwangluo_58a45, model.name)
                 else
-                    "尚未安装模型，点击前往「扩展商店」下载。",
+                    tr(R.string.s_shangweianzhuangmoxing_dianjiq_fd6b5),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -194,7 +198,7 @@ internal fun OfflineModelCard(
             // 切换后卸载常驻引擎，下一次语音会话即按新模型加载。
             if (showModelPicker) {
                 SettingsSingleChoiceDialog(
-                    title = "选择离线语音模型",
+                    title = tr(R.string.s_xuanzelixianyuyinmoxing),
                     options = installedModels
                         .map {
                             SettingsChoiceOption(

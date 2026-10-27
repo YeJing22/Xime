@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -86,10 +90,10 @@ fun LayoutMarketDetailContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("详情") },
+                title = { Text(tr(R.string.s_xiangqing)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -107,12 +111,12 @@ fun LayoutMarketDetailContent(
             item == null -> MarketCenterBox {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "未找到该内容",
+                        tr(R.string.s_weizhaodaogaineirong),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { viewModel.loadLayouts(manual = true) }) { Text("重新加载") }
+                    Button(onClick = { viewModel.loadLayouts(manual = true) }) { Text(tr(R.string.s_zhongxinjiazai)) }
                 }
             }
 
@@ -171,7 +175,7 @@ private fun LayoutDetailBody(
                     )
                     if (layout.author.isNotEmpty()) {
                         Text(
-                            "作者：${layout.author}",
+                            tr(R.string.s_zuozhe_2, layout.author),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -199,8 +203,8 @@ private fun LayoutDetailBody(
         if (layout.requiresSchemes.isNotEmpty()) {
             item {
                 Text(
-                    if (item.schemeReady) "依赖方案：${layout.requiresSchemes.joinToString("、")}（已安装）"
-                    else "需先安装方案：${layout.requiresSchemes.joinToString("、")}",
+                    if (item.schemeReady) tr(R.string.s_yilaifangan_yianzhuang, layout.requiresSchemes.joinToString("、"))
+                    else tr(R.string.s_xuxian_anzhuangfangan, layout.requiresSchemes.joinToString("、")),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (item.schemeReady) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.error,
@@ -214,13 +218,13 @@ private fun LayoutDetailBody(
                     onClick = { viewModel.applyLayout(item, selectedVersion) },
                     enabled = item.schemeReady && uiState.installingId != layout.id,
                 ) {
-                    Text(if (applied) "重新应用" else "应用")
+                    Text(if (applied) tr(R.string.s_zhongxinyingyong) else tr(R.string.s_yingyong))
                 }
                 if (applied) {
                     OutlinedButton(
                         onClick = { viewModel.resetLayout() },
                         enabled = uiState.installingId != layout.id,
-                    ) { Text("恢复默认") }
+                    ) { Text(tr(R.string.s_huifumoren)) }
                 }
             }
         }
@@ -229,7 +233,7 @@ private fun LayoutDetailBody(
             item {
                 Text(
                     buildString {
-                        if (layout.license.isNotEmpty()) append("许可：${layout.license}")
+                        if (layout.license.isNotEmpty()) append(tr(R.string.s_xuke, layout.license))
                         if (layout.repo.isNotEmpty()) {
                             if (isNotEmpty()) append("  ·  ")
                             append(layout.repo)
@@ -244,7 +248,7 @@ private fun LayoutDetailBody(
         if (currentVersion != null) {
             item {
                 Column {
-                    Text("版本 $selectedVersion", style = MaterialTheme.typography.titleSmall)
+                    Text(tr(R.string.s_banben_2, selectedVersion), style = MaterialTheme.typography.titleSmall)
                     if (currentVersion.changelog.isNotEmpty()) {
                         Text(
                             currentVersion.changelog,
@@ -259,7 +263,7 @@ private fun LayoutDetailBody(
         if (layout.versions.size > 1) {
             item {
                 Column {
-                    Text("历史版本", style = MaterialTheme.typography.titleSmall)
+                    Text(tr(R.string.s_lishibanben), style = MaterialTheme.typography.titleSmall)
                     layout.versions.forEach { v ->
                         Row(
                             modifier = Modifier
@@ -292,7 +296,7 @@ private fun LayoutDetailBody(
             item {
                 // 截图缩略图横排：全宽渲染会把竖版键盘截图放大到整屏高，
                 // 详情页被撑爆；点击仍进全屏预览（双指缩放）
-                Text("截图", style = MaterialTheme.typography.titleSmall)
+                Text(tr(R.string.s_jietu), style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)

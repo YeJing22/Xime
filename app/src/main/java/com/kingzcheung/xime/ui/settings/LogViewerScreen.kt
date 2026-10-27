@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -86,11 +90,11 @@ fun LogViewerScreen(
                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         clipData = android.content.ClipData.newRawUri(null, event.uri)
                     }
-                    val chooser = android.content.Intent.createChooser(shareIntent, "分享日志")
+                    val chooser = android.content.Intent.createChooser(shareIntent, tr(R.string.s_fenxiangrizhi))
                     context.startActivity(chooser)
                 }
                 is LogViewerEvent.SavedToDownloads -> {
-                    snackbarHostState.showSnackbar("已保存到 ${event.path}")
+                    snackbarHostState.showSnackbar(tr(R.string.s_yibaocundao, event.path))
                 }
                 is LogViewerEvent.ShowError -> {
                     snackbarHostState.showSnackbar(event.message)
@@ -106,7 +110,7 @@ fun LogViewerScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "日志查看器",
+                        tr(R.string.s_rizhichakanqi),
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
@@ -115,7 +119,7 @@ fun LogViewerScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -124,20 +128,20 @@ fun LogViewerScreen(
                         ?: uiState.logFiles.firstOrNull()
                     if (targetFile != null) {
                         TextButton(onClick = { viewModel.saveToDownloads(targetFile) }) {
-                            Text("保存")
+                            Text(tr(R.string.s_baocun))
                         }
                     }
                     IconButton(onClick = { viewModel.loadLogFiles() }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "刷新"
+                            contentDescription = tr(R.string.s_shuaxin)
                         )
                     }
                     if (uiState.logFiles.isNotEmpty()) {
                         IconButton(onClick = { viewModel.clearAllLogs() }) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "清空所有日志"
+                                contentDescription = tr(R.string.s_qingkongsuoyourizhi)
                             )
                         }
                     }
@@ -174,7 +178,7 @@ fun LogViewerScreen(
                         color = MaterialTheme.colorScheme.error
                     )
                     Button(onClick = { viewModel.loadLogFiles() }) {
-                        Text("重新加载")
+                        Text(tr(R.string.s_zhongxinjiazai))
                     }
                 }
             }
@@ -232,22 +236,22 @@ private fun LogContentSection(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(onClick = onBackToList) {
-                    Text("返回列表")
+                    Text(tr(R.string.s_fanhuiliebiao))
                 }
                 TextButton(onClick = onSave) {
-                    Text("保存")
+                    Text(tr(R.string.s_baocun))
                 }
                 IconButton(onClick = onShare) {
                     Icon(
                         Icons.Default.Share,
-                        contentDescription = "分享",
+                        contentDescription = tr(R.string.s_fenxiang),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "删除此日志",
+                        contentDescription = tr(R.string.s_shanchucirizhi),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -261,7 +265,7 @@ private fun LogContentSection(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("日志文件为空")
+                Text(tr(R.string.s_rizhiwenjianweikong))
             }
         } else {
             val lines = logContent.lines()
@@ -324,17 +328,17 @@ private fun LogFilesList(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                         Text(
-                            text = "暂无日志文件",
+                            text = tr(R.string.s_zanwurizhiwenjian),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "应用运行正常，没有 WARNING 或 ERROR 日志",
+                            text = tr(R.string.s_yingyongyunxingzhengchang_meiy_cb24c),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                         Text(
-                            text = "日志目录: ${context.filesDir.absolutePath}/logs/",
+                            text = tr(R.string.s_rizhimulu_logs, context.filesDir.absolutePath),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
@@ -344,7 +348,7 @@ private fun LogFilesList(
         } else {
             item {
                 Text(
-                    text = "日志文件 (${logFiles.size})",
+                    text = tr(R.string.s_rizhiwenjian, logFiles.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -363,7 +367,7 @@ private fun LogFilesList(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "日志位置: ${context.filesDir.absolutePath}/logs/",
+                    text = tr(R.string.s_rizhiweizhi_logs, context.filesDir.absolutePath),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
@@ -374,7 +378,7 @@ private fun LogFilesList(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "插件错误 (${pluginErrors.values.sumOf { it.size }})",
+                    text = tr(R.string.s_chajiancuowu, pluginErrors.values.sumOf { it.size }),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -444,8 +448,8 @@ private fun LogFileItem(
                     file.name.contains("WARNING") -> "WARNING"
                     file.name.contains("ERROR") -> "ERROR"
                     file.name.contains("FATAL") -> "FATAL"
-                    file.name.startsWith("kime_") -> "APP日志"
-                    file.name.contains("rime.kime") -> "RIME日志"
+                    file.name.startsWith("kime_") -> tr(R.string.s_apprizhi)
+                    file.name.contains("rime.kime") -> tr(R.string.s_rimerizhi)
                     else -> "LOG"
                 }
                 
@@ -456,8 +460,8 @@ private fun LogFileItem(
                         "ERROR" -> MaterialTheme.colorScheme.error
                         "WARNING" -> MaterialTheme.colorScheme.secondary
                         "FATAL" -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                        "APP日志" -> MaterialTheme.colorScheme.primary
-                        "RIME日志" -> MaterialTheme.colorScheme.tertiary
+                        tr(R.string.s_apprizhi) -> MaterialTheme.colorScheme.primary
+                        tr(R.string.s_rimerizhi) -> MaterialTheme.colorScheme.tertiary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
@@ -465,19 +469,19 @@ private fun LogFileItem(
             
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 TextButton(onClick = onSave) {
-                    Text("保存", style = MaterialTheme.typography.labelSmall)
+                    Text(tr(R.string.s_baocun), style = MaterialTheme.typography.labelSmall)
                 }
                 IconButton(onClick = onShare) {
                     Icon(
                         Icons.Default.Share,
-                        contentDescription = "分享",
+                        contentDescription = tr(R.string.s_fenxiang),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = tr(R.string.s_shanchu),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -521,7 +525,7 @@ private fun PluginErrorsCard(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${errors.size} 条",
+                    text = tr(R.string.s_tiao_2, errors.size),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -541,7 +545,7 @@ private fun PluginErrorsCard(
                 }
             }
             Text(
-                text = "点击查看详情",
+                text = tr(R.string.s_dianjichakanxiangqing),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -565,9 +569,9 @@ private fun PluginErrorsCard(
                     errors = errors
                 )
                 clipboard?.setPrimaryClip(
-                    android.content.ClipData.newPlainText("Xime 插件诊断信息", text)
+                    android.content.ClipData.newPlainText(tr(R.string.s_xime_chajianzhenduanxinxi), text)
                 )
-                Toast.makeText(context, "诊断信息已复制", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, tr(R.string.s_zhenduanxinxiyifuzhi), Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showDetail = false }
         )
@@ -584,7 +588,7 @@ private fun PluginErrorsDetailDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("$pluginName 错误详情") },
+        title = { Text(tr(R.string.s_cuowuxiangqing, pluginName)) },
         text = {
             Column(
                 modifier = Modifier
@@ -638,7 +642,7 @@ private fun PluginErrorsDetailDialog(
                 }
                 if (errors.isEmpty()) {
                     Text(
-                        "暂无错误记录",
+                        tr(R.string.s_zanwucuowujilu),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -647,12 +651,12 @@ private fun PluginErrorsDetailDialog(
         },
         confirmButton = {
             TextButton(onClick = { onCopy() }) {
-                Text("复制诊断信息")
+                Text(tr(R.string.s_fuzhizhenduanxinxi))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭")
+                Text(tr(R.string.s_guanbi))
             }
         }
     )

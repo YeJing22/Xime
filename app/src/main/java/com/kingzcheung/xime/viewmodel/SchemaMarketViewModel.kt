@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -102,9 +106,9 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
                             isLoading = false,
                             source = fetch.source,
                             errorMessage = if (it.schemes.isEmpty())
-                                "未获取到方案（来源：${fetch.source}），请检查网络后刷新" else it.errorMessage,
-                            toastMessage = if (it.schemes.isEmpty()) "未获取到方案（来源：${fetch.source}）"
-                                else "刷新未获取到方案，已保留当前列表",
+                                tr(R.string.s_weihuoqudaofangan_laiyuan_qing_5b8c1, fetch.source) else it.errorMessage,
+                            toastMessage = if (it.schemes.isEmpty()) tr(R.string.s_weihuoqudaofangan_laiyuan, fetch.source)
+                                else tr(R.string.s_shuaxinweihuoqudaofangan_yibao_f2e01),
                         )
                     }
                 } else {
@@ -131,18 +135,18 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
                             downloadedIds = downloadedIds,
                             downloadedVersions = allVersions,
                             selectedVersions = mergedSel,
-                            toastMessage = if (manual) "已刷新 · 来源：${fetch.source}" else it.toastMessage,
+                            toastMessage = if (manual) tr(R.string.s_yishuaxin_laiyuan_2, fetch.source) else it.toastMessage,
                         )
                     }
                 }
             }.onFailure { e ->
-                val msg = e.message ?: "加载方案市场失败"
+                val msg = e.message ?: tr(R.string.s_jiazaifanganshichangshibai)
                 // 失败一律弹 toast；已有列表时还保留旧数据，空列表时另外保留整页错误+重试
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = if (it.schemes.isEmpty()) msg else it.errorMessage,
-                        toastMessage = if (it.schemes.isEmpty()) msg else "刷新失败：$msg",
+                        toastMessage = if (it.schemes.isEmpty()) msg else tr(R.string.s_shuaxinshibai, msg),
                     )
                 }
             }
@@ -162,11 +166,11 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
     /** 下载方案到 market 目录（仅下载，不解压）。[version] 为空时使用已选版本。 */
     fun downloadScheme(item: MarketSchemeItem, version: String? = null) {
         if (_uiState.value.downloadingId != null) {
-            showToast("有其他方案正在下载，请稍候")
+            showToast(tr(R.string.s_youqitafanganzhengzaixiazai_qi_504ea))
             return
         }
         if (!item.compatible) {
-            showToast("需 App ≥ ${item.minAppVersion}")
+            showToast(tr(R.string.s_xu_app, item.minAppVersion))
             return
         }
         viewModelScope.launch {
@@ -213,11 +217,11 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
             }
             val toast = when {
                 !result.success && result.sha256Status == false ->
-                    "sha256 校验不通过，文件可能不完整，请重新下载"
-                !result.success -> result.failureReason ?: "下载失败"
-                result.sha256Status == true -> "已下载「${item.scheme.name}」（已校验）"
-                result.sha256Status == null -> "已下载「${item.scheme.name}」（未验证）"
-                else -> "已下载「${item.scheme.name}」"
+                    tr(R.string.s_sha256_xiaoyanbutongguo_wenjia_7236f)
+                !result.success -> result.failureReason ?: tr(R.string.s_xiazaishibai_3)
+                result.sha256Status == true -> tr(R.string.s_yixiazai_yixiaoyan, item.scheme.name)
+                result.sha256Status == null -> tr(R.string.s_yixiazai_weiyanzheng, item.scheme.name)
+                else -> tr(R.string.s_yixiazai_2, item.scheme.name)
             }
             showToast(toast)
             // 下载成功立即重算可更新计数（Tab 角标与设置主页角标实时刷新）
@@ -231,11 +235,11 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
      */
     fun updateScheme(item: MarketSchemeItem) {
         if (_uiState.value.downloadingId != null) {
-            showToast("有其他方案正在操作，请稍候")
+            showToast(tr(R.string.s_youqitafanganzhengzaicaozuo_qi_53c0b))
             return
         }
         if (!item.compatible) {
-            showToast("需 App ≥ ${item.minAppVersion}")
+            showToast(tr(R.string.s_xu_app, item.minAppVersion))
             return
         }
         viewModelScope.launch {
@@ -253,7 +257,7 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
             }
             if (!download.success) {
                 val reason = if (download.sha256Status == false)
-                    "下载校验失败，文件可能不完整" else (download.failureReason ?: "下载失败")
+                    tr(R.string.s_xiazaixiaoyanshibai_wenjianken_14291) else (download.failureReason ?: tr(R.string.s_xiazaishibai_3))
                 _uiState.update { it.copy(downloadingId = null, downloadProgress = 0f) }
                 showToast(reason)
                 return@launch
@@ -283,9 +287,9 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
                     )
                 }
                 val msg = buildString {
-                    append("已更新「${item.scheme.name}」")
+                    append(tr(R.string.s_yigengxin, item.scheme.name))
                     if (install.unresolvedDeps.isNotEmpty()) {
-                        append("\n依赖未完整：${install.unresolvedDeps.joinToString("、")}")
+                        append("\n" + tr(R.string.s_yilaiweiwanzheng, install.unresolvedDeps.joinToString("、")))
                     }
                 }
                 showToast(msg)
@@ -299,7 +303,7 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
                     )
                 }
             } else {
-                showToast(install.failureReason ?: "安装失败")
+                showToast(install.failureReason ?: tr(R.string.s_anzhuangshibai))
             }
         }
     }

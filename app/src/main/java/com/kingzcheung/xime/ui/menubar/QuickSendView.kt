@@ -17,8 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kingzcheung.xime.R
 import com.kingzcheung.xime.clipboard.ClipboardDragSender
 import com.kingzcheung.xime.clipboard.ClipboardItem
+import com.kingzcheung.xime.i18n.tr
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -44,7 +46,7 @@ fun QuickSendTabContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "快捷发送为空",
+                text = tr(R.string.s_kuaijiefasongweikong),
                 color = subTextColor,
                 fontSize = 13.sp
             )

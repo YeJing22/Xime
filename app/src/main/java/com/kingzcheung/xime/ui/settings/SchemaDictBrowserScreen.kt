@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +55,7 @@ fun SchemaDictBrowserPanel(
         val schema = uiState.availableSchemas.find { it.schemaId == uiState.selectedSchema }
         ContextSelectorCard(
             title = schema?.name ?: uiState.selectedSchema,
-            subtitle = uiState.selectedSchema.ifEmpty { "没有可用的输入方案" },
+            subtitle = uiState.selectedSchema.ifEmpty { tr(R.string.s_meiyoukeyongdeshurufangan) },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             enabled = uiState.availableSchemas.size > 1
         ) { dismiss ->
@@ -94,12 +98,12 @@ fun SchemaDictBrowserPanel(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("没有可用的输入方案", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr(R.string.s_meiyoukeyongdeshurufangan), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             Text(
-                text = "共 ${uiState.allEntries.size} 条词条" +
-                    if (uiState.searchQuery.isNotEmpty()) "，搜索结果 ${uiState.displayedEntries.size} 条" else "",
+                text = tr(R.string.s_gong_tiaocitiao, uiState.allEntries.size) +
+                    if (uiState.searchQuery.isNotEmpty()) tr(R.string.s_sousuojieguo_tiao, uiState.displayedEntries.size) else "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -111,7 +115,7 @@ fun SchemaDictBrowserPanel(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (uiState.searchQuery.isEmpty()) "暂无词条" else "未找到匹配词条",
+                        text = if (uiState.searchQuery.isEmpty()) tr(R.string.s_zanwucitiao) else tr(R.string.s_weizhaodaopipeicitiao),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -134,10 +138,10 @@ fun SchemaDictBrowserContent(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("方案词表") },
+                title = { Text(tr(R.string.s_fangancibiao)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

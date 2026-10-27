@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -127,8 +131,8 @@ class UserDictViewModel(application: Application) : AndroidViewModel(application
                 it.copy(
                     isTransferring = false,
                     message = result.fold(
-                        onSuccess = { count -> "已导出 $count 条词条到所选文件" },
-                        onFailure = { e -> "导出失败：${e.message}" }
+                        onSuccess = { count -> tr(R.string.s_yidaochu_tiaocitiaodaosuoxuanw_3cfd9, count) },
+                        onFailure = { e -> tr(R.string.s_daochushibai, e.message) }
                     ),
                     messageIsError = result.isFailure
                 )
@@ -148,8 +152,8 @@ class UserDictViewModel(application: Application) : AndroidViewModel(application
             }
             afterWrite(dictName, result) { r ->
                 r.fold(
-                    onSuccess = { count -> "已导入 $count 条词条（合并进「$dictName」）" },
-                    onFailure = { e -> "导入失败：${e.message}" }
+                    onSuccess = { count -> tr(R.string.s_yidaoru_tiaocitiao_hebingjin, count, dictName) },
+                    onFailure = { e -> tr(R.string.s_daorushibai_2, e.message) }
                 )
             }
         }
@@ -168,8 +172,8 @@ class UserDictViewModel(application: Application) : AndroidViewModel(application
             }
             afterWrite(dictName, result) { r ->
                 r.fold(
-                    onSuccess = { "已添加「${input.word}」（${input.code}）" },
-                    onFailure = { e -> "添加失败：${e.message}" }
+                    onSuccess = { tr(R.string.s_yitianjia, input.word, input.code) },
+                    onFailure = { e -> tr(R.string.s_tianjiashibai, e.message) }
                 )
             }
         }
@@ -188,8 +192,8 @@ class UserDictViewModel(application: Application) : AndroidViewModel(application
             }
             afterWrite(dictName, result) { r ->
                 r.fold(
-                    onSuccess = { "已删除「${entry.word}」（${entry.code}）" },
-                    onFailure = { e -> "删除失败：${e.message}" }
+                    onSuccess = { tr(R.string.s_yishanchu_3, entry.word, entry.code) },
+                    onFailure = { e -> tr(R.string.s_shanchushibai_2, e.message) }
                 )
             }
         }

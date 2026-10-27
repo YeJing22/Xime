@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -250,14 +254,14 @@ class WirelessImportHelper(private val context: Context) {
                                         else UploadResult(
                                             fileName = name, success = false,
                                             error = if (result.conflicts.isNotEmpty())
-                                                "${result.conflicts.first().fileName} 与已安装内容不同，已取消"
-                                            else "保存失败"
+                                                tr(R.string.s_yuyianzhuangneirongbutong_yiquxiao, result.conflicts.first().fileName)
+                                            else tr(R.string.s_baocunshibai)
                                         )
                                     )
                                 }
                                 else -> {
                                     _uploadResults.trySend(
-                                        UploadResult(fileName = name, success = false, error = "不支持的文件类型")
+                                        UploadResult(fileName = name, success = false, error = tr(R.string.s_buzhichidewenjianleixing))
                                     )
                                 }
                             }
@@ -266,7 +270,7 @@ class WirelessImportHelper(private val context: Context) {
                         }
                     }
                     else -> {
-                        _uploadResults.trySend(UploadResult(fileName = name, success = false, error = "不支持的文件类型"))
+                        _uploadResults.trySend(UploadResult(fileName = name, success = false, error = tr(R.string.s_buzhichidewenjianleixing)))
                     }
                 }
                                 pos = nextB + 2

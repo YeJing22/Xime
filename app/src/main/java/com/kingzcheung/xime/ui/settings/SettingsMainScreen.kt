@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -60,8 +62,10 @@ import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kingzcheung.xime.R
 import com.kingzcheung.xime.settings.MarketUpdateChecker
 import com.kingzcheung.xime.settings.SettingsPreferences
 import kotlinx.coroutines.Dispatchers
@@ -101,7 +105,7 @@ fun SettingsMainContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             MediumTopAppBar(
-                title = { Text("曦码T9输入法设置") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     scrolledContainerColor = MaterialTheme.colorScheme.surface,
@@ -124,11 +128,11 @@ fun SettingsMainContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsSection(title = "输入法", content = {
+                SettingsSection(title = tr(R.string.s_shurufa), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.Keyboard,
-                        title = "启用输入法",
-                        subtitle = "在系统设置中启用曦码T9输入法",
+                        title = tr(R.string.s_qiyongshurufa),
+                        subtitle = tr(R.string.s_zaixitongshezhizhongqiyongxima_44550),
                         onClick = {
                             val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
                             context.startActivity(intent)
@@ -141,8 +145,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.ToggleOn,
-                        title = "选择输入法",
-                        subtitle = "将曦码设为当前输入法",
+                        title = tr(R.string.s_xuanzeshurufa),
+                        subtitle = tr(R.string.s_jiangximasheweidangqianshurufa),
                         onClick = {
                             val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) 
                                 as InputMethodManager
@@ -185,7 +189,7 @@ fun SettingsMainContent(
                                     Box {
                                         if (testText.isEmpty() && !isFocused) {
                                             Text(
-                                                "点击此处开始输入测试...",
+                                                tr(R.string.s_dianjicichukaishishuruceshi),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                             )
@@ -204,7 +208,7 @@ fun SettingsMainContent(
                             ) {
                                 TextButton(onClick = { testText = "" }) {
                                     Text(
-                                        "清除",
+                                        tr(R.string.s_qingchu),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
@@ -215,11 +219,11 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "外观与交互", content = {
+                SettingsSection(title = stringResource(R.string.settings_section_appearance), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.Palette,
-                        title = "主题与定制",
-                        subtitle = "自定义外观和样式",
+                        title = tr(R.string.s_zhutiyudingzhi),
+                        subtitle = tr(R.string.s_zidingyiwaiguanheyangshi),
                         onClick = onNavigateToTheme,
                         showArrow = true
                     )
@@ -230,8 +234,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.Vibration,
-                        title = "按键效果",
-                        subtitle = "按键音效和振动反馈",
+                        title = tr(R.string.s_anjianxiaoguo),
+                        subtitle = tr(R.string.s_anjianyinxiaohezhendongfankui),
                         onClick = onNavigateToKeyEffect,
                         showArrow = true
                     )
@@ -242,8 +246,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.TableChart,
-                        title = "布局与显示",
-                        subtitle = "候选词显示、键盘布局等",
+                        title = tr(R.string.s_bujuyuxianshi),
+                        subtitle = tr(R.string.s_houxuancixianshi_jianpanbujudeng),
                         onClick = onNavigateToLayoutDisplay,
                         showArrow = true
                     )
@@ -251,11 +255,11 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "方案与词库", content = {
+                SettingsSection(title = tr(R.string.s_fanganyuciku), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.KeyboardAlt,
-                        title = "输入方案",
-                        subtitle = "管理输入方案",
+                        title = tr(R.string.s_shurufangan),
+                        subtitle = tr(R.string.s_guanlishurufangan),
                         onClick = onNavigateToSchema,
                         showArrow = true
                     )
@@ -266,8 +270,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.Ballot,
-                        title = "词库管理",
-                        subtitle = "用户词库、快捷短语与词条搬运",
+                        title = tr(R.string.s_cikuguanli),
+                        subtitle = tr(R.string.s_yonghuciku_kuaijieduanyuyuciti_be6d2),
                         onClick = onNavigateToDictionary,
                         showArrow = true
                     )
@@ -275,15 +279,15 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "扩展", content = {
+                SettingsSection(title = tr(R.string.s_kuozhan), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.Storefront,
-                        title = "扩展商店",
-                        subtitle = "下载输入方案 / 模型 / 插件",
+                        title = tr(R.string.s_kuozhanshangdian),
+                        subtitle = tr(R.string.s_xiazaishurufangan_moxing_chajian),
                         onClick = onNavigateToMarket,
                         showArrow = true,
                         badgeText = marketUpdates.totalUpdates.takeIf { it > 0 }
-                            ?.let { "$it 项可更新" }
+                            ?.let { tr(R.string.s_xiangkegengxin, it) }
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(start = 56.dp),
@@ -292,8 +296,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.Extension,
-                        title = "插件管理",
-                        subtitle = "管理已安装的插件",
+                        title = tr(R.string.s_chajianguanli),
+                        subtitle = tr(R.string.s_guanliyianzhuangdechajian),
                         onClick = onNavigateToPlugins,
                         showArrow = true
                     )
@@ -304,8 +308,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.Straighten,
-                        title = "模型管理",
-                        subtitle = "管理本地下载的智能模型",
+                        title = tr(R.string.s_moxingguanli),
+                        subtitle = tr(R.string.s_guanlibendixiazaidezhinengmoxing),
                         onClick = onNavigateToModelLocal,
                         showArrow = true
                     )
@@ -313,11 +317,11 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "智能", content = {
+                SettingsSection(title = tr(R.string.s_zhineng), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.AutoAwesome,
-                        title = "智能联想",
-                        subtitle = "基于 AI 模型的智能联想词预测",
+                        title = tr(R.string.s_zhinenglianxiang),
+                        subtitle = tr(R.string.s_jiyu_ai_moxingdezhinenglianxia_5cce9),
                         onClick = onNavigateToSmartPrediction,
                         showArrow = true
                     )
@@ -328,8 +332,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.AutoFixHigh,
-                        title = "智能纠错（实验性）",
-                        subtitle = "按错相邻键时给出纠正候选",
+                        title = tr(R.string.s_zhinengjiucuo_shiyanxing),
+                        subtitle = tr(R.string.s_ancuoxianglinjianshigeichujiuz_834ec),
                         onClick = onNavigateToCorrection,
                         showArrow = true
                     )
@@ -341,8 +345,8 @@ fun SettingsMainContent(
                     var sttEnabled by remember { mutableStateOf(SettingsPreferences.isSttEnabled(context)) }
                     SettingsToggleItem(
                         icon = Icons.TwoTone.GraphicEq,
-                        title = "语音转文本",
-                        subtitle = "在线 ASR 服务（需安装语音识别插件）",
+                        title = tr(R.string.s_yuyinzhuanwenben),
+                        subtitle = tr(R.string.s_zaixian_asr_fuwu_xuanzhuangyuy_74a1a),
                         checked = sttEnabled,
                         showArrow = true,
                         onClick = {
@@ -358,11 +362,11 @@ fun SettingsMainContent(
 
             item {
                 // 分组含两类"本地数据/数据流向"设置：剪贴板（内容与同步）优先，其后是词典与配置的同步备份
-                SettingsSection(title = "数据与同步", content = {
+                SettingsSection(title = tr(R.string.s_shujuyutongbu), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.ContentPaste,
-                        title = "剪贴板",
-                        subtitle = "图片记录、体积限制、占用清理与剪贴板同步",
+                        title = tr(R.string.s_jiantieban),
+                        subtitle = tr(R.string.s_tupianjilu_tijixianzhi_zhanyon_fa4c6),
                         onClick = onNavigateToClipboard,
                         showArrow = true
                     )
@@ -373,8 +377,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.Backup,
-                        title = "同步与备份",
-                        subtitle = "多设备词典互通与配置备份",
+                        title = tr(R.string.s_tongbuyubeifen),
+                        subtitle = tr(R.string.s_duoshebeicidianhutongyupeizhib_1efa8),
                         onClick = onNavigateToBackup,
                         showArrow = true
                     )
@@ -382,10 +386,10 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "关于", content = {
+                SettingsSection(title = tr(R.string.s_guanyu), content = {
                     SettingsItem(
                         icon = Icons.TwoTone.Description,
-                        title = "使用文档",
+                        title = tr(R.string.s_shiyongwendang),
                         subtitle = "ime.ximei.me",
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ime.ximei.me"))
@@ -400,8 +404,8 @@ fun SettingsMainContent(
                     )
                     SettingsItem(
                         icon = Icons.TwoTone.Info,
-                        title = "关于曦码",
-                        subtitle = "版本信息、开发者、联系方式",
+                        title = tr(R.string.s_guanyuxima),
+                        subtitle = tr(R.string.s_banbenxinxi_kaifazhe_lianxifangshi),
                         onClick = onNavigateToAbout,
                         showArrow = true
                     )

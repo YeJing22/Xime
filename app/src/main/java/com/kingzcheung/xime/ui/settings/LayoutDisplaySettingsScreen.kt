@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,12 +52,12 @@ fun LayoutDisplaySettingsContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("布局与显示") },
+                title = { Text(tr(R.string.s_bujuyuxianshi)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -72,7 +76,7 @@ fun LayoutDisplaySettingsContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsSection(title = "键盘布局", content = {
+                SettingsSection(title = tr(R.string.s_jianpanbuju), content = {
                     var hardwareKeyboardDetectionEnabled by remember {
                         mutableStateOf(SettingsPreferences.isHardwareKeyboardDetectionEnabled(context))
                     }
@@ -81,8 +85,8 @@ fun LayoutDisplaySettingsContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "实体键盘检测", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                            Text(text = "关闭后不检测实体键盘，始终使用屏幕键盘", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = tr(R.string.s_shitijianpanjiance), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                            Text(text = tr(R.string.s_guanbihoubujianceshitijianpan_6aaf1), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(
                             checked = hardwareKeyboardDetectionEnabled,
@@ -104,12 +108,12 @@ fun LayoutDisplaySettingsContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "横屏使用分体键盘",
+                                text = tr(R.string.s_hengpingshiyongfentijianpan),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "关闭后，横屏将显示连续的完整键盘布局",
+                                text = tr(R.string.s_guanbihou_hengpingjiangxianshi_e98c9),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -123,6 +127,50 @@ fun LayoutDisplaySettingsContent(
                         )
                     }
 
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 官方 3.4.0 (#1151)：键盘贴底显示
+                    var keyboardFlushBottom by remember {
+                        mutableStateOf(SettingsPreferences.isKeyboardFlushBottom(context))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = tr(R.string.s_jianpantiedixianshi),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = tr(R.string.s_yincangdibudaohanglanhuoshoush_daf00),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = keyboardFlushBottom,
+                            onCheckedChange = { enabled ->
+                                keyboardFlushBottom = enabled
+                                SettingsPreferences.setKeyboardFlushBottom(context, enabled)
+                            }
+                        )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    // 我方：符号自动成对
                     var autoPairSymbolsEnabled by remember {
                         mutableStateOf(SettingsPreferences.isAutoPairSymbolsEnabled(context))
                     }
@@ -155,6 +203,7 @@ fun LayoutDisplaySettingsContent(
                 })
             }
 
+            // 我方：光标滑动灵敏度（触发距离 / 每格距离）
             item {
                 SettingsSection(title = "光标滑动", content = {
                     val cursorActivationPref = SettingsPreferences.getCursorDragActivationDp(context)
@@ -249,7 +298,7 @@ fun LayoutDisplaySettingsContent(
             }
 
             item {
-                SettingsSection(title = "候选词", content = {
+                SettingsSection(title = tr(R.string.s_houxuanci), content = {
                     val candidateTextSizePref = SettingsPreferences.getCandidateTextSize(context)
                     var candidateTextSize by remember(candidateTextSizePref) {
                         mutableStateOf(candidateTextSizePref.toFloat())
@@ -259,7 +308,7 @@ fun LayoutDisplaySettingsContent(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "候选字大小",
+                            text = tr(R.string.s_houxuanzidaxiao),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
@@ -338,13 +387,13 @@ fun LayoutDisplaySettingsContent(
                     }
 
                     Text(
-                        text = "编码注释",
+                        text = tr(R.string.s_bianmazhushi),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
                     )
                     Text(
-                        text = "在候选词旁显示对应的编码（如五笔字根）",
+                        text = tr(R.string.s_zaihouxuancipangxianshiduiying_de529),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)
@@ -358,7 +407,7 @@ fun LayoutDisplaySettingsContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CommentDisplayCard(
-                            title = "显示",
+                            title = tr(R.string.s_xianshi),
                             isSelected = showComments,
                             showComment = true,
                             onClick = {
@@ -368,7 +417,7 @@ fun LayoutDisplaySettingsContent(
                             modifier = Modifier.weight(1f)
                         )
                         CommentDisplayCard(
-                            title = "隐藏",
+                            title = tr(R.string.s_yincang),
                             isSelected = !showComments,
                             showComment = false,
                             onClick = {
@@ -392,13 +441,13 @@ fun LayoutDisplaySettingsContent(
                     }
 
                     Text(
-                        text = "编码显示",
+                        text = tr(R.string.s_bianmaxianshi),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
                     )
                     Text(
-                        text = "选择输入编码的显示位置",
+                        text = tr(R.string.s_xuanzeshurubianmadexianshiweizhi),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)
@@ -412,7 +461,7 @@ fun LayoutDisplaySettingsContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CodeDisplayCard(
-                            title = "显示在输入框",
+                            title = tr(R.string.s_xianshizaishurukuang),
                             isSelected = inputTextLocation == SettingsPreferences.INPUT_TEXT_INPUT_BOX,
                             showCodeInInputBox = true,
                             onClick = {
@@ -422,7 +471,7 @@ fun LayoutDisplaySettingsContent(
                             modifier = Modifier.weight(1f)
                         )
                         CodeDisplayCard(
-                            title = "显示在候选栏",
+                            title = tr(R.string.s_xianshizaihouxuanlan),
                             isSelected = inputTextLocation == SettingsPreferences.INPUT_TEXT_CANDIDATE_BAR,
                             showCodeInInputBox = false,
                             onClick = {
@@ -455,13 +504,13 @@ fun LayoutDisplaySettingsContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "每页候选词数",
+                                text = tr(R.string.s_meiyehouxuancishu),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "${pageSizeSlider.toInt()} 个",
+                                text = tr(R.string.s_ge, pageSizeSlider.toInt()),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -479,7 +528,7 @@ fun LayoutDisplaySettingsContent(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "修改后需到方案设置中点击部署才能生效",
+                            text = tr(R.string.s_xiugaihouxudaofanganshezhizhon_603c8),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -488,7 +537,7 @@ fun LayoutDisplaySettingsContent(
             }
 
             item {
-                SettingsSection(title = "输入框适配", content = {
+                SettingsSection(title = tr(R.string.s_shurukuangshipei), content = {
                     var autoNumberKeyboard by remember {
                         mutableStateOf(SettingsPreferences.isAutoNumberKeyboardEnabled(context))
                     }
@@ -500,12 +549,12 @@ fun LayoutDisplaySettingsContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "数字框自动数字键盘",
+                                text = tr(R.string.s_shuzikuangzidongshuzijianpan),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "进入号码、验证码等数字输入框时自动弹出数字键盘",
+                                text = tr(R.string.s_jinruhaoma_yanzhengmadengshuzi_1aed9),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

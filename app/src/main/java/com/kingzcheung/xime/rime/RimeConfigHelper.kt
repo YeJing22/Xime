@@ -261,10 +261,9 @@ object RimeConfigHelper {
             fileUpdateDigest(digest, defaultYaml)
         }
 
-        // default.custom.yaml 变化（patch 基线修补/方案列表启停）也要触发重部署：
+        // default.custom.yaml 变化（用户手改/迁移剥离）也要触发重部署：
         // librime 编译各方案时经 DefaultConfigPlugin include default 的 menu 等节，
-        // 且其 __build_info/timestamps 记录了 default.custom.yaml 的 mtime，
-        // hash 失配 → 增量维护 → 各方案配置重编 → 新 page_size 编入产物全局生效。
+        // 其 patch 叠在 default.yaml 之上，hash 失配 → 增量维护 → 重编生效。
         val defaultCustomYaml = File(rimeDir, "default.custom.yaml")
         if (defaultCustomYaml.exists()) {
             digest.update("default.custom".toByteArray())
@@ -302,7 +301,7 @@ object RimeConfigHelper {
             if (updated > 0) {
                 Log.i(TAG, "Updated $updated builtin asset file(s)")
             }
-            syncBuiltinDefaultCustom(context, targetDir)
+            seedAndMigrateDefaultCustom(context, targetDir)
             return false
         }
         val copied = try {
@@ -314,102 +313,31 @@ object RimeConfigHelper {
         if (copied) {
             seedBuiltinPackageVersion(context)
         }
-        syncBuiltinDefaultCustom(context, targetDir)
+        seedAndMigrateDefaultCustom(context, targetDir)
         return copied
     }
 
     /**
-     * 把 app 固定的 assets/default.custom.yaml 同步/修补到用户 rime 目录。
+     * default.custom.yaml 种子复制 + 存量迁移。
      *
-     * 背景：menu/page_size 等全局默认经 default.custom.yaml patch 进 default.yaml，
-     * 再由 librime DefaultConfigPlugin 编入每个方案的编译产物。submodule 里的同名
-     * 文件只在全新安装复制一次（*.custom.yaml 被排除出强制更新），且旧版
-     * setEnabledSchemas 启停方案时会把整文件重写成只剩 schema_list 的空壳——
-     * page_size patch 就此丢失，候选数在 5（引擎兜底）与 20（运行时内存覆盖，
-     * 重启/部署后失效）之间漂移。
-     *
-     * 规则：文件缺失 → 复制模板；已存在 → 内容对齐 app 设置值
-     * （[patchDefaultCustomContent]，.custom.yaml 可以被覆盖，不保留 PC 遗留值）。
-     * 文件变化使部署 hash 失配，由 ensureDeployment 增量重编后全局生效。
+     * 该文件完全归用户：缺失时复制一次 app 模板（不含 schema_list，见模板头注释）
+     * 作为起始基线，此后 app 零写入——不再对齐 page_size、不再清理 key_binder，
+     * 用户修改经部署合并覆盖 default.yaml 同名键、计入部署 hash 自动生效。
+     * 存量迁移（[SchemaManager.migrateDefaultCustomSchemaList]）把老版本写入的
+     * schema_list 迁往 prefs；必须先于任何 [SchemaManager.getEnabledSchemas]
+     * 消费者执行（copyAssetsToRimeDir 之后的 applyEnabledSchemasToDefaultYaml /
+     * ensureDeployment 均在其后，时序安全）。
      */
-    private fun syncBuiltinDefaultCustom(context: Context, targetDir: File) {
+    private fun seedAndMigrateDefaultCustom(context: Context, targetDir: File) {
         val target = File(targetDir, ASSETS_DEFAULT_CUSTOM)
-        val pageSize = SettingsPreferences.getPageSize(context).coerceAtLeast(1)
         try {
             if (!target.exists()) {
                 copyAssetFile(context, ASSETS_DEFAULT_CUSTOM, target)
-                // 模板基线（20）与用户设置不一致时（如 slider 调过）以设置为准
-                val aligned = patchDefaultCustomContent(target.readText(), pageSize)
-                if (aligned != null) {
-                    target.writeText(aligned)
-                }
-                return
             }
-            val patched = patchDefaultCustomContent(target.readText(), pageSize) ?: return
-            target.writeText(patched)
-            Log.i(TAG, "Aligned ${target.name} menu/page_size=$pageSize")
         } catch (e: IOException) {
-            FileLogger.e(TAG, "Failed to sync $ASSETS_DEFAULT_CUSTOM", e)
+            FileLogger.e(TAG, "Failed to seed $ASSETS_DEFAULT_CUSTOM", e)
         }
-    }
-
-    /**
-     * default.custom.yaml 的基线对齐（纯函数）：
-     * 1. 移除抢占双拼编码键的 key_binder 绑定——`semicolon`/`apostrophe` 在微软双拼
-     *    等方案中是合法编码键（`;` = ing，`'` 为音节分隔符），而 key_binder 优先级高于
-     *    speller，has_menu 时绑定会拦截按键，按 `;` 直接选词上屏、无法组码（issue #884）；
-     * 2. 把 page_size 强制对齐为 app 当前设置值。
-     * 注意 page_size 只是磁盘配置基线——方案自带的 menu/page_size（内置与第三方
-     * 方案多为 PC 遗留默认 5，不适配手机）经 librime MergeTree 语义压过 default
-     * 层，运行时的实际生效靠 JNI 层 setPageSize 直接注入（rime_jni.cc）。
-     * 无需变化时返回 null。
-     */
-    internal fun patchDefaultCustomContent(text: String, pageSize: Int): String? {
-        val sep = if (text.contains("\r\n")) "\r\n" else "\n"
-        val lines = text.lines()
-        var changed = false
-        val updated = lines.toMutableList()
-
-        // 1. 清理与双拼编码键冲突的 key_binder 绑定（旧版模板/用户目录残留）
-        val kept = updated.filterNot { isConflictingKeyBindingLine(it) }
-        if (kept.size != updated.size) {
-            updated.clear()
-            updated.addAll(kept)
-            changed = true
-        }
-
-        // 2. 对齐 menu/page_size
-        val pageSizeIdx = updated.indexOfFirst { it.trimStart().startsWith("page_size:") }
-        if (pageSizeIdx >= 0) {
-            val raw = updated[pageSizeIdx].trimStart().removePrefix("page_size:")
-                .substringBefore('#').trim()
-            if (raw.toIntOrNull() != pageSize) {
-                val indent = updated[pageSizeIdx].takeWhile { it == ' ' || it == '\t' }
-                updated[pageSizeIdx] = "${indent}page_size: $pageSize"
-                changed = true
-            }
-        } else {
-            val patchIdx = updated.indexOfFirst { it.trim() == "patch:" }
-            if (patchIdx >= 0) {
-                updated.add(patchIdx + 1, "  menu:")
-                updated.add(patchIdx + 2, "    page_size: $pageSize")
-                changed = true
-            }
-        }
-
-        return if (changed) updated.joinToString(sep) else null
-    }
-
-    /**
-     * 判断一行是否为抢占分号/单引号的 key_binder 绑定（如
-     * `- { when: has_menu, accept: semicolon, send: 2 }`）。这类绑定在双拼方案下
-     * 会拦截 `;`（ing）/`'`（音节分隔符），必须从配置中移除。
-     */
-    private fun isConflictingKeyBindingLine(line: String): Boolean {
-        val trimmed = line.trim()
-        if (!trimmed.startsWith("-") || trimmed.startsWith("#")) return false
-        if (!trimmed.contains("send:")) return false
-        return trimmed.contains("accept: semicolon") || trimmed.contains("accept: apostrophe")
+        SchemaManager.migrateDefaultCustomSchemaList(context)
     }
 
     /**
@@ -456,10 +384,9 @@ object RimeConfigHelper {
                     childTarget.mkdirs()
                     sync(childAsset, childTarget)
                 } else if (fileName.endsWith(".yaml") || fileName.endsWith(".lua")) {
-                    // *.custom.yaml 是补丁层文件（用户定制 + app 运行时写入：
-                    // setEnabledSchemas 的启用列表、DoEnsureT9SchemaPatches 的
-                    // T9 注入与个人词库 packs），覆盖会抹掉用户配置与第三方方案——
-                    // 一律排除出默认覆盖范围
+                    // *.custom.yaml 是补丁层文件（default.custom.yaml 归用户；
+                    // T9 注入与个人词库 packs 写 <schemaId>.custom.yaml），
+                    // 覆盖会抹掉用户配置与第三方方案——一律排除出默认覆盖范围
                     if (fileName.endsWith(".custom.yaml")) continue
                     // 共享预设正被方案包覆盖：保留第三方内容
                     if (assetSub.isEmpty() && SharedPresetOverrides.hasActiveOverride(context, fileName)) continue

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -96,7 +100,7 @@ class LayoutMarketViewModel(application: Application) : AndroidViewModel(applica
                         isLoading = false,
                         source = fetch.source,
                         selectedVersions = mergedSel,
-                        toastMessage = if (manual) "已刷新（来源：${fetch.source}）" else it.toastMessage,
+                        toastMessage = if (manual) tr(R.string.s_yishuaxin_laiyuan, fetch.source) else it.toastMessage,
                     )
                 }
             }.onFailure { e ->
@@ -104,8 +108,8 @@ class LayoutMarketViewModel(application: Application) : AndroidViewModel(applica
                     it.copy(
                         isLoading = false,
                         errorMessage = if (it.layouts.isEmpty())
-                            (e.message ?: "加载失败，请检查网络后重试") else it.errorMessage,
-                        toastMessage = if (it.layouts.isNotEmpty()) "刷新失败，已保留当前列表" else it.toastMessage,
+                            (e.message ?: tr(R.string.s_jiazaishibai_qingjianchawanglu_e6f8e)) else it.errorMessage,
+                        toastMessage = if (it.layouts.isNotEmpty()) tr(R.string.s_shuaxinshibai_yibaoliudangqian_8349a) else it.toastMessage,
                     )
                 }
             }
@@ -156,7 +160,7 @@ class LayoutMarketViewModel(application: Application) : AndroidViewModel(applica
                         layouts = state.layouts.map {
                             if (it.layout.id == layout.id) it.copy(installedVersion = targetVersion) else it
                         },
-                        toastMessage = "已应用：${layout.name.ifBlank { layout.id }}",
+                        toastMessage = tr(R.string.s_yiyingyong_2, layout.name.ifBlank { layout.id }),
                     )
                 }
             } else {
@@ -164,7 +168,7 @@ class LayoutMarketViewModel(application: Application) : AndroidViewModel(applica
                     it.copy(
                         installingId = null,
                         installProgress = 0f,
-                        toastMessage = result.failureReason ?: "应用失败",
+                        toastMessage = result.failureReason ?: tr(R.string.s_yingyongshibai),
                     )
                 }
             }
@@ -189,7 +193,7 @@ class LayoutMarketViewModel(application: Application) : AndroidViewModel(applica
                     appliedLayoutId = "",
                     appliedVersion = "",
                     layouts = state.layouts.map { it.copy(installedVersion = null) },
-                    toastMessage = "已恢复默认",
+                    toastMessage = tr(R.string.s_yihuifumoren),
                 )
             }
         }

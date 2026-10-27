@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,12 +42,12 @@ fun CorrectionSettingsContent(onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("智能纠错") },
+                title = { Text(tr(R.string.s_zhinengjiucuo)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -63,11 +67,11 @@ fun CorrectionSettingsContent(onBack: () -> Unit) {
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             item {
-                SettingsSection(title = "功能开关", content = {
+                SettingsSection(title = tr(R.string.s_gongnengkaiguan), content = {
                     SettingsToggleItem(
                         icon = Icons.Default.AutoFixHigh,
-                        title = "启用智能纠错",
-                        subtitle = "按错相邻键时，在候选栏给出纠正候选（不改动原有候选，需手动选择）",
+                        title = tr(R.string.s_qiyongzhinengjiucuo),
+                        subtitle = tr(R.string.s_ancuoxianglinjianshi_zaihouxua_df488),
                         checked = enabled,
                         onCheckedChange = {
                             enabled = it
@@ -80,33 +84,33 @@ fun CorrectionSettingsContent(onBack: () -> Unit) {
             }
 
             item {
-                SettingsSection(title = "说明", content = {
+                SettingsSection(title = tr(R.string.s_shuoming), content = {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "• 默认支持「五笔86」「五笔拼音」「全拼」：对整条编码做邻键误触解码，任一位按偏都可能被纠正；纠正用词始终来自当前方案自己的词典。其他方案可在 rime/xime.custom.yaml 的 correction.schemas 中追加（双拼/九键不适用）。",
+                            text = tr(R.string.s_morenzhichi_wubi86_wubipinyin_048a6),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "• ⚠️⚠️⚠️警告1：此功能实验性质，只对默认布局、开发者自己使用习惯做了训练，不承诺所有用户可用。",
+                            text = tr(R.string.s_jinggao1_cigongnengshiyanxingz_daa71),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)
                         )
                         Text(
-                            text = "• ⚠️⚠️⚠️警告2：不支持任何自定义按键布局的键位纠错。",
+                            text = tr(R.string.s_jinggao2_buzhichirenhezidingyi_aaabd),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)
                         )
                         Text(
-                            text = "• 纠正候选标注「纠错」，排在原有候选之后（不抢占正常候选），点选即上屏纠正后的词。",
+                            text = tr(R.string.s_jiuzhenghouxuanbiaozhu_jiucuo_23e5d),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)
                         )
                         Text(
-                            text = "• 不会自动替换你输入的内容；忽略它即可，行为与未开启时完全一致。",
+                            text = tr(R.string.s_buhuizidongtihuannishurudeneir_d0291),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)

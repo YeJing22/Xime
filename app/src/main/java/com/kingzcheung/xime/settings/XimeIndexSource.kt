@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.util.Log
 import com.kingzcheung.xime.settings.KeysConfigHelper
@@ -108,8 +112,8 @@ object XimeIndexSource {
                     if (result != null) return@withContext Result.success(result)
                 }
                 // 全部镜像都失败
-                val lastUrl = mirrors.lastOrNull() ?: "未知"
-                Result.failure(IOException("无法连接到方案市场（已尝试 ${mirrors.size} 个镜像）"))
+                val lastUrl = mirrors.lastOrNull() ?: tr(R.string.s_weizhi)
+                Result.failure(IOException(tr(R.string.s_wufalianjiedaofanganshichang_y_12d9b, mirrors.size)))
             } catch (e: Exception) {
                 Log.e(TAG, "fetchSchemes failed", e)
                 Result.failure(e)
@@ -171,7 +175,7 @@ object XimeIndexSource {
                     Log.w(TAG, "fetchPlugins $host failed: ${e.message}")
                 }
             }
-            Result.failure(IOException("无法获取插件列表（已尝试 ${mirrors.size} 个镜像）"))
+            Result.failure(IOException(tr(R.string.s_wufahuoquchajianliebiao_yichan_a0eaa, mirrors.size)))
         } catch (e: Exception) {
             Log.e(TAG, "fetchPlugins failed", e)
             Result.failure(e)
@@ -192,9 +196,9 @@ object XimeIndexSource {
             plugin.versions.firstOrNull { it.version == version }
         } else {
             plugin.resolvedVersion()
-        } ?: return@withContext InstallResult(false, failureReason = "无可用版本")
+        } ?: return@withContext InstallResult(false, failureReason = tr(R.string.s_wukeyongbanben))
         val dl = v.downloadUrls.firstOrNull { it.url.isNotBlank() }
-            ?: return@withContext InstallResult(false, failureReason = "缺少下载地址")
+            ?: return@withContext InstallResult(false, failureReason = tr(R.string.s_queshaoxiazaidizhi))
 
         val fileName = dl.fileName.ifBlank { "${plugin.id}.xipk" }
         val tmpFile = File(context.cacheDir, "xime_plugin_${plugin.id}_$fileName")
@@ -202,9 +206,9 @@ object XimeIndexSource {
         val downloadResult = try {
             client.newCall(Request.Builder().url(dl.url).build()).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return@withContext InstallResult(false, failureReason = "下载失败（HTTP ${response.code}）")
+                    return@withContext InstallResult(false, failureReason = tr(R.string.s_xiazaishibai_http, response.code))
                 }
-                val body = response.body ?: return@withContext InstallResult(false, failureReason = "下载失败")
+                val body = response.body ?: return@withContext InstallResult(false, failureReason = tr(R.string.s_xiazaishibai_3))
                 val totalBytes = body.contentLength()
                 val md = if (!dl.sha256.isNullOrBlank()) {
                     java.security.MessageDigest.getInstance("SHA-256")
@@ -227,7 +231,7 @@ object XimeIndexSource {
                     val actual = md.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
                     if (!actual.equals(dl.sha256!!.trim(), ignoreCase = true)) {
                         tmpFile.delete()
-                        return@withContext InstallResult(false, failureReason = "文件校验失败（sha256 不匹配）")
+                        return@withContext InstallResult(false, failureReason = tr(R.string.s_wenjianxiaoyanshibai_sha256_bu_c0d6f))
                     }
                 }
                 InstallResult(success = true)
@@ -235,7 +239,7 @@ object XimeIndexSource {
         } catch (e: Exception) {
             Log.e(TAG, "downloadPlugin failed", e)
             tmpFile.delete()
-            return@withContext InstallResult(false, failureReason = "下载失败：${e.message}")
+            return@withContext InstallResult(false, failureReason = tr(R.string.s_xiazaishibai_4, e.message))
         }
         if (!downloadResult.success) return@withContext downloadResult
 
@@ -247,7 +251,7 @@ object XimeIndexSource {
             )
         } catch (e: Exception) {
             Log.e(TAG, "installPlugin failed", e)
-            return@withContext InstallResult(false, failureReason = "安装失败：${e.message}")
+            return@withContext InstallResult(false, failureReason = tr(R.string.s_anzhuangshibai_2, e.message))
         } finally {
             tmpFile.delete()
         }
@@ -294,7 +298,7 @@ object XimeIndexSource {
                     Log.w(TAG, "fetchLayouts $host failed: ${e.message}")
                 }
             }
-            Result.failure(IOException("无法获取布局列表（已尝试 ${mirrors.size} 个镜像）"))
+            Result.failure(IOException(tr(R.string.s_wufahuoqubujuliebiao_yichangsh_4e00d, mirrors.size)))
         } catch (e: Exception) {
             Log.e(TAG, "fetchLayouts failed", e)
             Result.failure(e)
@@ -316,12 +320,12 @@ object XimeIndexSource {
             layout.versions.firstOrNull { it.version == version }
         } else {
             layout.resolvedVersion()
-        } ?: return@withContext LayoutInstallResult(false, failureReason = "无可用版本")
+        } ?: return@withContext LayoutInstallResult(false, failureReason = tr(R.string.s_wukeyongbanben))
         val dl = v.downloadUrls.firstOrNull { it.url.isNotBlank() }
-            ?: return@withContext LayoutInstallResult(false, failureReason = "缺少下载地址")
+            ?: return@withContext LayoutInstallResult(false, failureReason = tr(R.string.s_queshaoxiazaidizhi))
         val sha = dl.sha256?.takeIf { it.isNotBlank() }
             ?: v.sha256.takeIf { it.isNotBlank() }
-            ?: return@withContext LayoutInstallResult(false, failureReason = "缺少 sha256 校验值")
+            ?: return@withContext LayoutInstallResult(false, failureReason = tr(R.string.s_queshao_sha256_xiaoyanzhi))
 
         val tmp = File(context.cacheDir, "xime_layout_${layout.id}_${v.version}.zip")
         val download = downloadFileWithSha(dl.url, tmp, sha, onDownloadProgress)
@@ -339,7 +343,7 @@ object XimeIndexSource {
         }
         if (extracted == null) {
             return@withContext LayoutInstallResult(
-                false, failureReason = "解压失败或包内容不合法（需根级 xime.custom.yaml）",
+                false, failureReason = tr(R.string.s_jieyashibaihuobaoneirongbuhefa_05019),
             )
         }
         LayoutInstallResult(success = true, files = extracted)
@@ -402,9 +406,9 @@ object XimeIndexSource {
     ): DownloadOutcome = try {
         client.newCall(Request.Builder().url(url).build()).execute().use { response ->
             if (!response.isSuccessful) {
-                DownloadOutcome(false, "下载失败（HTTP ${response.code}）")
+                DownloadOutcome(false, tr(R.string.s_xiazaishibai_http, response.code))
             } else {
-                val body = response.body ?: return DownloadOutcome(false, "下载失败")
+                val body = response.body ?: return DownloadOutcome(false, tr(R.string.s_xiazaishibai_3))
                 val md = java.security.MessageDigest.getInstance("SHA-256")
                 val totalBytes = body.contentLength()
                 var downloadedBytes = 0L
@@ -424,7 +428,7 @@ object XimeIndexSource {
                 val actual = md.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
                 if (!actual.equals(expectedSha.trim(), ignoreCase = true)) {
                     dest.delete()
-                    DownloadOutcome(false, "文件校验失败（sha256 不匹配）")
+                    DownloadOutcome(false, tr(R.string.s_wenjianxiaoyanshibai_sha256_bu_c0d6f))
                 } else {
                     DownloadOutcome(true)
                 }
@@ -433,7 +437,7 @@ object XimeIndexSource {
     } catch (e: Exception) {
         Log.e(TAG, "downloadLayout failed", e)
         dest.delete()
-        DownloadOutcome(false, "下载失败：${e.message}")
+        DownloadOutcome(false, tr(R.string.s_xiazaishibai_4, e.message))
     }
 
     /** 解压布局包到 rime 用户目录：仅接受根级 xime.custom.yaml 与 themes/、fonts/ 下文件。 */
@@ -502,9 +506,9 @@ object XimeIndexSource {
             scheme.versions.firstOrNull { it.version == version }
         } else {
             scheme.resolvedVersion()
-        } ?: return@withContext InstallResult(false, failureReason = "无可用版本")
+        } ?: return@withContext InstallResult(false, failureReason = tr(R.string.s_wukeyongbanben))
         if (v.downloadUrls.isEmpty() || v.downloadUrls.all { it.url.isBlank() }) {
-            return@withContext InstallResult(false, failureReason = "缺少下载地址")
+            return@withContext InstallResult(false, failureReason = tr(R.string.s_queshaoxiazaidizhi))
         }
 
         val items = v.downloadUrls.filter { it.url.isNotBlank() }
@@ -525,7 +529,7 @@ object XimeIndexSource {
                 val schemeDir = SchemaManager.getMarketDir(context, scheme.id)
                 if (schemeDir.exists()) schemeDir.deleteRecursively()
                 val reason = if (result.sha256Verified == false)
-                    "文件校验失败（sha256 不匹配），文件可能不完整" else "下载失败"
+                    tr(R.string.s_wenjianxiaoyanshibai_sha256_bu_e9d3c) else tr(R.string.s_xiazaishibai_3)
                 return@withContext InstallResult(
                     false, failureReason = reason, sha256Status = result.sha256Verified
                 )
@@ -547,7 +551,7 @@ object XimeIndexSource {
         switchEnabled: Boolean = true,
     ): InstallResult = withContext(Dispatchers.IO) {
         if (!SchemaManager.isSchemeDownloaded(context, scheme.id)) {
-            return@withContext InstallResult(false, failureReason = "压缩包不存在，请先下载")
+            return@withContext InstallResult(false, failureReason = tr(R.string.s_yasuobaobucunzai_qingxianxiazai))
         }
         val result = SchemaManager.installPackageFromMarketDir(
             context = context,
@@ -561,7 +565,7 @@ object XimeIndexSource {
         )
         if (!result.success) {
             val reason = result.failureReason ?: result.conflicts.joinToString("、") { c ->
-                "${c.fileName}（已被 ${c.claimedBy.joinToString("、")} 使用）"
+                tr(R.string.s_wenjian_chongtu_shiyong, c.fileName, c.claimedBy.joinToString("、"))
             }
             return@withContext InstallResult(
                 false,

@@ -1,17 +1,11 @@
-# default.custom.yaml —— Xime app 固定配置（不随 assets/rime 方案 submodule 分发）
-# 安装/启动时由 RimeConfigHelper 同步到用户 rime 目录，部署时 patch 到 default.yaml，
-# 经 librime DefaultConfigPlugin 将 menu 等节编入每个方案的编译产物。
-# 注意：schema_list 由 app 按用户启停状态管理（SchemaManager.setEnabledSchemas），
-# 请勿在此手工调整；其余 patch 节为默认配置基线，修改后随 app 更新生效。
+# default.custom.yaml —— 用户自定义补丁（本文件归用户所有，app 不改写）
+# 新装时由 RimeConfigHelper 复制一次作为起始基线，之后只属于用户：
+# 部署时本文件的 patch 叠在 default.yaml 之上、同名键以本文件为准，
+# 修改后计入部署 hash，自动触发重部署生效。
+# 注意：启用方案列表由 app 管理（持久层 prefs，镜像写 default.yaml）；
+# 在此配置 schema_list 会接管方案启停，app 内的方案开关将不再生效。
 
 patch:
-  schema_list:
-    - schema: wubi86_pinyin
-    - schema: wubi86
-    - schema: wubi86_trad
-    - schema: wubi86_trad_pinyin
-    - schema: pinyin_simp
-
   # Menu
   menu:
     page_size: 20                   # 候选词数量（手机屏一屏放得下，PC 版默认 5 太短）

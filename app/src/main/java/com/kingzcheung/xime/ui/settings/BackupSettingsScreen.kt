@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -186,16 +190,16 @@ fun BackupSettingsContent(
                         onSuccess = { r ->
                             buildString {
                                 if (r.snapshotFiles > 0) {
-                                    append("已导入 ${r.snapshotFiles} 个快照")
-                                    if (r.merged) append("并完成合并")
+                                    append(tr(R.string.s_yidaoru_gekuaizhao, r.snapshotFiles))
+                                    if (r.merged) append(tr(R.string.s_bingwanchenghebing))
                                 }
                                 if (r.importedEntries > 0) {
                                     if (isNotEmpty()) append("；")
-                                    append("已导入 ${r.importedEntries} 条词条")
+                                    append(tr(R.string.s_yidaoru_tiaocitiao, r.importedEntries))
                                 }
                             }
                         },
-                        onFailure = { "导入失败：${it.message}" }
+                        onFailure = { tr(R.string.s_daorushibai_2, it.message) }
                     )
                 )
             }
@@ -225,19 +229,19 @@ fun BackupSettingsContent(
                 if (fresh != null) syncRemoteList = fresh
                 lastSyncAt = SettingsPreferences.getLastRimeSyncAt(context)
                 // 成功清空、失败落盘：页面状态与 snackbar 同一口径
-                val error = result.exceptionOrNull()?.message ?: "未知错误"
+                val error = result.exceptionOrNull()?.message ?: tr(R.string.s_weizhicuowu)
                 SettingsPreferences.setLastSyncError(context, if (result.isSuccess) null else error)
                 syncError = if (result.isSuccess) null else error
                 snackbar.showSnackbar(
                     result.fold(
                         onSuccess = { pulled ->
                             when {
-                                plugin == null -> "已整理本机词条（未配置备份服务，未上云）"
-                                pulled > 0 -> "已合并 $pulled 台设备的词条，并上传本机快照"
-                                else -> "已上传本机快照（云端暂无其他设备）"
+                                plugin == null -> tr(R.string.s_yizhenglibenjicitiao_weipeizhi_e3eb7)
+                                pulled > 0 -> tr(R.string.s_yihebing_taishebeidecitiao_bin_54620, pulled)
+                                else -> tr(R.string.s_yishangchuanbenjikuaizhao_yund_eb9ee)
                             }
                         },
-                        onFailure = { "同步失败：$error" }
+                        onFailure = { tr(R.string.s_tongbushibai, error) }
                     )
                 )
             }
@@ -257,13 +261,13 @@ fun BackupSettingsContent(
                     SettingsPreferences.setLastBackupError(context, null)
                     backupError = null
                 } else {
-                    val error = result.message ?: "未知错误"
+                    val error = result.message ?: tr(R.string.s_weizhicuowu)
                     SettingsPreferences.setLastBackupError(context, error)
                     backupError = error
                 }
                 snackbar.showSnackbar(
-                    if (result.ok) "备份完成" + (result.message ?: "")
-                    else "备份失败：${result.message ?: "未知错误"}"
+                    if (result.ok) tr(R.string.s_beifenwancheng) + (result.message ?: "")
+                    else tr(R.string.s_beifenshibai_yuanyin, result.message ?: tr(R.string.s_weizhicuowu))
                 )
             }
         }
@@ -279,8 +283,8 @@ fun BackupSettingsContent(
                 busyOp = null
                 lastSyncAt = SettingsPreferences.getLastRimeSyncAt(context)
                 snackbar.showSnackbar(
-                    if (result.isSuccess) "恢复完成，重启应用后生效；自造词按时间戳合并（引擎未就绪时会在唤起键盘后补做）"
-                    else "恢复失败：${result.exceptionOrNull()?.message}"
+                    if (result.isSuccess) tr(R.string.s_huifuwancheng_zhongqiyingyongh_d8f09)
+                    else tr(R.string.s_huifushibai, result.exceptionOrNull()?.message)
                 )
             }
         }
@@ -295,7 +299,7 @@ fun BackupSettingsContent(
             withContext(Dispatchers.Main) {
                 busyOp = null
                 if (ok) remoteList = fresh
-                snackbar.showSnackbar(if (ok) "已删除该备份" else "删除失败")
+                snackbar.showSnackbar(if (ok) tr(R.string.s_yishanchugaibeifen) else tr(R.string.s_shanchushibai))
             }
         }
     }
@@ -306,7 +310,7 @@ fun BackupSettingsContent(
         busyOp = "list"
         scope.launch(Dispatchers.IO) {
             val list = BackupManager.listRemote(plugin)?.filter { !SyncManager.isRemoteSyncEntry(it.name) }
-            val err = if (list == null) "获取备份列表失败" else null
+            val err = if (list == null) tr(R.string.s_huoqubeifenliebiaoshibai) else null
             withContext(Dispatchers.Main) {
                 busyOp = null
                 remoteList = list
@@ -320,12 +324,12 @@ fun BackupSettingsContent(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text("同步与备份") },
+                title = { Text(tr(R.string.s_tongbuyubeifen)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -346,7 +350,7 @@ fun BackupSettingsContent(
         ) {
             // ---------- 备份服务（词条同步与云端备份共用的通道） ----------
             SettingsSection(
-                title = "备份服务",
+                title = tr(R.string.s_beifenfuwu),
                 content = {
                     when {
                         backupPlugins.isEmpty() -> Column(
@@ -363,7 +367,7 @@ fun BackupSettingsContent(
                                 modifier = Modifier.size(32.dp)
                             )
                             Text(
-                                text = "未安装备份插件，云端通道不可用；本机整理与本地导入导出不受影响。",
+                                text = tr(R.string.s_weianzhuangbeifenchajian_yundu_93b89),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -371,22 +375,22 @@ fun BackupSettingsContent(
                                 onClick = onNavigateToMarket,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("前往扩展商店")
+                                Text(tr(R.string.s_qianwangkuozhanshangdian))
                             }
                         }
 
                         // 未启用 / 未配置：给"去哪、做什么"的引导，而不是把主按钮灰着不说话
                         activePlugin == null -> ServiceGuideRow(
-                            title = "备份插件已安装但未启用",
-                            subtitle = "启用后才能云端同步与备份",
-                            actionText = "去插件中心",
+                            title = tr(R.string.s_beifenchajianyianzhuangdanweiq_4040f),
+                            subtitle = tr(R.string.s_qiyonghoucainengyunduantongbuy_c2ca1),
+                            actionText = tr(R.string.s_quchajianzhongxin),
                             onClick = onNavigateToPlugins
                         )
 
                         configured == false -> ServiceGuideRow(
-                            title = "还没填服务器和账号",
-                            subtitle = "填完才能云端同步与备份",
-                            actionText = "去配置",
+                            title = tr(R.string.s_haimeitianfuwuqihezhanghao),
+                            subtitle = tr(R.string.s_tianwancainengyunduantongbuyub_96d80),
+                            actionText = tr(R.string.s_qupeizhi),
                             onClick = { activePlugin?.first?.let(onNavigateToPluginSettings) }
                         )
 
@@ -407,21 +411,21 @@ fun BackupSettingsContent(
 
             // ---------- 卡片一：用户词库同步（一个主动作） ----------
             SettingsSection(
-                title = "用户词库",
+                title = tr(R.string.s_yonghuciku),
                 modifier = Modifier.animateContentSize(),
                 content = {
                     FeatureCardHeader(
-                        title = "用户词库同步",
+                        title = tr(R.string.s_yonghucikutongbu),
                         // 一句话自适应：没成功过讲"做什么"，成功过讲"上次成功 + 云端规模"
                         infoText = if (lastSyncAt > 0) buildString {
-                            append("上次成功 " + formatRelativeTime(lastSyncAt))
-                            syncRemoteList?.let { append(" · 云端 ${it.size} 台设备") }
+                            append(tr(R.string.s_shangcichenggong) + formatRelativeTime(lastSyncAt))
+                            syncRemoteList?.let { append(tr(R.string.s_yunduan_taishebei, it.size)) }
                         } else {
-                            "多台设备自动合并，新词不会被覆盖"
+                            tr(R.string.s_duotaishebeizidonghebing_xinci_80a28)
                         },
-                        badgeText = if (busyOp == "syncAll") "进行中"
-                        else if (syncError != null) "失败"
-                        else if (lastSyncAt > 0) "成功" else "从未",
+                        badgeText = if (busyOp == "syncAll") tr(R.string.s_jinxingzhong)
+                        else if (syncError != null) tr(R.string.s_shibai)
+                        else if (lastSyncAt > 0) tr(R.string.s_chenggong) else tr(R.string.s_congwei),
                         badgeTone = if (busyOp == "syncAll") StatusTone.Busy
                         else if (syncError != null) StatusTone.Fail
                         else if (lastSyncAt > 0) StatusTone.Ok else StatusTone.Never,
@@ -441,20 +445,20 @@ fun BackupSettingsContent(
 
             // ---------- 卡片二：完整备份（一个主动作） ----------
             SettingsSection(
-                title = "完整备份",
+                title = tr(R.string.s_wanzhengbeifen),
                 modifier = Modifier.animateContentSize(),
                 content = {
                     FeatureCardHeader(
-                        title = "备份与恢复",
+                        title = tr(R.string.s_beifenyuhuifu),
                         infoText = if (lastBackupAt > 0) buildString {
-                            append("上次成功 " + formatRelativeTime(lastBackupAt))
-                            remoteList?.let { append(" · 云端 ${it.size} 份") }
+                            append(tr(R.string.s_shangcichenggong) + formatRelativeTime(lastBackupAt))
+                            remoteList?.let { append(tr(R.string.s_yunduan_fen, it.size)) }
                         } else {
-                            "设置、输入方案、插件，一次打包"
+                            tr(R.string.s_shezhi_shurufangan_chajian_yic_4220a)
                         },
-                        badgeText = if (busyOp == "backup") "进行中"
-                        else if (backupError != null) "失败"
-                        else if (lastBackupAt > 0) "成功" else "从未",
+                        badgeText = if (busyOp == "backup") tr(R.string.s_jinxingzhong)
+                        else if (backupError != null) tr(R.string.s_shibai)
+                        else if (lastBackupAt > 0) tr(R.string.s_chenggong) else tr(R.string.s_congwei),
                         badgeTone = if (busyOp == "backup") StatusTone.Busy
                         else if (backupError != null) StatusTone.Fail
                         else if (lastBackupAt > 0) StatusTone.Ok else StatusTone.Never,
@@ -482,21 +486,21 @@ fun BackupSettingsContent(
 
             // ---------- 更多：低频与危险入口集中（原两个弹层） ----------
             SettingsSection(
-                title = "更多",
+                title = tr(R.string.s_gengduo),
                 content = {
                     SettingsItem(
                         icon = Icons.Outlined.FileDownload,
-                        title = "导入词条（快照 / 码表）",
-                        subtitle = "其他 rime 前端的快照或码表；一律按时间戳合并",
-                        badgeText = if (busyOp == "import") "进行中" else null,
+                        title = tr(R.string.s_daorucitiao_kuaizhao_mabiao),
+                        subtitle = tr(R.string.s_qita_rime_qianduandekuaizhaohu_f8cc8),
+                        badgeText = if (busyOp == "import") tr(R.string.s_jinxingzhong) else null,
                         showArrow = true,
                         onClick = { if (busyOp == null) importLauncher.launch(arrayOf("*/*")) }
                     )
                     SettingsItem(
                         icon = Icons.Outlined.FileUpload,
-                        title = "导出词条到下载目录",
-                        subtitle = "给其他 rime 前端用；解压后对方可直接还原",
-                        badgeText = if (busyOp == "export") "进行中" else null,
+                        title = tr(R.string.s_daochucitiaodaoxiazaimulu),
+                        subtitle = tr(R.string.s_geiqita_rime_qianduanyong_jiey_bc0a9),
+                        badgeText = if (busyOp == "export") tr(R.string.s_jinxingzhong) else null,
                         showArrow = true,
                         onClick = {
                             if (busyOp == null) {
@@ -507,8 +511,8 @@ fun BackupSettingsContent(
                                         busyOp = null
                                         snackbar.showSnackbar(
                                             result.fold(
-                                                onSuccess = { "已保存到下载目录：$it" },
-                                                onFailure = { "导出失败：${it.message}" }
+                                                onSuccess = { tr(R.string.s_yibaocundaoxiazaimulu, it) },
+                                                onFailure = { tr(R.string.s_daochushibai, it.message) }
                                             )
                                         )
                                     }
@@ -518,9 +522,9 @@ fun BackupSettingsContent(
                     )
                     SettingsItem(
                         icon = Icons.Outlined.SaveAlt,
-                        title = "保存完整备份到下载目录",
-                        subtitle = "换机 / 离线可用；与云端同一个包格式",
-                        badgeText = if (busyOp == "exportLocal") "进行中" else null,
+                        title = tr(R.string.s_baocunwanzhengbeifendaoxiazaimulu),
+                        subtitle = tr(R.string.s_huanji_lixiankeyong_yuyunduant_78157),
+                        badgeText = if (busyOp == "exportLocal") tr(R.string.s_jinxingzhong) else null,
                         showArrow = true,
                         onClick = {
                             if (busyOp == null) {
@@ -534,8 +538,8 @@ fun BackupSettingsContent(
                                         }
                                         snackbar.showSnackbar(
                                             result.fold(
-                                                onSuccess = { "已导出完整备份到下载目录：${it.fileName}" },
-                                                onFailure = { "导出失败：${it.message}" }
+                                                onSuccess = { tr(R.string.s_yidaochuwanzhengbeifendaoxiaza_c8a5d, it.fileName) },
+                                                onFailure = { tr(R.string.s_daochushibai, it.message) }
                                             )
                                         )
                                     }
@@ -545,8 +549,8 @@ fun BackupSettingsContent(
                     )
                     SettingsItem(
                         icon = Icons.Outlined.SettingsBackupRestore,
-                        title = "从文件恢复完整备份",
-                        subtitle = "覆盖式恢复；会先弹确认",
+                        title = tr(R.string.s_congwenjianhuifuwanzhengbeifen),
+                        subtitle = tr(R.string.s_fugaishihuifu_huixiandanqueren),
                         showArrow = true,
                         onClick = { if (busyOp == null) localPackageLauncher.launch(arrayOf("*/*")) }
                     )
@@ -558,7 +562,7 @@ fun BackupSettingsContent(
     if (showServicePicker) {
         // 切换备份服务：单选弹窗（点行即切换并关闭）
         SettingsSingleChoiceDialog(
-            title = "选择备份服务",
+            title = tr(R.string.s_xuanzebeifenfuwu),
             options = backupPlugins.map { plugin ->
                 val protocols = plugin.capabilities?.backup?.protocols.orEmpty()
                 SettingsChoiceOption(
@@ -567,7 +571,7 @@ fun BackupSettingsContent(
                     subtitle = buildString {
                         append(plugin.description)
                         if (protocols.isNotEmpty()) {
-                            append("\n备份协议: ")
+                            append(tr(R.string.s_nbeifenxieyi))
                             append(protocols.joinToString("、"))
                         }
                     }
@@ -609,18 +613,18 @@ fun BackupSettingsContent(
     pendingDeleteEntry?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingDeleteEntry = null },
-            title = { Text("删除云端备份") },
-            text = { Text("将永久删除「${entry.name}」，删除后无法找回。确定删除？") },
+            title = { Text(tr(R.string.s_shanchuyunduanbeifen)) },
+            text = { Text(tr(R.string.s_jiangyongjiushanchu_shanchuhou_95640, entry.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     pendingDeleteEntry = null
                     runDeleteRemote(entry)
                 }) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(tr(R.string.s_shanchu), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteEntry = null }) { Text("取消") }
+                TextButton(onClick = { pendingDeleteEntry = null }) { Text(tr(R.string.s_quxiao)) }
             }
         )
     }
@@ -629,21 +633,21 @@ fun BackupSettingsContent(
     pendingRestoreEntry?.let { entry ->
         AlertDialog(
             onDismissRequest = { pendingRestoreEntry = null },
-            title = { Text("恢复到本机") },
+            title = { Text(tr(R.string.s_huifudaobenji)) },
             text = {
                 Text(
-                    "把「${entry.name}」覆盖到本机：恢复同名配置/方案/插件与设置项；" +
-                        "自造词按时间戳合并，本机新词不会丢。重启应用后生效。"
+                    tr(R.string.s_ba_fugaidaobenji_huifutongming_4a142, entry.name) +
+                        tr(R.string.s_zizaocianshijianchuohebing_ben_b0e5d)
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     pendingRestoreEntry = null
                     runRestore(entry)
-                }) { Text("恢复") }
+                }) { Text(tr(R.string.s_huifu)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRestoreEntry = null }) { Text("取消") }
+                TextButton(onClick = { pendingRestoreEntry = null }) { Text(tr(R.string.s_quxiao)) }
             }
         )
     }
@@ -652,11 +656,11 @@ fun BackupSettingsContent(
     pendingLocalImportUri?.let { uri ->
         AlertDialog(
             onDismissRequest = { pendingLocalImportUri = null },
-            title = { Text("从本地恢复完整备份") },
+            title = { Text(tr(R.string.s_congbendihuifuwanzhengbeifen)) },
             text = {
                 Text(
-                    "会覆盖 rime/ 目录下同名配置与方案文件，并还原插件、插件配置与设置项；" +
-                        "自造词按时间戳合并（不会吃掉本机新词）。重启应用后全部生效。"
+                    tr(R.string.s_huifugai_rime_muluxiatongmingp_8d548) +
+                        tr(R.string.s_zizaocianshijianchuohebing_buh_d11d6)
                 )
             },
             confirmButton = {
@@ -671,17 +675,17 @@ fun BackupSettingsContent(
                                 lastSyncAt = SettingsPreferences.getLastRimeSyncAt(context)
                                 snackbar.showSnackbar(
                                     result.fold(
-                                        onSuccess = { "已从本地恢复，重启应用后生效" },
-                                        onFailure = { "导入失败：${it.message}" }
+                                        onSuccess = { tr(R.string.s_yicongbendihuifu_zhongqiyingyo_6fcd1) },
+                                        onFailure = { tr(R.string.s_daorushibai_2, it.message) }
                                     )
                                 )
                             }
                         }
                     }
-                ) { Text("导入") }
+                ) { Text(tr(R.string.s_daoru)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingLocalImportUri = null }) { Text("取消") }
+                TextButton(onClick = { pendingLocalImportUri = null }) { Text(tr(R.string.s_quxiao)) }
             }
         )
     }
@@ -689,19 +693,19 @@ fun BackupSettingsContent(
 
 /** 云端条目行用的绝对时间（列表里要能对得上文件）；卡片状态用相对时间见 [formatRelativeTime]。 */
 private fun formatBackupTime(at: Long): String =
-    if (at > 0) SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(at)) else "从未"
+    if (at > 0) SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(at)) else tr(R.string.s_congwei)
 
 /**
  * 相对时间：今天/昨天给到分钟，本年给月日，跨年给年月日。
  * "上次成功 今天 12:30"比"2026-10-10 12:30"更像人话；[now] 可注入以便测试。
  */
 internal fun formatRelativeTime(at: Long, now: Long = System.currentTimeMillis()): String {
-    if (at <= 0) return "从未"
+    if (at <= 0) return tr(R.string.s_congwei)
     val cal = Calendar.getInstance().apply { timeInMillis = at }
     val nowCal = Calendar.getInstance().apply { timeInMillis = now }
     val sameYear = cal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR)
     val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(at))
-    if (sameYear && cal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)) return "今天 $time"
+    if (sameYear && cal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)) return tr(R.string.s_jintian, time)
     val yesterdayCal = Calendar.getInstance().apply {
         timeInMillis = now
         add(Calendar.DAY_OF_YEAR, -1)
@@ -709,7 +713,7 @@ internal fun formatRelativeTime(at: Long, now: Long = System.currentTimeMillis()
     if (cal.get(Calendar.YEAR) == yesterdayCal.get(Calendar.YEAR) &&
         cal.get(Calendar.DAY_OF_YEAR) == yesterdayCal.get(Calendar.DAY_OF_YEAR)
     ) {
-        return "昨天 $time"
+        return tr(R.string.s_zuotian, time)
     }
     val pattern = if (sameYear) "MM-dd HH:mm" else "yyyy-MM-dd"
     return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(at))
@@ -803,12 +807,12 @@ private fun FailureRow(message: String, enabled: Boolean, onRetry: () -> Unit) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "上次失败：$message",
+            text = tr(R.string.s_shangcishibai, message),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.weight(1f)
         )
-        TextButton(onClick = onRetry, enabled = enabled) { Text("重试") }
+        TextButton(onClick = onRetry, enabled = enabled) { Text(tr(R.string.s_zhongshi)) }
     }
 }
 
@@ -893,7 +897,7 @@ private fun WordCardActions(
             } else {
                 Icon(Icons.TwoTone.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
             }
-            Text("立即同步", modifier = Modifier.padding(start = 8.dp))
+            Text(tr(R.string.s_lijitongbu), modifier = Modifier.padding(start = 8.dp))
         }
         // 云端各设备快照：默认收起，每台设备一份固定名包；只读
         if (snapshotList != null) {
@@ -905,7 +909,7 @@ private fun WordCardActions(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "云端设备快照 ${snapshotList.size} 台",
+                    text = tr(R.string.s_yunduanshebeikuaizhao_tai, snapshotList.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -920,7 +924,7 @@ private fun WordCardActions(
             if (expanded) {
                 if (snapshotList.isEmpty()) {
                     Text(
-                        text = "云端还没有快照；同步后其他设备能拿到本机快照，并自动合并新词。",
+                        text = tr(R.string.s_yunduanhaimeiyoukuaizhao_tongb_8b2ce),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -962,12 +966,12 @@ private fun BackupCardActions(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "先配置备份服务才能云备份",
+                    text = tr(R.string.s_xianpeizhibeifenfuwucainengyun_ff570),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onConfigure, enabled = !blocking) { Text("去配置") }
+                TextButton(onClick = onConfigure, enabled = !blocking) { Text(tr(R.string.s_qupeizhi)) }
             }
         }
         if (error != null) {
@@ -991,7 +995,7 @@ private fun BackupCardActions(
                     Icon(Icons.TwoTone.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
                 Text(
-                    text = "立即备份",
+                    text = tr(R.string.s_lijibeifen),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(start = 6.dp)
                 )
@@ -1010,7 +1014,7 @@ private fun BackupCardActions(
                 } else {
                     Text(
                         text = buildString {
-                            append(if (expanded) "收起记录" else "备份记录")
+                            append(if (expanded) tr(R.string.s_shouqijilu) else tr(R.string.s_beifenjilu))
                             remoteList?.let { append(" ${it.size}") }
                         },
                         style = MaterialTheme.typography.labelLarge
@@ -1025,7 +1029,7 @@ private fun BackupCardActions(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "没拉到备份列表；检查网络或服务配置",
+                    text = tr(R.string.s_meiladaobeifenliebiao_jianchaw_d63c8),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -1033,13 +1037,13 @@ private fun BackupCardActions(
                 TextButton(
                     onClick = onRefresh,
                     enabled = busyOp == null || busyOp == "list"
-                ) { Text("重试") }
+                ) { Text(tr(R.string.s_zhongshi)) }
             }
         }
         if (expanded && remoteList != null) {
             if (remoteList.isEmpty()) {
                 Text(
-                    text = "还没有备份 · 点「立即备份」创建第一份",
+                    text = tr(R.string.s_haimeiyoubeifen_dian_lijibeife_c3bae),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1071,7 +1075,7 @@ private fun BackupCardActions(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("恢复")
+                            Text(tr(R.string.s_huifu))
                         }
                     }
                     IconButton(
@@ -1086,7 +1090,7 @@ private fun BackupCardActions(
                         } else {
                             Icon(
                                 Icons.Outlined.Delete,
-                                contentDescription = "删除",
+                                contentDescription = tr(R.string.s_shanchu),
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -1175,7 +1179,7 @@ private fun CurrentBackupServiceItem(
                 // 名字必须带 weight：Row 先测量非 weight 子项，若名字先吃满宽度，
                 // 后面的状态胶囊只能拿到几 dp —— 会被压成"一条竖着的色条"（已配置三字逐字换行）
                 Text(
-                    text = pluginInfo?.name ?: pluginId ?: "未选择备份服务",
+                    text = pluginInfo?.name ?: pluginId ?: tr(R.string.s_weixuanzebeifenfuwu),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -1185,16 +1189,16 @@ private fun CurrentBackupServiceItem(
             }
             Text(
                 text = if (lastSuccessAt > 0) {
-                    "上次成功 " + formatRelativeTime(lastSuccessAt)
+                    tr(R.string.s_shangcichenggong) + formatRelativeTime(lastSuccessAt)
                 } else {
-                    "还没有成功过"
+                    tr(R.string.s_haimeiyouchenggongguo)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (protocols.isNotEmpty()) {
                 Text(
-                    text = "备份协议: " + protocols.joinToString("、"),
+                    text = tr(R.string.s_beifenxieyi) + protocols.joinToString("、"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -1208,7 +1212,7 @@ private fun CurrentBackupServiceItem(
         // 省下的宽度留给插件名
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = "切换备份服务",
+            contentDescription = tr(R.string.s_qiehuanbeifenfuwu),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
@@ -1227,7 +1231,7 @@ private fun ServiceConfigChip(configured: Boolean?, onClick: () -> Unit) {
         onClick = onClick,
         label = {
             Text(
-                text = if (ready) "已配置" else "配置",
+                text = if (ready) tr(R.string.s_yipeizhi) else tr(R.string.s_peizhi),
                 style = MaterialTheme.typography.labelLarge
             )
         },

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
@@ -189,13 +193,13 @@ private fun ToolPanelMainInput(
                 background = fieldBackground(context, fieldBg)
                 setTextColor(fieldText.toArgb())
                 setHintTextColor(fieldText.copy(alpha = 0.4f).toArgb())
-                hint = "输入上下文或指令"
+                hint = tr(R.string.s_shurushangxiawenhuozhiling)
                 textSize = 14f
                 isSingleLine = true
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 setPadding((16 * d).toInt(), 0, (16 * d).toInt(), 0)
 
-                setImeActionLabel("生成", EditorInfo.IME_ACTION_DONE)
+                setImeActionLabel(tr(R.string.s_shengcheng), EditorInfo.IME_ACTION_DONE)
                 imeOptions = EditorInfo.IME_FLAG_NO_ENTER_ACTION or
                     EditorInfo.IME_ACTION_DONE
 
@@ -388,7 +392,7 @@ private fun PanelSelectField(
             )
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = node.label ?: "选择",
+                contentDescription = node.label ?: tr(R.string.s_xuanze),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )

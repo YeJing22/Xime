@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -46,33 +50,33 @@ private val SetupStep.stepIndex: Int get() = SetupStep.entries.indexOf(this)
 /** 横向指示器上的短标签。 */
 private val SetupStep.shortLabel: String
     get() = when (this) {
-        SetupStep.EnableIme -> "启用"
-        SetupStep.SelectSchemas -> "选方案"
-        SetupStep.SwitchToIme -> "切换"
+        SetupStep.EnableIme -> tr(R.string.s_qiyong)
+        SetupStep.SelectSchemas -> tr(R.string.s_xuanfangan)
+        SetupStep.SwitchToIme -> tr(R.string.s_qiehuan)
     }
 
 /** 双栏导航项标题。 */
 private val SetupStep.navTitle: String
     get() = when (this) {
-        SetupStep.EnableIme -> "启用输入法"
-        SetupStep.SelectSchemas -> "选择方案"
-        SetupStep.SwitchToIme -> "切换输入法"
+        SetupStep.EnableIme -> tr(R.string.s_qiyongshurufa)
+        SetupStep.SelectSchemas -> tr(R.string.s_xuanzefangan)
+        SetupStep.SwitchToIme -> tr(R.string.s_qiehuanshurufa)
     }
 
 /** 双栏导航项说明。 */
 private val SetupStep.navDescription: String
     get() = when (this) {
-        SetupStep.EnableIme -> "在系统设置中启用曦码T9输入法"
-        SetupStep.SelectSchemas -> "选择并部署输入方案"
-        SetupStep.SwitchToIme -> "切换到曦码T9输入法"
+        SetupStep.EnableIme -> tr(R.string.s_zaixitongshezhizhongqiyongxima_44550)
+        SetupStep.SelectSchemas -> tr(R.string.s_xuanzebingbushushurufangan)
+        SetupStep.SwitchToIme -> tr(R.string.s_qiehuandaoximashurufa)
     }
 
 /** 步骤正文标题。 */
 private val SetupStep.stepTitle: String
     get() = when (this) {
-        SetupStep.EnableIme -> "步骤 1：启用输入法"
-        SetupStep.SelectSchemas -> "步骤 2：选择输入方案"
-        SetupStep.SwitchToIme -> "步骤 3：切换输入法"
+        SetupStep.EnableIme -> tr(R.string.s_buzhou_1_qiyongshurufa)
+        SetupStep.SelectSchemas -> tr(R.string.s_buzhou_2_xuanzeshurufangan)
+        SetupStep.SwitchToIme -> tr(R.string.s_buzhou_3_qiehuanshurufa)
     }
 
 /** 向导内主操作按钮：限制最大宽度，避免平板上被拉伸得过宽。 */
@@ -128,7 +132,7 @@ fun SetupWizardScreen(
                                     RimeConfigHelper.isDeploymentComplete(context)
                                 }
                                 if (!complete) {
-                                    deployReminder = "方案已选择，但尚未部署。请前往设置点击「部署」按钮编译词库"
+                                    deployReminder = tr(R.string.s_fanganyixuanze_danshangweibush_80e59)
                                 } else {
                                     deployReminder = null
                                     currentStep = SetupStep.SwitchToIme
@@ -162,7 +166,7 @@ fun SetupWizardScreen(
             containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
                 TopAppBar(
-                    title = { Text("设置向导") },
+                    title = { Text(tr(R.string.s_shezhixiangdao)) },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -349,14 +353,14 @@ private fun VerticalStepNavigation(
 
     Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 32.dp)) {
         Text(
-            text = "曦码T9输入法",
+            text = tr(R.string.s_ximashurufa),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "完成以下步骤即可开始使用",
+            text = tr(R.string.s_wanchengyixiabuzhoujikekaishis_a88af),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -445,14 +449,14 @@ private fun EnableImeStep(onNext: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     Text(
-        text = "曦码T9输入法",
+        text = tr(R.string.s_ximashurufa),
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "基于 Rime 引擎的 Android 输入法",
+        text = tr(R.string.s_jiyu_rime_yinqingde_android_sh_4b613),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -465,7 +469,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
     )
     Spacer(Modifier.height(12.dp))
     Text(
-        text = "请在系统设置中启用「曦码T9输入法」",
+        text = tr(R.string.s_qingzaixitongshezhizhongqiyong_f6c5a),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -478,13 +482,13 @@ private fun EnableImeStep(onNext: () -> Unit) {
         },
         modifier = Modifier.wizardButton()
     ) {
-        Text("去系统设置启用")
+        Text(tr(R.string.s_quxitongshezhiqiyong))
     }
 
     if (isEnabled) {
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "✓ 曦码T9输入法已启用",
+            text = tr(R.string.s_ximashurufayiqiyong),
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold
         )
@@ -493,12 +497,12 @@ private fun EnableImeStep(onNext: () -> Unit) {
             onClick = onNext,
             modifier = Modifier.wizardButton()
         ) {
-            Text("下一步")
+            Text(tr(R.string.s_xiayibu))
         }
     } else {
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "请先在系统设置中启用曦码T9输入法",
+            text = tr(R.string.s_qingxianzaixitongshezhizhongqi_97b2c),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error
         )
@@ -509,7 +513,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
             },
             modifier = Modifier.wizardButton()
         ) {
-            Text("检查状态")
+            Text(tr(R.string.s_jianchazhuangtai))
         }
     }
 
@@ -544,14 +548,14 @@ private fun SelectSchemasStep(
     )
     Spacer(Modifier.height(12.dp))
     Text(
-        text = "点击下方按钮前往设置，选择您需要的输入方案并点击「部署」",
+        text = tr(R.string.s_dianjixiafanganniuqianwangshez_77d28),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
     )
     Spacer(Modifier.height(4.dp))
     Text(
-        text = "请至少选择一个方案后才能继续",
+        text = tr(R.string.s_qingzhishaoxuanzeyigefanganhou_e4dfa),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -562,13 +566,13 @@ private fun SelectSchemasStep(
         onClick = { onNavigateToSchemaSettings() },
         modifier = Modifier.wizardButton()
     ) {
-        Text("去设置选择方案")
+        Text(tr(R.string.s_qushezhixuanzefangan))
     }
 
     if (enabledSchemas.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "✓ 已选择 ${enabledSchemas.size} 个方案",
+            text = tr(R.string.s_yixuanze_gefangan, enabledSchemas.size),
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold
         )
@@ -586,7 +590,7 @@ private fun SelectSchemasStep(
             onClick = onNext,
             modifier = Modifier.wizardButton()
         ) {
-            Text("下一步")
+            Text(tr(R.string.s_xiayibu))
         }
     }
 }
@@ -600,7 +604,7 @@ private suspend fun doCompile(
 ) {
     withContext(Dispatchers.IO) {
         try {
-            onProgress("正在初始化输入法引擎...")
+            onProgress(tr(R.string.s_zhengzaichushihuashurufayinqing))
 
             // 1. 初始化 Rime 引擎
             val (userDataDir, sharedDataDir) =
@@ -609,7 +613,7 @@ private suspend fun doCompile(
             engine.initialize(userDataDir, sharedDataDir)
 
             // 2. 部署 = 编译词库 + 创建 session（一步完成）
-            onProgress("正在编译词库...")
+            onProgress(tr(R.string.s_zhengzaibianyiciku))
             engine.deploy()
             RimeConfigHelper.storeDeploymentHash(context)
             SettingsPreferences.setDeploymentDone(context, true)
@@ -617,7 +621,7 @@ private suspend fun doCompile(
             onDone()
         } catch (e: Exception) {
             Log.e("SetupWizard", "Compile failed", e)
-            onProgress("错误：${e.message}")
+            onProgress(tr(R.string.s_cuowu, e.message))
             onError()
         }
     }
@@ -634,7 +638,7 @@ private fun SwitchToImeStep(onCompleted: () -> Unit) {
     )
     Spacer(Modifier.height(12.dp))
     Text(
-        text = "一切准备就绪！请切换到曦码T9输入法开始使用",
+        text = tr(R.string.s_yiqiezhunbeijiuxu_qingqiehuand_3e15e),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center
@@ -648,7 +652,7 @@ private fun SwitchToImeStep(onCompleted: () -> Unit) {
         },
         modifier = Modifier.wizardButton()
     ) {
-        Text("弹出输入法选择器")
+        Text(tr(R.string.s_danchushurufaxuanzeqi))
     }
 
     Spacer(Modifier.height(12.dp))
@@ -657,6 +661,6 @@ private fun SwitchToImeStep(onCompleted: () -> Unit) {
         onClick = onCompleted,
         modifier = Modifier.wizardButton()
     ) {
-        Text("完成设置")
+        Text(tr(R.string.s_wanchengshezhi))
     }
 }

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,10 +60,10 @@ fun DictionaryHubContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("词库管理") },
+                title = { Text(tr(R.string.s_cikuguanli)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -77,12 +81,12 @@ fun DictionaryHubContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            SettingsSection(title = "词库内容", content = {
+            SettingsSection(title = tr(R.string.s_cikuneirong), content = {
                 SettingsItem(
                     icon = Icons.TwoTone.Storage,
-                    title = "用户词库",
-                    subtitle = "输入时自动积累的词条" +
-                        (uiState.userDictCount?.let { " · $it 本" } ?: ""),
+                    title = tr(R.string.s_yonghuciku),
+                    subtitle = tr(R.string.s_shurushizidongjileidecitiao) +
+                        (uiState.userDictCount?.let { tr(R.string.s_ben, it) } ?: ""),
                     onClick = onNavigateToUserDict,
                     showArrow = true
                 )
@@ -93,22 +97,22 @@ fun DictionaryHubContent(
                 )
                 SettingsItem(
                     icon = Icons.TwoTone.DataObject,
-                    title = "快捷短语",
-                    subtitle = "补充方案码表之外的常用短语，随输入方案生效" +
-                        (uiState.customPhraseCount?.let { " · $it 条" } ?: ""),
+                    title = tr(R.string.s_kuaijieduanyu),
+                    subtitle = tr(R.string.s_buchongfanganmabiaozhiwaidecha_f3531) +
+                        (uiState.customPhraseCount?.let { tr(R.string.s_tiao, it) } ?: ""),
                     onClick = onNavigateToCustomPhrase,
                     showArrow = true
                 )
             })
 
             Text(
-                "方案自带的静态词表（.dict.yaml）属于方案本身，请到「输入方案 → 方案词表」查看。",
+                tr(R.string.s_fanganzidaidejingtaicibiao_dic_cca30),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                "跨设备搬运：单本词库用「用户词库 → 导出/导入文本码表」，与电脑端 rime 同格式；" +
-                    "多设备按时间戳合并请用「同步与备份 → 词库同步」。",
+                tr(R.string.s_kuashebeibanyun_danbencikuyong_176a2) +
+                    tr(R.string.s_duoshebeianshijianchuohebingqi_0f0c1),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

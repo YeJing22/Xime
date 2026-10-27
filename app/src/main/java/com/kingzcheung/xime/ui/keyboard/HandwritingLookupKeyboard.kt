@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -225,9 +229,9 @@ fun HandwritingLookupKeyboard(
                         bottom = 8.dp,
                     )
             ) {
-                KeyButton("返回", { onExit() }, specialKeyBgColor, specialKeyTextColor, Modifier.weight(1f), onPress = { onButtonFeedback?.invoke("exit") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
+                KeyButton(tr(R.string.s_fanhui), { onExit() }, specialKeyBgColor, specialKeyTextColor, Modifier.weight(1f), onPress = { onButtonFeedback?.invoke("exit") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
                 Spacer(Modifier.weight(4f))
-                KeyButton("回车", { onKeyPress("enter") }, specialKeyBgColor, specialKeyTextColor, Modifier.weight(1f), onPress = { onButtonFeedback?.invoke("enter") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
+                KeyButton(tr(R.string.s_huiche), { onKeyPress("enter") }, specialKeyBgColor, specialKeyTextColor, Modifier.weight(1f), onPress = { onButtonFeedback?.invoke("enter") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
             }
         }
     }

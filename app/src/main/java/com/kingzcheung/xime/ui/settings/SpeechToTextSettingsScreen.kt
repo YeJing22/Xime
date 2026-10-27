@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,26 +119,26 @@ fun SpeechToTextSettingsContent(
                             AsrProvider(
                                 id = info.id,
                                 name = info.name,
-                                description = "在线语音识别插件",
+                                description = tr(R.string.s_zaixianyuyinshibiechajian),
                                 isOnline = true,
                                 isConfigured = instance.isConfigured(),
                                 isActive = info.id == activeAsrPluginId,
                                 pluginIcon = ExtensionManager.extractPluginIcon(context, info.id, instance, info),
                                 features = buildList {
-                                    add(if (caps.inputMode == "streaming") "实时流式" else "文件识别")
-                                    if (caps.supportsPartialResults) add("中间结果")
-                                    if (caps.requiresNetwork) add("在线")
+                                    add(if (caps.inputMode == "streaming") tr(R.string.s_shishiliushi) else tr(R.string.s_wenjianshibie))
+                                    if (caps.supportsPartialResults) add(tr(R.string.s_zhongjianjieguo))
+                                    if (caps.requiresNetwork) add(tr(R.string.s_zaixian))
                                 }
                             )
                         } else {
                             AsrProvider(
                                 id = info.id,
                                 name = info.name,
-                                description = info.description.ifBlank { "在线语音识别插件" },
+                                description = info.description.ifBlank { tr(R.string.s_zaixianyuyinshibiechajian) },
                                 isOnline = true,
                                 isConfigured = false,
                                 isActive = info.id == activeAsrPluginId,
-                                features = listOf("在线")
+                                features = listOf(tr(R.string.s_zaixian))
                             )
                         }
                     }
@@ -148,12 +152,12 @@ fun SpeechToTextSettingsContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("语音转文本") },
+                title = { Text(tr(R.string.s_yuyinzhuanwenben)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -218,12 +222,12 @@ fun SpeechToTextSettingsContent(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "保持引擎常驻",
+                                    text = tr(R.string.s_baochiyinqingchangzhu),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "语音结束后模型不自动释放（约150MB常驻内存），闲置后再用免重新加载，响应更快",
+                                    text = tr(R.string.s_yuyinjieshuhoumoxingbuzidongsh_2ea8d),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
                                 )
@@ -312,7 +316,7 @@ fun OnlineAsrTab(
     ) {
         item {
             Text(
-                text = "在线语音识别服务商只能同时使用一个",
+                text = tr(R.string.s_zaixianyuyinshibiefuwushangzhi_1752c),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -321,7 +325,7 @@ fun OnlineAsrTab(
 
         item {
             SettingsSection(
-                title = "当前服务",
+                title = tr(R.string.s_dangqianfuwu),
                 content = {
                     // 入口始终可见：只装 1 个服务时也能点开确认候选与配置状态
                     CurrentAsrProviderItem(
@@ -340,7 +344,7 @@ fun OnlineAsrTab(
             ) {
                 Icon(Icons.Default.Extension, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("管理插件")
+                Text(tr(R.string.s_guanlichajian))
             }
         }
 
@@ -348,7 +352,7 @@ fun OnlineAsrTab(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "在线 ASR 需要网络连接，适合需要高准确率的场景",
+                text = tr(R.string.s_zaixian_asr_xuyaowangluolianji_2e59f),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
                 modifier = Modifier.padding(top = 8.dp)
@@ -358,7 +362,7 @@ fun OnlineAsrTab(
 
     if (showPicker) {
         SettingsSingleChoiceDialog(
-            title = "选择语音识别服务",
+            title = tr(R.string.s_xuanzeyuyinshibiefuwu),
             options = providers.map { provider ->
                 SettingsChoiceOption(
                     id = provider.id,
@@ -370,7 +374,7 @@ fun OnlineAsrTab(
                             append(provider.features.joinToString(" · "))
                         }
                         // 未配置的服务选中后会跳到配置页，这里先说明状态
-                        append(if (provider.isConfigured) "\n已配置" else "\n未配置")
+                        append(if (provider.isConfigured) tr(R.string.s_nyipeizhi) else tr(R.string.s_nweipeizhi))
                     }
                 )
             },
@@ -410,12 +414,12 @@ private fun CurrentAsrProviderItem(
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = provider?.name ?: "未选择服务",
+                text = provider?.name ?: tr(R.string.s_weixuanzefuwu),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = provider?.description ?: "请选择要使用的在线语音识别服务",
+                text = provider?.description ?: tr(R.string.s_qingxuanzeyaoshiyongdezaixiany_07ac7),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -449,14 +453,14 @@ private fun CurrentAsrProviderItem(
             IconButton(onClick = onSettings) {
                 Icon(
                     Icons.Default.Settings,
-                    contentDescription = "配置 ${provider.name}",
+                    contentDescription = tr(R.string.s_peizhi_3, provider.name),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
         }
         Text(
-            text = if (provider == null) "选择" else "切换",
+            text = if (provider == null) tr(R.string.s_xuanze) else tr(R.string.s_qiehuan),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary
         )

@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -457,7 +459,7 @@ private fun StrokeKeyboardContent(
                 }
             }
             StrokeSymbolButton(
-                text = "符号",
+                text = tr(R.string.s_fuhao),
                 onClick = { onKeyPress("symbol") },
                 backgroundColor = specialKeyBackgroundColor,
                 textColor = specialKeyTextColor,
@@ -536,7 +538,7 @@ private fun StrokeKeyboardContent(
                 modifier = Modifier.fillMaxWidth().weight(1f),
             ) {
                 StrokeDigitKey(
-                    digit = "分词", swipeDigit = "7",
+                    digit = tr(R.string.s_fenci), swipeDigit = "7",
                     onClick = { onKeyPress("word_separator") },
                     onPress = { onKeyPressDown?.invoke("word_separator") },
                     backgroundColor = keyBackgroundColor,
@@ -547,7 +549,7 @@ private fun StrokeKeyboardContent(
                     shadowShapeRadius = shadowShapeRadius,
                     fontSize = strokeFontSize,
                     onSwipeStateChange = onSwipeStateChange,
-                    swipes = swipesFor("分词", "7"),
+                    swipes = swipesFor(tr(R.string.s_fenci), "7"),
                 )
                 StrokeDigitKey(
                     digit = "，", swipeDigit = "8",
@@ -564,7 +566,7 @@ private fun StrokeKeyboardContent(
                     swipes = swipesFor("，", "8"),
                 )
                 StrokeDigitKey(
-                    digit = "英", swipeDigit = "9",
+                    digit = tr(R.string.s_ying), swipeDigit = "9",
                     onClick = { onKeyPress("ime_switch") },
                     onPress = { onKeyPressDown?.invoke("ime_switch") },
                     backgroundColor = keyBackgroundColor,
@@ -575,7 +577,7 @@ private fun StrokeKeyboardContent(
                     shadowShapeRadius = shadowShapeRadius,
                     fontSize = strokeFontSize,
                     onSwipeStateChange = onSwipeStateChange,
-                    swipes = swipesFor("英", "9"),
+                    swipes = swipesFor(tr(R.string.s_ying), "9"),
                 )
             }
             Row(
@@ -639,12 +641,12 @@ private fun StrokeKeyboardContent(
                 backgroundColor = specialKeyBackgroundColor,
                 iconColor = specialKeyTextColor,
                 modifier = Modifier.weight(1f),
-                a11yDescription = "退格",
-                swipeText = if (compactMode) null else "清空",
+                a11yDescription = tr(R.string.s_tuige),
+                swipeText = if (compactMode) null else tr(R.string.s_qingkong),
                 onSwipe = { onKeyPress("clear_composition") },
                 onPress = { onKeyPressDown?.invoke("delete") },
-                swipeUpLabel = if (compactMode) null else "上滑清空",
-                swipeDownLabel = if (compactMode) null else "下滑撤回",
+                swipeUpLabel = if (compactMode) null else tr(R.string.s_shanghuaqingkong),
+                swipeDownLabel = if (compactMode) null else tr(R.string.s_xiahuachehui),
                 onSwipeUp = { onKeyPress("clear_all") },
                 onSwipeDown = { onKeyPress("undo_clear") },
                 onSwipeLeft = {
@@ -668,7 +670,7 @@ private fun StrokeKeyboardContent(
                 compactMode = compactMode,
             )
             StrokeSymbolButton(
-                text = "确定",
+                text = tr(R.string.s_queding),
                 onClick = { onKeyPress("enter") },
                 backgroundColor = specialKeyBackgroundColor,
                 textColor = specialKeyTextColor,
@@ -982,7 +984,7 @@ private fun StrokeSpaceButton(
                         if (!isSttEnabled) return@detectTapGestures
                         view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
                         if (!PermissionHelper.hasRecordAudioPermission(context)) {
-                            Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, tr(R.string.s_xuyaomaikefengquanxiancainengs_3b6e4), Toast.LENGTH_SHORT).show()
                             PermissionHelper.requestRecordAudioPermission(context)
                         } else {
                             currentOnVoiceModeChange?.invoke(true)
@@ -1021,7 +1023,7 @@ private fun StrokeSpaceButton(
         )
         if (voiceSticky) {
             Text(
-                text = "轻触结束语音",
+                text = tr(R.string.s_qingchujieshuyuyin),
                 color = textColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -1044,7 +1046,7 @@ private fun StrokeSpaceButton(
             if (isSttEnabled) {
                 Icon(
                     painter = painterResource(R.drawable.voice),
-                    contentDescription = "语音输入",
+                    contentDescription = tr(R.string.s_yuyinshuru),
                     tint = textColor.copy(alpha = 0.3f),
                     modifier = Modifier
                         .size(18.dp)
@@ -1053,7 +1055,7 @@ private fun StrokeSpaceButton(
                 )
             } else {
                 Text(
-                    text = "空格",
+                    text = tr(R.string.s_kongge),
                     color = textColor.copy(alpha = 0.3f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Normal,

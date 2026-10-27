@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.rime
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import com.kingzcheung.xime.util.FileLogger
 import android.util.Log
 import java.io.File
@@ -209,7 +213,7 @@ class RimeEngine {
                     try {
                         this.userDataDir = userDataDir
                         nativeInstallSignalHandler(userDataDir)
-                        notifyDeploymentStatus(true, "正在加载输入法引擎...")
+                        notifyDeploymentStatus(true, tr(R.string.s_zhengzaijiazaishurufayinqing))
                         nativeInitialize(userDataDir, sharedDataDir)
                         isInitialized = true
 
@@ -225,7 +229,7 @@ class RimeEngine {
                         notifyDeploymentStatus(false, "")
                     } catch (e: Exception) {
                         FileLogger.e(TAG, "Error during Rime initialization", e)
-                        notifyDeploymentStatus(false, "初始化失败")
+                        notifyDeploymentStatus(false, tr(R.string.s_chushihuashibai))
                     }
                 }
             }

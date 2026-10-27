@@ -1,5 +1,10 @@
 package com.kingzcheung.xime.ui.settings
 
+
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -312,7 +317,7 @@ fun SettingsSingleChoiceDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(tr(R.string.s_quxiao)) }
         }
     )
 }
@@ -356,21 +361,21 @@ fun SchemaItem(
             ) {
                 if (schema.version.isNotEmpty()) {
                     Text(
-                        text = "版本: ${schema.version}",
+                        text = tr(R.string.s_banben_3, schema.version),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
                 if (schema.author.isNotEmpty()) {
                     Text(
-                        text = "作者: ${schema.author}",
+                        text = tr(R.string.s_zuozhe_3, schema.author),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
                 if (!isDownloaded) {
                     Text(
-                        text = "未下载",
+                        text = tr(R.string.s_weixiazai),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -392,13 +397,13 @@ fun SchemaItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                Text(if (isLoading) "下载中" else "下载")
+                Text(if (isLoading) tr(R.string.s_xiazaizhong) else tr(R.string.s_xiazai))
             }
         } else {
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "已选择",
+                    contentDescription = tr(R.string.s_yixuanze),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -416,7 +421,7 @@ fun SchemaItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                Text(if (isLoading) "更新中" else "更新")
+                Text(if (isLoading) tr(R.string.s_gengxinzhong) else tr(R.string.s_gengxin))
             }
         }
     }
@@ -431,7 +436,7 @@ fun SchemaSelectDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择输入方案") },
+        title = { Text(tr(R.string.s_xuanzeshurufangan)) },
         text = {
             Column {
                 schemas.forEach { schema ->
@@ -475,7 +480,7 @@ fun SchemaSelectDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("确定")
+                Text(tr(R.string.s_queding))
             }
         }
     )
@@ -745,7 +750,7 @@ fun CodeDisplayCard(
                             if (showCodeInInputBox) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "曦码 shu ru fa",
+                                        text = tr(R.string.s_xima_shu_ru_fa),
                                         fontSize = 12.sp,
                                         color = onSurface,
                                         maxLines = 1
@@ -791,7 +796,7 @@ fun CodeDisplayCard(
                                             .padding(horizontal = 4.dp, vertical = 2.dp)
                                     ) {
                                         Text(
-                                            text = "输入法",
+                                            text = tr(R.string.s_shurufa),
                                             fontSize = 13.sp,
                                             color = primary,
                                             fontWeight = FontWeight.Medium,
@@ -800,7 +805,7 @@ fun CodeDisplayCard(
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "力学",
+                                        text = tr(R.string.s_lixue),
                                         fontSize = 13.sp,
                                         color = onSurface,
                                         maxLines = 1
@@ -835,7 +840,7 @@ fun CodeDisplayCard(
 fun CodeDisplayCardPreview_SelectedWithCode() {
     XimeTheme {
         CodeDisplayCard(
-            title = "曦码",
+            title = tr(R.string.s_xima),
             isSelected = true,
             showCodeInInputBox = true,
             onClick = {},
@@ -851,7 +856,7 @@ fun CodeDisplayCardPreview_SelectedWithCode() {
 fun CodeDisplayCardPreview_NotSelectedNoCode() {
     XimeTheme {
         CodeDisplayCard(
-            title = "曦码",
+            title = tr(R.string.s_xima),
             isSelected = true,
             showCodeInInputBox = false,
             onClick = {},
@@ -917,7 +922,7 @@ fun CommentDisplayCard(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "输入法",
+                                        text = tr(R.string.s_shurufa),
                                         fontSize = 14.sp,
                                         color = primary,
                                         fontWeight = FontWeight.Medium,
@@ -936,7 +941,7 @@ fun CommentDisplayCard(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "力学",
+                                text = tr(R.string.s_lixue),
                                 fontSize = 14.sp,
                                 color = onSurface,
                                 maxLines = 1
@@ -976,7 +981,7 @@ fun CommentDisplayCard(
 fun CommentDisplayCardPreview_Show() {
     XimeTheme {
         CommentDisplayCard(
-            title = "显示",
+            title = tr(R.string.s_xianshi),
             isSelected = true,
             showComment = true,
             onClick = {},
@@ -993,7 +998,7 @@ fun CommentDisplayCardPreview_Show() {
 fun CommentDisplayCardPreview_Hide() {
     XimeTheme {
         CommentDisplayCard(
-            title = "隐藏",
+            title = tr(R.string.s_yincang),
             isSelected = false,
             showComment = false,
             onClick = {},
@@ -1214,7 +1219,7 @@ fun CandidateTextSizeCard(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "输入法",
+                            text = tr(R.string.s_shurufa),
                             fontSize = candidateTextSize.sp,
                             color = primary,
                             fontWeight = FontWeight.Medium,
@@ -1223,7 +1228,7 @@ fun CandidateTextSizeCard(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "力学",
+                        text = tr(R.string.s_lixue),
                         fontSize = candidateTextSize.sp,
                         color = onSurface,
                         maxLines = 1

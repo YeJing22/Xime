@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +55,7 @@ fun RimeSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "搜索词条或编码",
+    placeholder: String = tr(R.string.s_sousuocitiaohuobianma),
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -93,7 +97,7 @@ fun RimeSearchField(
                 IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(24.dp)) {
                     Icon(
                         Icons.Default.Clear,
-                        contentDescription = "清除搜索",
+                        contentDescription = tr(R.string.s_qingchusousuo),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
@@ -175,7 +179,7 @@ fun ContextSelectorCard(
 fun UsageHint(
     title: String,
     message: String,
-    action: String = "查看词库说明 →",
+    action: String = tr(R.string.s_chakancikushuoming),
     url: String = "https://ime.ximei.me/features/dictionary.html",
 ) {
     val uriHandler = LocalUriHandler.current

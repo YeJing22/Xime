@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.twotone.Image
 import androidx.compose.material.icons.twotone.Sync
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,16 +60,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.kingzcheung.xime.R
 import com.kingzcheung.xime.clipboard.ClipboardDragSender
 import com.kingzcheung.xime.clipboard.ClipboardItem
 import com.kingzcheung.xime.clipboard.clipboardLongPressDrag
+import com.kingzcheung.xime.i18n.tr
 import com.kingzcheung.xime.ui.CLIPBOARD_CARD_MAX_PX
-import com.kingzcheung.xime.ui.rememberClipboardImageRequest
 import com.kingzcheung.xime.ui.keyboard.WIDE_CONTAINER_WIDTH
 import com.kingzcheung.xime.ui.keyboard.tolerantClick
+import com.kingzcheung.xime.ui.rememberClipboardImageRequest
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 import java.io.File
-import kotlin.math.max
 
 @Composable
 fun ClipboardView(
@@ -145,7 +145,7 @@ fun ClipboardView(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = "关闭面板",
+                    contentDescription = tr(R.string.s_guanbimianban),
                     tint = accentColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -175,7 +175,7 @@ fun ClipboardView(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "剪贴板",
+                            text = tr(R.string.s_jiantieban),
                             color = if (selectedTab == 0) Color.White else textColor,
                             fontSize = 11.sp,
                             fontWeight = if (selectedTab == 0) FontWeight.Medium else FontWeight.Normal
@@ -192,7 +192,7 @@ fun ClipboardView(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "快捷发送",
+                            text = tr(R.string.s_kuaijiefasong),
                             color = if (selectedTab == 1) Color.White else textColor,
                             fontSize = 11.sp,
                             fontWeight = if (selectedTab == 1) FontWeight.Medium else FontWeight.Normal
@@ -215,7 +215,7 @@ fun ClipboardView(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "退出多选",
+                            contentDescription = tr(R.string.s_tuichuduoxuan),
                             tint = accentColor,
                             modifier = Modifier.size(18.dp)
                         )
@@ -233,7 +233,7 @@ fun ClipboardView(
                         ) {
                             Icon(
                                 imageVector = Icons.TwoTone.Sync,
-                                contentDescription = "拉取远端剪贴板",
+                                contentDescription = tr(R.string.s_laquyuanduanjiantieban),
                                 tint = accentColor,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -251,7 +251,7 @@ fun ClipboardView(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = "清空剪贴板",
+                                contentDescription = tr(R.string.s_qingkongjiantieban),
                                 tint = accentColor,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -271,7 +271,7 @@ fun ClipboardView(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "添加快捷发送",
+                        contentDescription = tr(R.string.s_tianjiakuaijiefasong),
                         tint = accentColor,
                         modifier = Modifier.size(18.dp)
                     )
@@ -351,7 +351,7 @@ fun ClipboardView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "已选 ${selectedIds.size} 项",
+                    text = tr(R.string.s_yixuan_xiang, selectedIds.size),
                     color = textColor,
                     fontSize = 13.sp
                 )
@@ -381,7 +381,7 @@ fun ClipboardView(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "删除",
+                            text = tr(R.string.s_shanchu),
                             color = Color.White,
                             fontSize = 12.sp
                         )
@@ -399,7 +399,7 @@ fun ClipboardView(
                     listOf(
                         LongPressMenuEntry(
                             icon = Icons.Default.DoneAll,
-                            label = "多选",
+                            label = tr(R.string.s_duoxuan),
                             onClick = {
                                 isMultiSelect = true
                                 selectedIds = emptySet()
@@ -407,7 +407,7 @@ fun ClipboardView(
                         ),
                         LongPressMenuEntry(
                             icon = Icons.Default.Delete,
-                            label = "删除",
+                            label = tr(R.string.s_shanchu),
                             tint = MaterialTheme.colorScheme.error,
                             onClick = {
                                 viewModel.removeClipboardItem(anchor.item.id)
@@ -418,21 +418,21 @@ fun ClipboardView(
                     listOf(
                         LongPressMenuEntry(
                             icon = Icons.Default.ContentCut,
-                            label = "拆词",
+                            label = tr(R.string.s_chaici),
                             onClick = {
                                 onSplitWords(anchor.item.text, anchor.item.id)
                             }
                         ),
                         LongPressMenuEntry(
                             icon = Icons.Outlined.StarBorder,
-                            label = "快捷",
+                            label = tr(R.string.s_kuaijie),
                             onClick = {
                                 viewModel.addToQuickSend(anchor.item.id)
                             }
                         ),
                         LongPressMenuEntry(
                             icon = Icons.Default.DoneAll,
-                            label = "多选",
+                            label = tr(R.string.s_duoxuan),
                             onClick = {
                                 isMultiSelect = true
                                 selectedIds = emptySet()
@@ -440,7 +440,7 @@ fun ClipboardView(
                         ),
                         LongPressMenuEntry(
                             icon = Icons.Default.Delete,
-                            label = "删除",
+                            label = tr(R.string.s_shanchu),
                             tint = MaterialTheme.colorScheme.error,
                             onClick = {
                                 viewModel.removeClipboardItem(anchor.item.id)
@@ -452,7 +452,7 @@ fun ClipboardView(
                 listOfNotNull(
                     LongPressMenuEntry(
                         icon = Icons.Filled.PushPin,
-                        label = "置顶",
+                        label = tr(R.string.s_zhiding),
                         onClick = {
                             viewModel.togglePinQuickSend(anchor.item.id)
                         }
@@ -460,7 +460,7 @@ fun ClipboardView(
                     onQuickSendEditItem?.let { edit ->
                         LongPressMenuEntry(
                             icon = Icons.Default.Create,
-                            label = "编辑",
+                            label = tr(R.string.s_bianji),
                             onClick = {
                                 edit(anchor.item.id, anchor.item.text, anchor.item.code)
                             }
@@ -468,7 +468,7 @@ fun ClipboardView(
                     },
                     LongPressMenuEntry(
                         icon = Icons.Default.Delete,
-                        label = "删除",
+                        label = tr(R.string.s_shanchu),
                         tint = MaterialTheme.colorScheme.error,
                         onClick = {
                             viewModel.removeQuickSendItem(anchor.item.id)
@@ -532,14 +532,14 @@ private fun ClearClipboardConfirmOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "清空剪贴板",
+                    text = tr(R.string.s_qingkongjiantieban),
                     color = textColor,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "将删除全部 $itemCount 条剪贴板记录",
+                    text = tr(R.string.s_jiangshanchuquanbu_tiaojiantie_12f1e, itemCount),
                     color = subTextColor,
                     fontSize = 13.sp
                 )
@@ -556,7 +556,7 @@ private fun ClearClipboardConfirmOverlay(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "取消",
+                            text = tr(R.string.s_quxiao),
                             color = textColor,
                             fontSize = 13.sp
                         )
@@ -570,7 +570,7 @@ private fun ClearClipboardConfirmOverlay(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "清空",
+                            text = tr(R.string.s_qingkong),
                             color = Color.White,
                             fontSize = 13.sp
                         )
@@ -622,7 +622,7 @@ fun ClipboardTabContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "剪贴板为空",
+                text = tr(R.string.s_jiantiebanweikong),
                 color = subTextColor,
                 fontSize = 13.sp
             )
@@ -697,7 +697,7 @@ fun ClipboardTabContent(
 /** 图片条目的菜单/长按浮层文案（图片没有可展示的文本）。 */
 internal fun clipboardImageLabel(item: ClipboardItem): String {
     val size = if (item.width > 0 && item.height > 0) " · ${item.width}×${item.height}" else ""
-    return "图片$size"
+    return tr(R.string.s_tupian, size)
 }
 
 /**
@@ -765,7 +765,7 @@ fun ClipboardImageCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "图片已清理",
+                    text = tr(R.string.s_tupianyiqingli),
                     color = subTextColor,
                     fontSize = 12.sp,
                     maxLines = 1,

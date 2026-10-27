@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,7 +99,7 @@ fun InfoPanel(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "关闭",
+                    contentDescription = tr(R.string.s_guanbi),
                     tint = accentColor,
                     modifier = Modifier.size(18.dp)
                 )
@@ -121,7 +125,7 @@ fun InfoPanel(
         ) {
             if (nodes.isEmpty()) {
                 Text(
-                    text = if (isLoading) "加载中..." else "暂无数据",
+                    text = if (isLoading) tr(R.string.s_jiazaizhong) else tr(R.string.s_zanwushuju),
                     color = textColor.copy(alpha = 0.5f),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(vertical = 8.dp),

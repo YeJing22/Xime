@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.data
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import com.kingzcheung.xime.plugin.core.api.PluginIcon
 import com.kingzcheung.xime.plugin.core.api.PluginResultItem
 

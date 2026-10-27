@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -42,7 +46,7 @@ fun QuickSendFormArea(
         MaterialTheme.colorScheme.primary,
         0.35f
     )
-    val title = if (editingItemId != null) "编辑快捷发送" else "添加快捷发送"
+    val title = if (editingItemId != null) tr(R.string.s_bianjikuaijiefasong) else tr(R.string.s_tianjiakuaijiefasong)
 
     CandidateBarOverlayPanel(
         heightDp = QUICK_SEND_FORM_HEIGHT,
@@ -76,13 +80,13 @@ fun QuickSendFormArea(
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         setTextColor(textColor.hashCode())
                         setHintTextColor((textColor.copy(alpha = 0.4f)).hashCode())
-                        hint = "输入快捷发送内容"
+                        hint = tr(R.string.s_shurukuaijiefasongneirong)
                         textSize = 16f
                         isSingleLine = false
                         gravity = Gravity.TOP or Gravity.START
                         setPadding(12, 8, 12, 8)
 
-                        setImeActionLabel("确定", EditorInfo.IME_ACTION_DONE)
+                        setImeActionLabel(tr(R.string.s_queding), EditorInfo.IME_ACTION_DONE)
                         imeOptions = EditorInfo.IME_FLAG_NO_ENTER_ACTION or
                             EditorInfo.IME_ACTION_DONE
 
@@ -114,13 +118,13 @@ fun QuickSendFormArea(
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         setTextColor(textColor.hashCode())
                         setHintTextColor((textColor.copy(alpha = 0.4f)).hashCode())
-                        hint = "触发编码（选填，如 dh）"
+                        hint = tr(R.string.s_chufabianma_xuantian_ru_dh)
                         textSize = 14f
                         isSingleLine = true
                         gravity = Gravity.START or Gravity.CENTER_VERTICAL
                         setPadding(12, 4, 12, 4)
 
-                        setImeActionLabel("确定", EditorInfo.IME_ACTION_DONE)
+                        setImeActionLabel(tr(R.string.s_queding), EditorInfo.IME_ACTION_DONE)
                         imeOptions = EditorInfo.IME_FLAG_NO_ENTER_ACTION or
                             EditorInfo.IME_ACTION_DONE
 

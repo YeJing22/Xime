@@ -44,12 +44,31 @@ class XimeApplication : Application(), ImageLoaderFactory {
     
     companion object {
         private const val TAG = "XimeApplication"
+
+        /** 进程级实例：供 [com.kingzcheung.xime.i18n.UiText] 在未显式初始化时兜底取词。 */
+        @Volatile
+        internal var instance: XimeApplication? = null
+            private set
     }
     
     private val applicationScope = CoroutineScope(Dispatchers.IO)
     
     override fun onCreate() {
         super.onCreate()
+        instance = this
+        com.kingzcheung.xime.i18n.UiText.init(
+            com.kingzcheung.xime.settings.AppLocale.wrap(this)
+        )
+        // 系统语言/区域变化时刷新全局取词 Context（界面由 Activity/IME 自行重建）
+        registerComponentCallbacks(object : android.content.ComponentCallbacks {
+            override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+                com.kingzcheung.xime.i18n.UiText.init(
+                    com.kingzcheung.xime.settings.AppLocale.wrap(this@XimeApplication, newConfig)
+                )
+            }
+
+            override fun onLowMemory() = Unit
+        })
 
         FileLogger.init(this)
         KeyTapLogger.init(this)

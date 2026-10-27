@@ -1,8 +1,5 @@
 package com.kingzcheung.xime.ui.menubar
 
-import com.kingzcheung.xime.ui.keyboard.WIDE_CONTAINER_WIDTH
-import com.kingzcheung.xime.ui.keyboard.isHandwritingSchema
-import com.kingzcheung.xime.ui.keyboard.isT9Schema
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,12 +32,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import com.kingzcheung.xime.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kingzcheung.xime.R
+import com.kingzcheung.xime.i18n.tr
 import com.kingzcheung.xime.settings.SchemaInfo
+import com.kingzcheung.xime.ui.keyboard.WIDE_CONTAINER_WIDTH
+import com.kingzcheung.xime.ui.keyboard.isHandwritingSchema
+import com.kingzcheung.xime.ui.keyboard.isT9Schema
 
 @Composable
 fun SchemaListView(
@@ -92,7 +93,7 @@ fun SchemaListView(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = "返回",
+                    contentDescription = tr(R.string.s_fanhui),
                     tint = textColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -122,7 +123,7 @@ fun SchemaListView(
                 }
                 if (schemas.isEmpty()) {
                     Text(
-                        text = "没有可用的输入方案",
+                        text = tr(R.string.s_meiyoukeyongdeshurufangan),
                         color = subTextColor,
                         fontSize = 13.sp
                     )
@@ -143,7 +144,7 @@ fun SchemaListView(
             ) {
                 if (schemas.isEmpty()) {
                     Text(
-                        text = "没有可用的输入方案",
+                        text = tr(R.string.s_meiyoukeyongdeshurufangan),
                         color = subTextColor,
                         fontSize = 13.sp
                     )

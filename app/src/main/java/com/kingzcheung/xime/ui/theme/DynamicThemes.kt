@@ -3,6 +3,8 @@ package com.kingzcheung.xime.ui.theme
 import android.content.Context
 import android.os.Build
 import androidx.compose.ui.graphics.Color
+import com.kingzcheung.xime.R
+import com.kingzcheung.xime.i18n.tr
 
 /**
  * Material You 动态配色（Android 12+）：从系统壁纸调色板（system_accent/neutral 资源）
@@ -33,7 +35,7 @@ object DynamicThemes {
      * 构建动态配色键盘主题（颜色全部来自壁纸调色板）。
      * 不支持（< Android 12）或系统资源缺失时返回 null，调用方跳过该方案。
      */
-    fun create(context: Context, id: String = THEME_ID, name: String = "动态配色"): KeyboardColorScheme? {
+    fun create(context: Context, id: String = THEME_ID, name: String = tr(R.string.s_dongtaipeise)): KeyboardColorScheme? {
         if (!isSupported()) return null
         val p = SystemPalette(context)
         val accentLight = p.accent1(600)

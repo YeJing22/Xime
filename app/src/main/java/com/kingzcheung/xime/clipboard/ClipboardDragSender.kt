@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.clipboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.ClipData
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -81,11 +85,11 @@ object ClipboardDragSender {
     internal fun dragLabel(item: ClipboardItem): String {
         if (item.isImage) {
             val size = if (item.width > 0 && item.height > 0) " · ${item.width}×${item.height}" else ""
-            return "图片$size"
+            return tr(R.string.s_tupian, size)
         }
         return item.text.lineSequence().firstOrNull { it.isNotBlank() }
             ?.take(24)?.trim()
-            .takeUnless { it.isNullOrEmpty() } ?: "文本"
+            .takeUnless { it.isNullOrEmpty() } ?: tr(R.string.s_wenben)
     }
 }
 

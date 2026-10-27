@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -56,12 +60,12 @@ fun DeveloperContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("开发者选项") },
+                title = { Text(tr(R.string.s_kaifazhexuanxiang)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -88,7 +92,7 @@ fun DeveloperContent(
                     Column {
                         SettingsItem(
                             icon = Icons.Default.Edit,
-                            title = "手写数据采集",
+                            title = tr(R.string.s_shouxieshujucaiji),
                             onClick = onNavigateToHandwritingCapture
                         )
                         HorizontalDivider(
@@ -98,7 +102,7 @@ fun DeveloperContent(
                         )
                         SettingsItem(
                             icon = Icons.Default.Code,
-                            title = "插件开发模式",
+                            title = tr(R.string.s_chajiankaifamoshi),
                             onClick = {},
                             trailing = {
                                 Switch(
@@ -109,9 +113,9 @@ fun DeveloperContent(
                                         android.widget.Toast.makeText(
                                             context,
                                             if (enabled) {
-                                                "已开启。请再开启系统 USB 调试，电脑端执行 xipm dev 连接"
+                                                tr(R.string.s_yikaiqi_qingzaikaiqixitong_usb_1c395)
                                             } else {
-                                                "已关闭：adb 无法再注入插件"
+                                                tr(R.string.s_yiguanbi_adb_wufazaizhuruchajian)
                                             },
                                             android.widget.Toast.LENGTH_LONG
                                         ).show()
@@ -120,8 +124,8 @@ fun DeveloperContent(
                             }
                         )
                         Text(
-                            text = "电脑热调试前置：手机开启 USB 调试（系统开发者选项）+ 电脑安装 adb，" +
-                                "然后用 `xipm dev <插件目录>` 连接",
+                            text = tr(R.string.s_diannaorediaoshiqianzhi_shouji_8f2c4) +
+                                tr(R.string.s_ranhouyong_xipm_dev_chajianmul_7938f),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 2.dp, bottom = 12.dp)
@@ -133,7 +137,7 @@ fun DeveloperContent(
                         )
                         SettingsItem(
                             icon = Icons.Default.Code,
-                            title = "按键坐标日志",
+                            title = tr(R.string.s_anjianzuobiaorizhi),
                             onClick = {},
                             trailing = {
                                 Switch(
@@ -145,8 +149,8 @@ fun DeveloperContent(
                                         KeyTapLogger.enabled = enabled
                                         android.widget.Toast.makeText(
                                             context,
-                                            if (enabled) "已开启：每次按键将记录触摸坐标（仅本地）"
-                                            else "已关闭",
+                                            if (enabled) tr(R.string.s_yikaiqi_meicianjianjiangjiluch_38ff6)
+                                            else tr(R.string.s_yiguanbi),
                                             android.widget.Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -154,8 +158,8 @@ fun DeveloperContent(
                             }
                         )
                         Text(
-                            text = "开启后记录每次按键的触摸坐标到本地日志，用于训练相邻键纠错模型。" +
-                                "不上传、不含输入内容，日志位于 files/logs/key_tap.jsonl。",
+                            text = tr(R.string.s_kaiqihoujilumeicianjiandechumo_772f1) +
+                                tr(R.string.s_bushangchuan_buhanshuruneirong_3e49b),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 2.dp, bottom = 12.dp)
@@ -165,7 +169,7 @@ fun DeveloperContent(
             }
             item {
                 Text(
-                    text = "开发者功能仅用于数据采集与插件调试，普通用户无需开启。",
+                    text = tr(R.string.s_kaifazhegongnengjinyongyushuju_9fa06),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp)

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -546,6 +550,13 @@ fun KeyboardView(
                 voicePluginName = state.voicePluginName,
                 toolbarActions = state.toolbarButtons.mapNotNull { id ->
                     val item = resolveToolbarButtonItem(id, state.toolbarPluginButtons) ?: return@mapNotNull null
+                    // 承载区受限（独立 IME 面板）：浮动键盘没有意义也放不下，隐藏入口
+                    if (state.isHostConstrained &&
+                        item is ToolbarButtonItem.Builtin &&
+                        item.button == ToolbarButton.FLOAT
+                    ) {
+                        return@mapNotNull null
+                    }
                     // 与定制列表同一口径（关掉语音转文本 / 未装手写模型则不显示）
                     if (item is ToolbarButtonItem.Builtin &&
                         !isBuiltinToolbarButtonAvailable(
@@ -577,7 +588,7 @@ fun KeyboardView(
                                 if (PermissionHelper.hasRecordAudioPermission(toolbarContext)) {
                                     callbacks.onVoiceStickyToggle?.invoke()
                                 } else {
-                                    android.widget.Toast.makeText(toolbarContext, "需要麦克风权限才能使用语音输入", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(toolbarContext, tr(R.string.s_xuyaomaikefengquanxiancainengs_3b6e4), android.widget.Toast.LENGTH_SHORT).show()
                                     PermissionHelper.requestRecordAudioPermission(toolbarContext)
                                 }
                             })
@@ -1579,21 +1590,21 @@ fun KeyboardView(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = state.deploymentMessage.ifEmpty { "正在初始化..." },
+                        text = state.deploymentMessage.ifEmpty { tr(R.string.s_zhengzaichushihua) },
                         color = keyTextColor,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
                     )
                     if (isError) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "点击关闭",
+                            text = tr(R.string.s_dianjiguanbi),
                             color = keyTextColor.copy(alpha = 0.5f),
                             style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center
                         )
                     } else {
                         Text(
-                            text = "请稍候",
+                            text = tr(R.string.s_qingshaohou),
                             color = keyTextColor.copy(alpha = 0.7f),
                             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
                         )
@@ -1627,7 +1638,7 @@ fun KeyboardView(
                 ) {
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                         Text(
-                            text = if (menu.supportsSort) "候选操作" else "删除自造词",
+                            text = if (menu.supportsSort) "候选操作" else tr(R.string.s_shanchuzizaoci),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -1636,7 +1647,7 @@ fun KeyboardView(
                             text = if (menu.supportsSort) {
                                 "「${menu.word}」"
                             } else {
-                                "将「${menu.word}」从用户词典中移除？"
+                                tr(R.string.s_jiang_congyonghucidianzhongyichu, menu.word)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1695,7 +1706,7 @@ fun KeyboardView(
                                     onHapticFeedback?.invoke()
                                     dismiss()
                                 }) {
-                                    Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(tr(R.string.s_quxiao), color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Spacer(Modifier.width(4.dp))
                                 TextButton(onClick = {
@@ -1703,7 +1714,7 @@ fun KeyboardView(
                                     dismiss()
                                     menu.onDelete()
                                 }) {
-                                    Text("删除", color = MaterialTheme.colorScheme.error)
+                                    Text(tr(R.string.s_shanchu), color = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -1734,6 +1745,8 @@ fun KeyboardView(
                             keyTextColor = keyTextColor,
                             isFloatingMode = state.isFloatingMode,
                             schemaSwitches = state.schemaSwitches,
+                            canResizeKeyboard = !state.isHostConstrained,
+                            canFloatKeyboard = !state.isHostConstrained,
                         ),
                         callbacks = MenuBarCallbacks(
                             onDismiss = { onHapticFeedback?.invoke(); viewModel.closeOverlay() },

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -100,12 +104,12 @@ fun SmartPredictionSettingsContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("智能联想") },
+                title = { Text(tr(R.string.s_zhinenglianxiang)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -125,7 +129,7 @@ fun SmartPredictionSettingsContent(
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             item {
-                SettingsSection(title = "功能开关", content = {
+                SettingsSection(title = tr(R.string.s_gongnengkaiguan), content = {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -134,12 +138,12 @@ fun SmartPredictionSettingsContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "启用智能联想",
+                                text = tr(R.string.s_qiyongzhinenglianxiang),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "基于 AI 模型的智能联想词预测",
+                                text = tr(R.string.s_jiyu_ai_moxingdezhinenglianxia_5cce9),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -181,7 +185,7 @@ fun SmartPredictionSettingsContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "未检测到模型文件，请先下载模型",
+                                text = tr(R.string.s_weijiancedaomoxingwenjian_qing_6a5a6),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -198,11 +202,11 @@ fun SmartPredictionSettingsContent(
                     var singleMode by remember {
                         mutableStateOf(SettingsPreferences.isSingleAssociationMode(context))
                     }
-                    SettingsSection(title = "联想行为", content = {
+                    SettingsSection(title = tr(R.string.s_lianxiangxingwei), content = {
                         SettingsToggleItem(
                             icon = Icons.Default.AutoAwesome,
-                            title = "空格上屏联想候选",
-                            subtitle = "有联想候选时，按空格键直接上屏第一个联想词",
+                            title = tr(R.string.s_konggeshangpinglianxianghouxuan),
+                            subtitle = tr(R.string.s_youlianxianghouxuanshi_ankongg_00102),
                             checked = spaceCommitEnabled,
                             onCheckedChange = {
                                 spaceCommitEnabled = it
@@ -215,8 +219,8 @@ fun SmartPredictionSettingsContent(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
                         AssociationModeRow(
-                            title = "连续联想",
-                            subtitle = "联想词上屏后继续推理，可连续空格上屏联想词",
+                            title = tr(R.string.s_lianxulianxiang),
+                            subtitle = tr(R.string.s_lianxiangcishangpinghoujixutui_d319f),
                             isSelected = !singleMode,
                             onClick = {
                                 singleMode = false
@@ -229,8 +233,8 @@ fun SmartPredictionSettingsContent(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
                         AssociationModeRow(
-                            title = "单次联想",
-                            subtitle = "联想词上屏一次后停止推理，待下次输入再联想",
+                            title = tr(R.string.s_dancilianxiang),
+                            subtitle = tr(R.string.s_lianxiangcishangpingyicihoutin_29aac),
                             isSelected = singleMode,
                             onClick = {
                                 singleMode = true
@@ -243,7 +247,7 @@ fun SmartPredictionSettingsContent(
 
             if (predictionModels.isNotEmpty()) {
                 item {
-                    SettingsSection(title = "选择模型", content = {
+                    SettingsSection(title = tr(R.string.s_xuanzemoxing), content = {
                         predictionModels.forEach { model ->
                             PredictionModelCard(
                                 modelInfo = model,
@@ -268,7 +272,7 @@ fun SmartPredictionSettingsContent(
 
             if (uiState.isInitialized) {
                 item {
-                    SettingsSection(title = "用户学习数据", content = {
+                    SettingsSection(title = tr(R.string.s_yonghuxuexishuju), content = {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -276,18 +280,18 @@ fun SmartPredictionSettingsContent(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "缓存大小",
+                                        text = tr(R.string.s_huancundaxiao),
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        text = "记录用户输入习惯以提升预测准确度",
+                                        text = tr(R.string.s_jiluyonghushuruxiguanyitisheng_3888f),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Text(
-                                    text = "${uiState.cacheSize} 条",
+                                    text = tr(R.string.s_tiao_2, uiState.cacheSize),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
@@ -313,7 +317,7 @@ fun SmartPredictionSettingsContent(
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                         }
-                                        Text(if (uiState.isSaving) "保存中..." else "保存数据")
+                                        Text(if (uiState.isSaving) tr(R.string.s_baocunzhong) else tr(R.string.s_baocunshuju))
                                     }
 
                                     OutlinedButton(
@@ -322,7 +326,7 @@ fun SmartPredictionSettingsContent(
                                     ) {
                                         Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("刷新")
+                                        Text(tr(R.string.s_shuaxin))
                                     }
                                 }
                             }
@@ -332,11 +336,11 @@ fun SmartPredictionSettingsContent(
             }
 
             item {
-                SettingsSection(title = "模型管理", content = {
+                SettingsSection(title = tr(R.string.s_moxingguanli), content = {
                     SettingsItem(
                         icon = Icons.Default.Build,
-                        title = "模型管理",
-                        subtitle = "管理所有已下载的 AI 模型",
+                        title = tr(R.string.s_moxingguanli),
+                        subtitle = tr(R.string.s_guanlisuoyouyixiazaide_ai_moxing),
                         onClick = onNavigateToModelManagement,
                         showArrow = true
                     )
@@ -442,7 +446,7 @@ private fun PredictionModelCard(
                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
                     Text(
-                        text = if (isDownloaded) "已下载" else "未下载",
+                        text = if (isDownloaded) tr(R.string.s_yixiazai) else tr(R.string.s_weixiazai),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (isDownloaded) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -467,7 +471,7 @@ private fun PredictionModelCard(
                     )
                     Spacer(Modifier.width(4.dp))
                 }
-                Text(if (isSelected) "使用中" else "使用")
+                Text(if (isSelected) tr(R.string.s_shiyongzhong) else tr(R.string.s_shiyong))
             }
         } else {
             Spacer(modifier = Modifier.width(8.dp))
@@ -481,7 +485,7 @@ private fun PredictionModelCard(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(Modifier.width(4.dp))
-                Text("去商店")
+                Text(tr(R.string.s_qushangdian))
             }
         }
     }

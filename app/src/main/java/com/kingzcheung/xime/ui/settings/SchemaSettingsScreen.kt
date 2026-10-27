@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -86,17 +90,17 @@ fun SchemaSettingsContent(
         val selectedIds = remember { mutableStateListOf<String>() }
         AlertDialog(
             onDismissRequest = { viewModel.dismissUninstallDialog() },
-            title = { Text("卸载方案") },
+            title = { Text(tr(R.string.s_xiezaifangan)) },
             text = {
                 if (packages.isEmpty()) {
                     Text(
-                        "没有可卸载的方案",
+                        tr(R.string.s_meiyoukexiezaidefangan),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     Column {
                         Text(
-                            "选择要卸载的方案：",
+                            tr(R.string.s_xuanzeyaoxiezaidefangan),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -126,7 +130,7 @@ fun SchemaSettingsContent(
                                 Column {
                                     Text(pkg.displayName, style = MaterialTheme.typography.bodyMedium)
                                     Text(
-                                        "${pkg.schemaCount} 个输入方案 · ${pkg.fileCount} 个文件" +
+                                        tr(R.string.s_geshurufangan_gewenjian, pkg.schemaCount, pkg.fileCount) +
                                             if (pkg.version.isNotEmpty()) " · v${pkg.version}" else "",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.outline,
@@ -145,7 +149,7 @@ fun SchemaSettingsContent(
                     enabled = selectedIds.isNotEmpty(),
                 ) {
                     Text(
-                        "卸载 (${selectedIds.size})",
+                        tr(R.string.s_xiezai_2, selectedIds.size),
                         color = if (selectedIds.isNotEmpty()) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                     )
@@ -153,7 +157,7 @@ fun SchemaSettingsContent(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissUninstallDialog() }) {
-                    Text("取消")
+                    Text(tr(R.string.s_quxiao))
                 }
             }
         )
@@ -170,16 +174,16 @@ fun SchemaSettingsContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("输入方案") },
+                title = { Text(tr(R.string.s_shurufangan)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                            Icon(Icons.Default.MoreVert, contentDescription = tr(R.string.s_gengduo))
                         }
                         DropdownMenu(
                             expanded = showMenu,
@@ -188,7 +192,7 @@ fun SchemaSettingsContent(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("方案市场") },
+                                text = { Text(tr(R.string.s_fanganshichang)) },
                                 onClick = {
                                     showMenu = false
                                     onNavigateToMarket()
@@ -204,7 +208,7 @@ fun SchemaSettingsContent(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                             )
                             DropdownMenuItem(
-                                text = { Text("方案词表") },
+                                text = { Text(tr(R.string.s_fangancibiao)) },
                                 onClick = {
                                     showMenu = false
                                     onNavigateToSchemaDictBrowser()
@@ -220,7 +224,7 @@ fun SchemaSettingsContent(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                             )
                             DropdownMenuItem(
-                                text = { Text("文件管理器") },
+                                text = { Text(tr(R.string.s_wenjianguanliqi)) },
                                 onClick = {
                                     showMenu = false
                                     onNavigateToRimeFileBrowser()
@@ -261,7 +265,7 @@ fun SchemaSettingsContent(
 
                 item {
                     Text(
-                        text = "已启用",
+                        text = tr(R.string.s_yiqiyong),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
@@ -273,7 +277,7 @@ fun SchemaSettingsContent(
                 if (enabledSchemas.isEmpty()) {
                     item {
                         Text(
-                            text = "暂未启用任何方案",
+                            text = tr(R.string.s_zanweiqiyongrenhefangan),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp)
@@ -295,7 +299,7 @@ fun SchemaSettingsContent(
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "添加输入方案后，需要点击一次「部署方案」进行部署",
+                        text = tr(R.string.s_tianjiashurufanganhou_xuyaodia_7ee14),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -307,7 +311,7 @@ fun SchemaSettingsContent(
                 if (disabledSchemas.isEmpty()) {
                     item {
                         Text(
-                            text = "没有其他可用方案",
+                            text = tr(R.string.s_meiyouqitakeyongfangan),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp)
@@ -337,7 +341,7 @@ fun SchemaSettingsContent(
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(8.dp))
                 }
-                Text("部署方案")
+                Text(tr(R.string.s_bushufangan))
             }
         }
     }
@@ -373,13 +377,13 @@ private fun ImportedSchemesEntry(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "已导入",
+                    text = tr(R.string.s_yidaoru),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "查看已下载或导入的方案包",
+                    text = tr(R.string.s_chakanyixiazaihuodaorudefanganbao),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -435,7 +439,7 @@ private fun SchemaToggleItem(
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "当前方案",
+                            contentDescription = tr(R.string.s_dangqianfangan),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -465,7 +469,7 @@ private fun SchemaToggleItem(
                     }
                     if (isCompiled) {
                         Text(
-                            text = "已编译",
+                            text = tr(R.string.s_yibianyi),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )

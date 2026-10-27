@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -100,10 +104,10 @@ fun UserDictContent(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("用户词库") },
+                title = { Text(tr(R.string.s_yonghuciku)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 actions = {
@@ -115,18 +119,18 @@ fun UserDictContent(onBack: () -> Unit) {
                     } else if (selectedDict != null) {
                         Box {
                             IconButton(onClick = { showMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "更多操作")
+                                Icon(Icons.Default.MoreVert, contentDescription = tr(R.string.s_gengduocaozuo))
                             }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                 DropdownMenuItem(
-                                    text = { Text("导出文本码表") },
+                                    text = { Text(tr(R.string.s_daochuwenbenmabiao)) },
                                     onClick = {
                                         showMenu = false
                                         exportLauncher.launch(UserDictIoManager.exportFileName(selectedDict))
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("导入文本码表") },
+                                    text = { Text(tr(R.string.s_daoruwenbenmabiao)) },
                                     onClick = {
                                         showMenu = false
                                         importLauncher.launch(arrayOf("*/*"))
@@ -149,7 +153,7 @@ fun UserDictContent(onBack: () -> Unit) {
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(
-                        Icons.Default.Add, contentDescription = "添加词条",
+                        Icons.Default.Add, contentDescription = tr(R.string.s_tianjiacitiao),
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
@@ -164,16 +168,16 @@ fun UserDictContent(onBack: () -> Unit) {
                 uiState.dicts.isEmpty() -> {
                     Centered {
                         UsageHint(
-                            title = "还没有用户词库",
-                            message = "用某个方案打过字之后，引擎会自动生成对应的 .userdb"
+                            title = tr(R.string.s_haimeiyouyonghuciku),
+                            message = tr(R.string.s_yongmougefangan_daguozi)
                         )
                     }
                 }
                 else -> {
                     ContextSelectorCard(
                         title = selectedDict ?: "",
-                        subtitle = selectedMeta?.let { "最近更新 ${formatUserDictTime(it.lastModified)}" }
-                            ?: "选择要查看的词库",
+                        subtitle = selectedMeta?.let { tr(R.string.s_zuijingengxin, formatUserDictTime(it.lastModified)) }
+                            ?: tr(R.string.s_xuanzeyaochakandeciku),
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         // 只有一本时退化成信息卡，不出现无意义的下拉
                         enabled = uiState.dicts.size > 1
@@ -206,8 +210,8 @@ fun UserDictContent(onBack: () -> Unit) {
                     }
 
                     Text(
-                        text = if (uiState.searchQuery.isEmpty()) "共 ${uiState.entries.size} 条"
-                        else "匹配 ${uiState.filteredEntries.size} / ${uiState.entries.size} 条",
+                        text = if (uiState.searchQuery.isEmpty()) tr(R.string.s_gong_tiao, uiState.entries.size)
+                        else tr(R.string.s_pipei_tiao_2, uiState.filteredEntries.size, uiState.entries.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -220,7 +224,7 @@ fun UserDictContent(onBack: () -> Unit) {
                                     CircularProgressIndicator()
                                     Spacer(Modifier.height(12.dp))
                                     Text(
-                                        "正在读取词库…",
+                                        tr(R.string.s_zhengzaiduquciku),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -230,14 +234,14 @@ fun UserDictContent(onBack: () -> Unit) {
                         uiState.entries.isEmpty() -> {
                             Centered {
                                 UsageHint(
-                                    title = "这本词库还没有词条",
-                                    message = "用这个方案继续输入，词条会自动记到这里"
+                                    title = tr(R.string.s_zhebencikuhaimeiyoucitiao),
+                                    message = tr(R.string.s_yongzhegefanganjixushuru_citia_3a000)
                                 )
                             }
                         }
                         uiState.filteredEntries.isEmpty() -> {
                             Centered {
-                                Text("未找到匹配条目", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(tr(R.string.s_weizhaodaopipeitiaomu), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         else -> {
@@ -314,24 +318,24 @@ private fun UserDictAddSheet(
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
             Text(
-                "添加词条", style = MaterialTheme.typography.titleMedium,
+                tr(R.string.s_tianjiacitiao), style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 20.dp)
             )
             OutlinedTextField(
                 value = word, onValueChange = { word = it },
-                label = { Text("词") }, shape = RoundedCornerShape(12.dp), singleLine = true,
+                label = { Text(tr(R.string.s_ci)) }, shape = RoundedCornerShape(12.dp), singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = code, onValueChange = { code = it },
-                label = { Text("编码") }, shape = RoundedCornerShape(12.dp), singleLine = true,
+                label = { Text(tr(R.string.s_bianma)) }, shape = RoundedCornerShape(12.dp), singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = weight, onValueChange = { weight = it },
-                label = { Text("频率（可选，越大越优先）") }, shape = RoundedCornerShape(12.dp),
+                label = { Text(tr(R.string.s_pinlv_kexuan_yuedayueyouxian)) }, shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 isError = error != null,
                 supportingText = if (error != null) {
@@ -343,7 +347,7 @@ private fun UserDictAddSheet(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("取消") }
+                TextButton(onClick = onDismiss) { Text(tr(R.string.s_quxiao)) }
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     modifier = Modifier.clickable(enabled = check is UserDictIoManager.EntryInputCheck.Ok) {
@@ -352,7 +356,7 @@ private fun UserDictAddSheet(
                     shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary
                 ) {
                     Text(
-                        "确定", modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
+                        tr(R.string.s_queding), modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -371,21 +375,21 @@ private fun UserDictAddSheet(
 private fun DeleteEntryDialog(entry: DictEntry, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("删除词条") },
+        title = { Text(tr(R.string.s_shanchucitiao)) },
         text = {
             Text(
-                "「${entry.word}」（${entry.code}）会从用户词库中去掉，也不再由用户词库提供候选；" +
-                    "方案自带词表里若也有它，仍然会出现。" +
-                    "你之后如果再输入并选中它，引擎会重新记录。"
+                tr(R.string.s_huicongyonghucikuzhongqudiao_y_c6896, entry.word, entry.code) +
+                    tr(R.string.s_fanganzidaicibiaoliruoyeyouta_0c530) +
+                    tr(R.string.s_nizhihouruguozaishurubingxuanz_f4558)
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("删除", color = MaterialTheme.colorScheme.error)
+                Text(tr(R.string.s_shanchu), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(tr(R.string.s_quxiao)) }
         }
     )
 }
@@ -414,7 +418,7 @@ private fun UserDictEntryRow(entry: DictEntry, onDelete: () -> Unit) {
                 Text(entry.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 if (entry.weight != null) {
                     Text(
-                        "频率 ${entry.weight}",
+                        tr(R.string.s_pinlv, entry.weight),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -422,7 +426,7 @@ private fun UserDictEntryRow(entry: DictEntry, onDelete: () -> Unit) {
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(
-                    Icons.Default.Delete, contentDescription = "删除",
+                    Icons.Default.Delete, contentDescription = tr(R.string.s_shanchu),
                     tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)
                 )
             }
@@ -457,7 +461,7 @@ private fun TransferMessageBanner(
             )
             IconButton(onClick = onDismiss) {
                 Icon(
-                    Icons.Default.Clear, contentDescription = "关闭提示",
+                    Icons.Default.Clear, contentDescription = tr(R.string.s_guanbitishi),
                     modifier = Modifier.size(18.dp),
                     tint = onContainer
                 )
@@ -469,4 +473,4 @@ private fun TransferMessageBanner(
 private val userDictTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
 private fun formatUserDictTime(timestamp: Long): String =
-    if (timestamp <= 0L) "未知" else userDictTimeFormat.format(Date(timestamp))
+    if (timestamp <= 0L) tr(R.string.s_weizhi) else userDictTimeFormat.format(Date(timestamp))

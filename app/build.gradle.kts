@@ -51,6 +51,8 @@ android {
         applicationId = "com.kingzcheung.xime.test"
         minSdk = 28
         targetSdk = 35
+        // 自用版：刻意保持与官方 3.3.0 相同的 versionCode/versionName，
+        // 这样新旧两个自用 APK 都能原地覆盖安装，回退时无需先卸载。
         versionCode = 20261021
         versionName = "3.3.0"
 

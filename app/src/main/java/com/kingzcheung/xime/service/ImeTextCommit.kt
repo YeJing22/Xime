@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.service
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import com.kingzcheung.xime.util.FileLogger
 import android.os.Build
 import android.util.Log
@@ -146,7 +150,7 @@ internal class ImeTextCommit(private val service: XimeInputMethodService) {
         val file = service.clipboardManager.imageFileOf(item)
         if (file == null) {
             FileLogger.w(XimeInputMethodService.TAG, "Clipboard image file missing: ${item.imagePath}")
-            Toast.makeText(service, "图片已不在本地，无法发送", Toast.LENGTH_SHORT).show()
+            Toast.makeText(service, tr(R.string.s_tupianyibuzaibendi_wufafasong), Toast.LENGTH_SHORT).show()
             return
         }
         val mimeType = item.mimeType.ifEmpty { "image/jpeg" }
@@ -161,7 +165,7 @@ internal class ImeTextCommit(private val service: XimeInputMethodService) {
         )
         Toast.makeText(
             service,
-            if (copied) "已复制图片，长按输入框粘贴" else "复制图片失败",
+            if (copied) tr(R.string.s_yifuzhitupian_zhanganshurukuan_96610) else tr(R.string.s_fuzhitupianshibai),
             Toast.LENGTH_SHORT,
         ).show()
     }

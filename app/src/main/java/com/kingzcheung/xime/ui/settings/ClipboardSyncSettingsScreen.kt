@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -85,12 +89,12 @@ fun ClipboardSyncSettingsContent(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("剪贴板同步") },
+                title = { Text(tr(R.string.s_jiantiebantongbu)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = tr(R.string.s_fanhui)
                         )
                     }
                 },
@@ -112,14 +116,14 @@ fun ClipboardSyncSettingsContent(
         ) {
             if (!syncEnabled) {
                 Text(
-                    text = "同步已关闭：在上一级「剪贴板」页打开「剪贴板同步」开关后生效。",
+                    text = tr(R.string.s_tongbuyiguanbi_zaishangyiji_ji_5e4e4),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             SettingsSection(
-                title = "同步服务",
+                title = tr(R.string.s_tongbufuwu),
                 content = {
                     if (clipboardPlugins.isEmpty()) {
                         Column(
@@ -129,7 +133,7 @@ fun ClipboardSyncSettingsContent(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "未安装剪贴板同步插件，请先在扩展商店安装后再配置。",
+                                text = tr(R.string.s_weianzhuangjiantiebantongbucha_9bf61),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -137,7 +141,7 @@ fun ClipboardSyncSettingsContent(
                                 onClick = onNavigateToMarket,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("前往扩展商店")
+                                Text(tr(R.string.s_qianwangkuozhanshangdian))
                             }
                         }
                     } else {
@@ -163,7 +167,7 @@ fun ClipboardSyncSettingsContent(
                     onBack = {},
                     embedded = true,
                     // 配置卡标题带上插件名：明确"在配谁"
-                    fallbackSectionTitle = "$pluginName 配置"
+                    fallbackSectionTitle = tr(R.string.s_peizhi_2, pluginName)
                 )
             }
         }
@@ -172,7 +176,7 @@ fun ClipboardSyncSettingsContent(
     if (showServicePicker) {
         // 切换服务：单选弹窗（点行即切换并关闭）
         SettingsSingleChoiceDialog(
-            title = "选择同步服务",
+            title = tr(R.string.s_xuanzetongbufuwu),
             options = clipboardPlugins.map { plugin ->
                 val capabilities = plugin.capabilities?.clipboardSync
                 SettingsChoiceOption(
@@ -181,11 +185,11 @@ fun ClipboardSyncSettingsContent(
                     subtitle = buildString {
                         append(plugin.description)
                         if (!capabilities?.protocols.isNullOrEmpty()) {
-                            append("\n同步协议: ")
+                            append(tr(R.string.s_ntongbuxieyi))
                             append(capabilities?.protocols?.joinToString("、"))
                         }
                         if (capabilities?.attachments != true) {
-                            append("\n该插件不支持图片同步（仅文本）")
+                            append(tr(R.string.s_ngaichajianbuzhichitupiantongb_4018b))
                         }
                     }
                 )
@@ -251,7 +255,7 @@ private fun CurrentServiceItem(
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = pluginInfo?.name ?: pluginId ?: "未选择同步服务",
+                text = pluginInfo?.name ?: pluginId ?: tr(R.string.s_weixuanzetongbufuwu),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
@@ -262,13 +266,13 @@ private fun CurrentServiceItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            val ability = if (capabilities?.attachments == true) "文字与图片" else "仅文字"
+            val ability = if (capabilities?.attachments == true) tr(R.string.s_wenziyutupian) else tr(R.string.s_jinwenzi)
             Text(
                 text = buildString {
                     if (capabilities?.protocols.isNullOrEmpty()) {
                         append(ability)
                     } else {
-                        append("同步协议: ")
+                        append(tr(R.string.s_tongbuxieyi))
                         append(capabilities?.protocols?.joinToString("、"))
                         append(" · ")
                         append(ability)
@@ -279,7 +283,7 @@ private fun CurrentServiceItem(
             )
         }
         Text(
-            text = if (pluginId == null) "选择" else "切换",
+            text = if (pluginId == null) tr(R.string.s_xuanze) else tr(R.string.s_qiehuan),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary
         )

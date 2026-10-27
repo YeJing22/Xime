@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.association
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.util.Log
 import com.kingzcheung.xime.model.ModelRuntime
@@ -40,7 +44,7 @@ object AssociationManager {
                     id = "predictive_text",
                     loader = { OnnxAssociationEngine.initialize(ctx) },
                     releaser = { OnnxAssociationEngine.release() },
-                    label = "智能联想模型"
+                    label = tr(R.string.s_zhinenglianxiangmoxing)
                 )
                 val modelLoaded = ModelRuntime.load("predictive_text")
                 FileLogger.i(TAG, "ModelRuntime.load(predictive_text) result: $modelLoaded")

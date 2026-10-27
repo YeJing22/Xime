@@ -377,8 +377,12 @@ color_schemes:
 #
 # 每个手势的值格式：
 #   - 字符串 "a" → 按槽位默认动作（tap 为 send_rime：走按键路由进 rime，与手敲
-#     该键一致；swipe/长按为 commit：输出 value 直接上屏），显示也是它
+#     该键一致；swipe/长按为 commit：输出 value 直接上屏），显示也是它。
+#     本文件已显式写出 action: commit 的是真·直接上屏的手势：长按气泡候选、
+#     九键/笔画键上滑输数字；全键盘字母区的上滑保持简写——槽位默认 commit，
+#     但执行时沿用按键路由（与手敲该键一致，非绕过引擎直出）
 #   - { label, action, value }
+#     （对象形式省略 action 时取槽位默认）
 #     label:  按键上显示的文字
 #     action: send_rime（走按键路由进 rime 组合，tap 的默认，与手敲该键同一路由）,
 #             commit（输出 value 直接上屏，swipe/长按的默认）,
@@ -497,35 +501,35 @@ keyboard:
       # long_press 顺序：小写 → 大写 → 带变音符号的相似字母
       # swipe_down 显示对应的五笔字根（action:none 仅显示不上屏）
       # display: bubble → 气泡显示；key → 显示在按键上（最多显示 2 个字）
-      q: { tap: "q", swipe_up: "1", swipe_down: { label: "金 钅𠂊勺㐅 犭𱼀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["q", "Q"] } }
-      w: { tap: "w", swipe_up: "2", swipe_down: { label: "人亻八癶", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["w", "W"] } }
-      e: { tap: "e", swipe_up: "3", swipe_down: { label: "月⺼彡乃用爫彡𧘇豕", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["e", "E", "è", "é", "ê", "ë"] } }
-      r: { tap: "r", swipe_up: "4", swipe_down: { label: "白手龵扌斤𰀪𠂆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["r", "R"] } }
-      t: { tap: "t", swipe_up: "5", swipe_down: { label: "禾竹丿𠂉彳夂攵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["t", "T"] } }
-      y: { tap: "y", swipe_up: "6", swipe_down: { label: "言讠文方广亠丶乀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["y", "Y", "ÿ"] } }
-      u: { tap: "u", swipe_up: "7", swipe_down: { label: "立六辛冫丬门疒丷䒑", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["u", "U", "ù", "ú", "û", "ü"] } }
-      i: { tap: "i", swipe_up: "8", swipe_down: { label: "水氵小氺头𭕄⺌", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["i", "I", "ì", "í", "î", "ï"] } }
-      o: { tap: "o", swipe_up: "9", swipe_down: { label: "火灬米", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["o", "O", "ò", "ó", "ô", "õ", "ö", "ø"] } }
-      p: { tap: "p", swipe_up: "0", swipe_down: { label: "之辶冖宀廴礻", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["p", "P"] } }
+      q: { tap: "q", swipe_up: "1", swipe_down: { label: "金 钅𠂊勺㐅 犭𱼀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "Q" }] } }
+      w: { tap: "w", swipe_up: "2", swipe_down: { label: "人亻八癶", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "w" }, { action: commit, value: "W" }] } }
+      e: { tap: "e", swipe_up: "3", swipe_down: { label: "月⺼彡乃用爫彡𧘇豕", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "e" }, { action: commit, value: "E" }, { action: commit, value: "è" }, { action: commit, value: "é" }, { action: commit, value: "ê" }, { action: commit, value: "ë" }] } }
+      r: { tap: "r", swipe_up: "4", swipe_down: { label: "白手龵扌斤𰀪𠂆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "r" }, { action: commit, value: "R" }] } }
+      t: { tap: "t", swipe_up: "5", swipe_down: { label: "禾竹丿𠂉彳夂攵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "t" }, { action: commit, value: "T" }] } }
+      y: { tap: "y", swipe_up: "6", swipe_down: { label: "言讠文方广亠丶乀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "y" }, { action: commit, value: "Y" }, { action: commit, value: "ÿ" }] } }
+      u: { tap: "u", swipe_up: "7", swipe_down: { label: "立六辛冫丬门疒丷䒑", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "u" }, { action: commit, value: "U" }, { action: commit, value: "ù" }, { action: commit, value: "ú" }, { action: commit, value: "û" }, { action: commit, value: "ü" }] } }
+      i: { tap: "i", swipe_up: "8", swipe_down: { label: "水氵小氺头𭕄⺌", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "i" }, { action: commit, value: "I" }, { action: commit, value: "ì" }, { action: commit, value: "í" }, { action: commit, value: "î" }, { action: commit, value: "ï" }] } }
+      o: { tap: "o", swipe_up: "9", swipe_down: { label: "火灬米", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "o" }, { action: commit, value: "O" }, { action: commit, value: "ò" }, { action: commit, value: "ó" }, { action: commit, value: "ô" }, { action: commit, value: "õ" }, { action: commit, value: "ö" }, { action: commit, value: "ø" }] } }
+      p: { tap: "p", swipe_up: "0", swipe_down: { label: "之辶冖宀廴礻", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "p" }, { action: commit, value: "P" }] } }
 
       # ── 第二行 ──
-      a: { tap: "a", swipe_up: { label: "～", value: "~" }, swipe_down: { label: "工匚戈艹廿龷七弋戈", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["a", "A", "à", "á", "â", "ã", "ä", "å", "æ"] } }
-      s: { tap: "s", swipe_up: { label: "／", value: "/" }, swipe_down: { label: "木丁西", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["s", "S", "ß"] } }
-      d: { tap: "d", swipe_up: { label: "：", value: ":" }, swipe_down: { label: "大犬三古龵镸石厂丆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["d", "D"] } }
-      f: { tap: "f", swipe_up: { label: "；", value: ";" }, swipe_down: { label: "土士二干十寸雨", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["f", "F"] } }
-      g: { tap: "g", swipe_up: { label: "“", value: "“" }, swipe_down: { label: "王龶五一戋", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["g", "G"] } }
-      h: { tap: "h", swipe_up: { label: "”", value: "”" }, swipe_down: { label: "目丨卜⺊上止龰", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["h", "H"] } }
-      j: { tap: "j", swipe_up: { label: "－", value: "-" }, swipe_down: { label: "日曰早廾刂虫丿Ⅱ", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["j", "J"] } }
-      k: { tap: "k", swipe_up: { label: "（", value: "(" }, swipe_down: { label: "口Ⅲ川", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["k", "K"] } }
-      l: { tap: "l", swipe_up: { label: "）", value: ")" }, swipe_down: { label: "田甲囗四罒车皿力", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["l", "L"] } }
+      a: { tap: "a", swipe_up: { label: "～", value: "~" }, swipe_down: { label: "工匚戈艹廿龷七弋戈", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "A" }, { action: commit, value: "à" }, { action: commit, value: "á" }, { action: commit, value: "â" }, { action: commit, value: "ã" }, { action: commit, value: "ä" }, { action: commit, value: "å" }, { action: commit, value: "æ" }] } }
+      s: { tap: "s", swipe_up: { label: "／", value: "/" }, swipe_down: { label: "木丁西", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "s" }, { action: commit, value: "S" }, { action: commit, value: "ß" }] } }
+      d: { tap: "d", swipe_up: { label: "：", value: ":" }, swipe_down: { label: "大犬三古龵镸石厂丆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "d" }, { action: commit, value: "D" }] } }
+      f: { tap: "f", swipe_up: { label: "；", value: ";" }, swipe_down: { label: "土士二干十寸雨", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "f" }, { action: commit, value: "F" }] } }
+      g: { tap: "g", swipe_up: { label: "“", value: "“" }, swipe_down: { label: "王龶五一戋", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "g" }, { action: commit, value: "G" }] } }
+      h: { tap: "h", swipe_up: { label: "”", value: "”" }, swipe_down: { label: "目丨卜⺊上止龰", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "h" }, { action: commit, value: "H" }] } }
+      j: { tap: "j", swipe_up: { label: "－", value: "-" }, swipe_down: { label: "日曰早廾刂虫丿Ⅱ", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "J" }] } }
+      k: { tap: "k", swipe_up: { label: "（", value: "(" }, swipe_down: { label: "口Ⅲ川", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "k" }, { action: commit, value: "K" }] } }
+      l: { tap: "l", swipe_up: { label: "）", value: ")" }, swipe_down: { label: "田甲囗四罒车皿力", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
       # ── 第三行 ──
-      z: { tap: "z", swipe_up: { label: "＊", value: "*" }, swipe_down: { label: "", action: "none", display: "key", bubble: false }, long_press: { display: "bubble", values: [ "z","Z"] } }
-      x: { tap: "x", swipe_up: { label: "＠", value: "@" }, swipe_down: { label: "弓匕纟幺弓𠤎", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["x", "X"] } }
-      c: { tap: "c", swipe_up: { label: "、", value: "、" }, swipe_down: { label: "又巴马厶龴ス", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["c", "C", "ç"] } }
-      v: { tap: "v", swipe_up: { label: "？", value: "?" }, swipe_down: { label: "女刀九臼巛彐", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["v", "V"] } }
-      b: { tap: "b", swipe_up: { label: "！", value: "!" }, swipe_down: { label: "子耳了也阝卩㔾凵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["b", "B"] } }
-      n: { tap: "n", swipe_up: { label: "％", value: "%" }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["n", "N", "ñ"] } }
-      m: { tap: "m", swipe_up: { label: "＃", value: "#" }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["m", "M"] } }
+      z: { tap: "z", swipe_up: { label: "＊", value: "*" }, swipe_down: { label: "", action: "none", display: "key", bubble: false }, long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "Z" }] } }
+      x: { tap: "x", swipe_up: { label: "＠", value: "@" }, swipe_down: { label: "弓匕纟幺弓𠤎", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "x" }, { action: commit, value: "X" }] } }
+      c: { tap: "c", swipe_up: { label: "、", value: "、" }, swipe_down: { label: "又巴马厶龴ス", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "c" }, { action: commit, value: "C" }, { action: commit, value: "ç" }] } }
+      v: { tap: "v", swipe_up: { label: "？", value: "?" }, swipe_down: { label: "女刀九臼巛彐", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "v" }, { action: commit, value: "V" }] } }
+      b: { tap: "b", swipe_up: { label: "！", value: "!" }, swipe_down: { label: "子耳了也阝卩㔾凵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "B" }] } }
+      n: { tap: "n", swipe_up: { label: "％", value: "%" }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "n" }, { action: commit, value: "N" }, { action: commit, value: "ñ" }] } }
+      m: { tap: "m", swipe_up: { label: "＃", value: "#" }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       # shift：单击切单击态、双击锁定大写；命令值走键盘按键路由（shift_single / shift_caps）
       shift: { width: 1.4, tap: { action: command, value: shift_single }, double_tap: { action: command, value: shift_caps } }
       # delete：单击删除、长按重复删、上滑清空、下滑撤回、左右滑清空输入
@@ -539,7 +543,7 @@ keyboard:
       # 回车键
       enter: { width: 1.2, tap: { action: enter, bubble: false } }
       #  逗号键，label 为中文显示，value 为英文显示+提交值
-      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
+      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
 
 
       # 中/英切换键，label 为按键显示文字
@@ -568,36 +572,36 @@ keyboard:
         - [mode_change, comma, space, earth, enter]
     keys:
       # ── 第一行 ──
-      q: { tap: "q", swipe_up: "1", long_press: { display: "bubble", values: ["q", "Q"] } }
-      w: { tap: "w", swipe_up: "2", long_press: { display: "bubble", values: ["w", "W"] } }
-      e: { tap: "e", swipe_up: "3", long_press: { display: "bubble", values: ["e", "E"] } }
-      r: { tap: "r", swipe_up: "4", long_press: { display: "bubble", values: ["r", "R"] } }
-      t: { tap: "t", swipe_up: "5", long_press: { display: "bubble", values: ["t", "T"] } }
-      y: { tap: "y", swipe_up: "6", long_press: { display: "bubble", values: ["y", "Y"] } }
-      u: { tap: "u", swipe_up: "7", long_press: { display: "bubble", values: ["u", "U"] } }
-      i: { tap: "i", swipe_up: "8", long_press: { display: "bubble", values: ["i", "I"] } }
-      o: { tap: "o", swipe_up: "9", long_press: { display: "bubble", values: ["o", "O"] } }
-      p: { tap: "p", swipe_up: "0", long_press: { display: "bubble", values: ["p", "P"] } }
+      q: { tap: "q", swipe_up: "1", long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "Q" }] } }
+      w: { tap: "w", swipe_up: "2", long_press: { display: "bubble", values: [{ action: commit, value: "w" }, { action: commit, value: "W" }] } }
+      e: { tap: "e", swipe_up: "3", long_press: { display: "bubble", values: [{ action: commit, value: "e" }, { action: commit, value: "E" }] } }
+      r: { tap: "r", swipe_up: "4", long_press: { display: "bubble", values: [{ action: commit, value: "r" }, { action: commit, value: "R" }] } }
+      t: { tap: "t", swipe_up: "5", long_press: { display: "bubble", values: [{ action: commit, value: "t" }, { action: commit, value: "T" }] } }
+      y: { tap: "y", swipe_up: "6", long_press: { display: "bubble", values: [{ action: commit, value: "y" }, { action: commit, value: "Y" }] } }
+      u: { tap: "u", swipe_up: "7", long_press: { display: "bubble", values: [{ action: commit, value: "u" }, { action: commit, value: "U" }] } }
+      i: { tap: "i", swipe_up: "8", long_press: { display: "bubble", values: [{ action: commit, value: "i" }, { action: commit, value: "I" }] } }
+      o: { tap: "o", swipe_up: "9", long_press: { display: "bubble", values: [{ action: commit, value: "o" }, { action: commit, value: "O" }] } }
+      p: { tap: "p", swipe_up: "0", long_press: { display: "bubble", values: [{ action: commit, value: "p" }, { action: commit, value: "P" }] } }
       # ── 第二行 ──
-      a: { tap: "a", swipe_up: "~", long_press: { display: "bubble", values: ["a", "A"] } }
-      s: { tap: "s", swipe_up: "/", long_press: { display: "bubble", values: ["s", "S"] } }
-      d: { tap: "d", swipe_up: ":", long_press: { display: "bubble", values: ["d", "D"] } }
-      f: { tap: "f", swipe_up: ";", long_press: { display: "bubble", values: ["f", "F"] } }
-      g: { tap: "g", swipe_up: "\"", long_press: { display: "bubble", values: ["g", "G"] } }
-      h: { tap: "h", swipe_up: "\"", long_press: { display: "bubble", values: ["h", "H"] } }
-      j: { tap: "j", swipe_up: "-", long_press: { display: "bubble", values: ["j", "J"] } }
-      k: { tap: "k", swipe_up: "(", long_press: { display: "bubble", values: ["k", "K"] } }
-      l: { tap: "l", swipe_up: ")", long_press: { display: "bubble", values: ["l", "L"] } }
+      a: { tap: "a", swipe_up: "~", long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "A" }] } }
+      s: { tap: "s", swipe_up: "/", long_press: { display: "bubble", values: [{ action: commit, value: "s" }, { action: commit, value: "S" }] } }
+      d: { tap: "d", swipe_up: ":", long_press: { display: "bubble", values: [{ action: commit, value: "d" }, { action: commit, value: "D" }] } }
+      f: { tap: "f", swipe_up: ";", long_press: { display: "bubble", values: [{ action: commit, value: "f" }, { action: commit, value: "F" }] } }
+      g: { tap: "g", swipe_up: "\"", long_press: { display: "bubble", values: [{ action: commit, value: "g" }, { action: commit, value: "G" }] } }
+      h: { tap: "h", swipe_up: "\"", long_press: { display: "bubble", values: [{ action: commit, value: "h" }, { action: commit, value: "H" }] } }
+      j: { tap: "j", swipe_up: "-", long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "J" }] } }
+      k: { tap: "k", swipe_up: "(", long_press: { display: "bubble", values: [{ action: commit, value: "k" }, { action: commit, value: "K" }] } }
+      l: { tap: "l", swipe_up: ")", long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
       # ";": { tap: ";", shift: ":" }
 
       # ── 第三行 ──
-      z: { tap: "z", swipe_up: "*", long_press: { display: "bubble", values: ["z", "Z"] } }
-      x: { tap: "x", swipe_up: "@", long_press: { display: "bubble", values: ["x", "X"] } }
-      c: { tap: "c", swipe_up: "、", long_press: { display: "bubble", values: ["c", "C"] } }
-      v: { tap: "v", swipe_up: "?", long_press: { display: "bubble", values: ["v", "V"] } }
-      b: { tap: "b", swipe_up: "!", long_press: { display: "bubble", values: ["b", "B"] } }
-      n: { tap: "n", swipe_up: "%", long_press: { display: "bubble", values: ["n", "N"] } }
-      m: { tap: "m", swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
+      z: { tap: "z", swipe_up: "*", long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "Z" }] } }
+      x: { tap: "x", swipe_up: "@", long_press: { display: "bubble", values: [{ action: commit, value: "x" }, { action: commit, value: "X" }] } }
+      c: { tap: "c", swipe_up: "、", long_press: { display: "bubble", values: [{ action: commit, value: "c" }, { action: commit, value: "C" }] } }
+      v: { tap: "v", swipe_up: "?", long_press: { display: "bubble", values: [{ action: commit, value: "v" }, { action: commit, value: "V" }] } }
+      b: { tap: "b", swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "B" }] } }
+      n: { tap: "n", swipe_up: "%", long_press: { display: "bubble", values: [{ action: commit, value: "n" }, { action: commit, value: "N" }] } }
+      m: { tap: "m", swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       # shift：单击切单击态、双击锁定大写（命令值走键盘按键路由）
       shift: { width: 1.4, tap: { action: command, value: shift_single }, double_tap: { action: command, value: shift_caps } }
       # delete：单击删除、长按重复删、上滑清空、下滑撤回、左右滑清空输入
@@ -632,28 +636,28 @@ keyboard:
         - [mode_change, emoji, space, cursor_left, cursor_right, mode_change]
     keys:
       # ── 第一行（数字上标常驻）──
-      q: { tap: { value: "q", bubble: false }, swipe_up: "1", swipe_down: { label: "金 钅𠂊勺㐅 犭𱼀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["q", "Q"] } }
-      w: { tap: { value: "w", bubble: false }, swipe_up: "2", swipe_down: { label: "人亻八癶", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["w", "W"] } }
-      e: { tap: { value: "e", bubble: false }, swipe_up: "3", swipe_down: { label: "月⺼彡乃用爫彡𧘇豕", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["e", "E", "è", "é", "ê", "ë"] } }
-      r: { tap: { value: "r", bubble: false }, swipe_up: "4", swipe_down: { label: "白手龵扌斤𰀪𠂆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["r", "R"] } }
-      t: { tap: { value: "t", bubble: false }, swipe_up: "5", swipe_down: { label: "禾竹丿𠂉彳夂攵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["t", "T"] } }
-      y: { tap: { value: "y", bubble: false }, swipe_up: "6", swipe_down: { label: "言讠文方广亠丶乀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["y", "Y", "ÿ"] } }
-      u: { tap: { value: "u", bubble: false }, swipe_up: "7", swipe_down: { label: "立六辛冫丬门疒丷䒑", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["u", "U", "ù", "ú", "û", "ü"] } }
-      i: { tap: { value: "i", bubble: false }, swipe_up: "8", swipe_down: { label: "水氵小氺头𭕄⺌", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["i", "I", "ì", "í", "î", "ï"] } }
-      o: { tap: { value: "o", bubble: false }, swipe_up: "9", swipe_down: { label: "火灬米", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["o", "O", "ò", "ó", "ô", "õ", "ö", "ø"] } }
-      p: { tap: { value: "p", bubble: false }, swipe_up: "0", swipe_down: { label: "之辶冖宀廴礻", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["p", "P"] } }
+      q: { tap: { value: "q", bubble: false }, swipe_up: "1", swipe_down: { label: "金 钅𠂊勺㐅 犭𱼀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "Q" }] } }
+      w: { tap: { value: "w", bubble: false }, swipe_up: "2", swipe_down: { label: "人亻八癶", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "w" }, { action: commit, value: "W" }] } }
+      e: { tap: { value: "e", bubble: false }, swipe_up: "3", swipe_down: { label: "月⺼彡乃用爫彡𧘇豕", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "e" }, { action: commit, value: "E" }, { action: commit, value: "è" }, { action: commit, value: "é" }, { action: commit, value: "ê" }, { action: commit, value: "ë" }] } }
+      r: { tap: { value: "r", bubble: false }, swipe_up: "4", swipe_down: { label: "白手龵扌斤𰀪𠂆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "r" }, { action: commit, value: "R" }] } }
+      t: { tap: { value: "t", bubble: false }, swipe_up: "5", swipe_down: { label: "禾竹丿𠂉彳夂攵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "t" }, { action: commit, value: "T" }] } }
+      y: { tap: { value: "y", bubble: false }, swipe_up: "6", swipe_down: { label: "言讠文方广亠丶乀", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "y" }, { action: commit, value: "Y" }, { action: commit, value: "ÿ" }] } }
+      u: { tap: { value: "u", bubble: false }, swipe_up: "7", swipe_down: { label: "立六辛冫丬门疒丷䒑", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "u" }, { action: commit, value: "U" }, { action: commit, value: "ù" }, { action: commit, value: "ú" }, { action: commit, value: "û" }, { action: commit, value: "ü" }] } }
+      i: { tap: { value: "i", bubble: false }, swipe_up: "8", swipe_down: { label: "水氵小氺头𭕄⺌", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "i" }, { action: commit, value: "I" }, { action: commit, value: "ì" }, { action: commit, value: "í" }, { action: commit, value: "î" }, { action: commit, value: "ï" }] } }
+      o: { tap: { value: "o", bubble: false }, swipe_up: "9", swipe_down: { label: "火灬米", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "o" }, { action: commit, value: "O" }, { action: commit, value: "ò" }, { action: commit, value: "ó" }, { action: commit, value: "ô" }, { action: commit, value: "õ" }, { action: commit, value: "ö" }, { action: commit, value: "ø" }] } }
+      p: { tap: { value: "p", bubble: false }, swipe_up: "0", swipe_down: { label: "之辶冖宀廴礻", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "p" }, { action: commit, value: "P" }] } }
       # 退格：单击删除、长按重复删、上滑清空、下滑撤回、左右滑清空输入
       delete: { width: 1.1, tap: {  action: delete, bubble: false }, long_press: { values: [ { action: delete, label: "删除" } ] }, swipe_up: { action: clear_all, label: "上滑清空" }, swipe_down: { action: undo_clear, label: "下滑撤回" }, swipe_left: { action: command, value: clear_composition }, swipe_right: { action: command, value: clear_composition } }
       # ── 第二行 ──
-      a: { tap: { value: "a", bubble: false }, swipe_up: { label: "～", value: "~" }, swipe_down: { label: "工匚戈艹廿龷七弋戈", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["a", "A", "à", "á", "â", "ã", "ä", "å", "æ"] } }
-      s: { tap: { value: "s", bubble: false }, swipe_up: { label: "／", value: "/" }, swipe_down: { label: "木丁西", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["s", "S", "ß"] } }
-      d: { tap: { value: "d", bubble: false }, swipe_up: { label: "：", value: ":" }, swipe_down: { label: "大犬三古龵镸石厂丆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["d", "D"] } }
-      f: { tap: { value: "f", bubble: false }, swipe_up: { label: "；", value: ";" }, swipe_down: { label: "土士二干十寸雨", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["f", "F"] } }
-      g: { tap: { value: "g", bubble: false }, swipe_up: { label: "“", value: "“" }, swipe_down: { label: "王龶五一戋", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["g", "G"] } }
-      h: { tap: { value: "h", bubble: false }, swipe_up: { label: "”", value: "”" }, swipe_down: { label: "目丨卜⺊上止龰", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["h", "H"] } }
-      j: { tap: { value: "j", bubble: false }, swipe_up: { label: "－", value: "-" }, swipe_down: { label: "日曰早廾刂虫丿Ⅱ", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["j", "J"] } }
-      k: { tap: { value: "k", bubble: false }, swipe_up: { label: "（", value: "(" }, swipe_down: { label: "口Ⅲ川", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["k", "K"] } }
-      l: { tap: { value: "l", bubble: false }, swipe_up: { label: "）", value: ")" }, swipe_down: { label: "田甲囗四罒车皿力", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["l", "L"] } }
+      a: { tap: { value: "a", bubble: false }, swipe_up: { label: "～", value: "~" }, swipe_down: { label: "工匚戈艹廿龷七弋戈", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "A" }, { action: commit, value: "à" }, { action: commit, value: "á" }, { action: commit, value: "â" }, { action: commit, value: "ã" }, { action: commit, value: "ä" }, { action: commit, value: "å" }, { action: commit, value: "æ" }] } }
+      s: { tap: { value: "s", bubble: false }, swipe_up: { label: "／", value: "/" }, swipe_down: { label: "木丁西", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "s" }, { action: commit, value: "S" }, { action: commit, value: "ß" }] } }
+      d: { tap: { value: "d", bubble: false }, swipe_up: { label: "：", value: ":" }, swipe_down: { label: "大犬三古龵镸石厂丆", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "d" }, { action: commit, value: "D" }] } }
+      f: { tap: { value: "f", bubble: false }, swipe_up: { label: "；", value: ";" }, swipe_down: { label: "土士二干十寸雨", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "f" }, { action: commit, value: "F" }] } }
+      g: { tap: { value: "g", bubble: false }, swipe_up: { label: "“", value: "“" }, swipe_down: { label: "王龶五一戋", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "g" }, { action: commit, value: "G" }] } }
+      h: { tap: { value: "h", bubble: false }, swipe_up: { label: "”", value: "”" }, swipe_down: { label: "目丨卜⺊上止龰", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "h" }, { action: commit, value: "H" }] } }
+      j: { tap: { value: "j", bubble: false }, swipe_up: { label: "－", value: "-" }, swipe_down: { label: "日曰早廾刂虫丿Ⅱ", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "J" }] } }
+      k: { tap: { value: "k", bubble: false }, swipe_up: { label: "（", value: "(" }, swipe_down: { label: "口Ⅲ川", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "k" }, { action: commit, value: "K" }] } }
+      l: { tap: { value: "l", bubble: false }, swipe_up: { label: "）", value: ")" }, swipe_down: { label: "田甲囗四罒车皿力", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
       # 回车移到本行行尾（Gboard 平板排布）
       enter: { width: 1.4, tap: {  action: enter, bubble: false } }
       # 大写锁定键（行 2 左端）：单击切换大写锁定，CAPS 态键面高亮
@@ -662,13 +666,13 @@ keyboard:
       # 未配置的手势沿用内置 shift 状态机：单击切单击态、双击锁定大写）──
       shift_left: { width: 1.6 }
       shift_right: { width: 1.2 }
-      z: { tap: { value: "z", bubble: false }, swipe_up: { label: "＊", value: "*" }, swipe_down: { label: "", action: "none", display: "key", bubble: false }, long_press: { display: "bubble", values: [ "z","Z"] } }
-      x: { tap: { value: "x", bubble: false }, swipe_up: { label: "＠", value: "@" }, swipe_down: { label: "弓匕纟幺弓𠤎", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["x", "X"] } }
-      c: { tap: { value: "c", bubble: false }, swipe_up: { label: "、", value: "、" }, swipe_down: { label: "又巴马厶龴ス", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["c", "C", "ç"] } }
-      v: { tap: { value: "v", bubble: false }, swipe_up: { label: "？", value: "?" }, swipe_down: { label: "女刀九臼巛彐", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["v", "V"] } }
-      b: { tap: { value: "b", bubble: false }, swipe_up: { label: "！", value: "!" }, swipe_down: { label: "子耳了也阝卩㔾凵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["b", "B"] } }
-      n: { tap: { value: "n", bubble: false }, swipe_up: { label: "％", value: "%" }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["n", "N", "ñ"] } }
-      m: { tap: { value: "m", bubble: false }, swipe_up: { label: "＃", value: "#" }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["m", "M"] } }
+      z: { tap: { value: "z", bubble: false }, swipe_up: { label: "＊", value: "*" }, swipe_down: { label: "", action: "none", display: "key", bubble: false }, long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "Z" }] } }
+      x: { tap: { value: "x", bubble: false }, swipe_up: { label: "＠", value: "@" }, swipe_down: { label: "弓匕纟幺弓𠤎", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "x" }, { action: commit, value: "X" }] } }
+      c: { tap: { value: "c", bubble: false }, swipe_up: { label: "、", value: "、" }, swipe_down: { label: "又巴马厶龴ス", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "c" }, { action: commit, value: "C" }, { action: commit, value: "ç" }] } }
+      v: { tap: { value: "v", bubble: false }, swipe_up: { label: "？", value: "?" }, swipe_down: { label: "女刀九臼巛彐", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "v" }, { action: commit, value: "V" }] } }
+      b: { tap: { value: "b", bubble: false }, swipe_up: { label: "！", value: "!" }, swipe_down: { label: "子耳了也阝卩㔾凵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "B" }] } }
+      n: { tap: { value: "n", bubble: false }, swipe_up: { label: "％", value: "%" }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "n" }, { action: commit, value: "N" }, { action: commit, value: "ñ" }] } }
+      m: { tap: { value: "m", bubble: false }, swipe_up: { label: "＃", value: "#" }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "bubble" }, long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       # 逗号/句号独立成键（value 经 rime 引擎，中文态自动转全角）
       comma: { width: 1, tap: {  label: "，", value: ",", bubble: false } }
       period: { width: 1, tap: {  label: "。", value: ".", bubble: false } }
@@ -693,37 +697,37 @@ keyboard:
         - [shift_left, z, x, c, v, b, n, m, comma, period, shift_right]
         - [mode_change, emoji, space, cursor_left, cursor_right, mode_change]
     keys:
-      q: { tap: { value: "q", bubble: false }, swipe_up: "1", long_press: { display: "bubble", values: ["q", "Q"] } }
-      w: { tap: { value: "w", bubble: false }, swipe_up: "2", long_press: { display: "bubble", values: ["w", "W"] } }
-      e: { tap: { value: "e", bubble: false }, swipe_up: "3", long_press: { display: "bubble", values: ["e", "E"] } }
-      r: { tap: { value: "r", bubble: false }, swipe_up: "4", long_press: { display: "bubble", values: ["r", "R"] } }
-      t: { tap: { value: "t", bubble: false }, swipe_up: "5", long_press: { display: "bubble", values: ["t", "T"] } }
-      y: { tap: { value: "y", bubble: false }, swipe_up: "6", long_press: { display: "bubble", values: ["y", "Y"] } }
-      u: { tap: { value: "u", bubble: false }, swipe_up: "7", long_press: { display: "bubble", values: ["u", "U"] } }
-      i: { tap: { value: "i", bubble: false }, swipe_up: "8", long_press: { display: "bubble", values: ["i", "I"] } }
-      o: { tap: { value: "o", bubble: false }, swipe_up: "9", long_press: { display: "bubble", values: ["o", "O"] } }
-      p: { tap: { value: "p", bubble: false }, swipe_up: "0", long_press: { display: "bubble", values: ["p", "P"] } }
+      q: { tap: { value: "q", bubble: false }, swipe_up: "1", long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "Q" }] } }
+      w: { tap: { value: "w", bubble: false }, swipe_up: "2", long_press: { display: "bubble", values: [{ action: commit, value: "w" }, { action: commit, value: "W" }] } }
+      e: { tap: { value: "e", bubble: false }, swipe_up: "3", long_press: { display: "bubble", values: [{ action: commit, value: "e" }, { action: commit, value: "E" }] } }
+      r: { tap: { value: "r", bubble: false }, swipe_up: "4", long_press: { display: "bubble", values: [{ action: commit, value: "r" }, { action: commit, value: "R" }] } }
+      t: { tap: { value: "t", bubble: false }, swipe_up: "5", long_press: { display: "bubble", values: [{ action: commit, value: "t" }, { action: commit, value: "T" }] } }
+      y: { tap: { value: "y", bubble: false }, swipe_up: "6", long_press: { display: "bubble", values: [{ action: commit, value: "y" }, { action: commit, value: "Y" }] } }
+      u: { tap: { value: "u", bubble: false }, swipe_up: "7", long_press: { display: "bubble", values: [{ action: commit, value: "u" }, { action: commit, value: "U" }] } }
+      i: { tap: { value: "i", bubble: false }, swipe_up: "8", long_press: { display: "bubble", values: [{ action: commit, value: "i" }, { action: commit, value: "I" }] } }
+      o: { tap: { value: "o", bubble: false }, swipe_up: "9", long_press: { display: "bubble", values: [{ action: commit, value: "o" }, { action: commit, value: "O" }] } }
+      p: { tap: { value: "p", bubble: false }, swipe_up: "0", long_press: { display: "bubble", values: [{ action: commit, value: "p" }, { action: commit, value: "P" }] } }
       delete: { width: 1.2, tap: {  action: delete, bubble: false }, long_press: { values: [ { action: delete, label: "删除" } ] }, swipe_up: { action: clear_all, label: "上滑清空" }, swipe_down: { action: undo_clear, label: "下滑撤回" }, swipe_left: { action: command, value: clear_composition }, swipe_right: { action: command, value: clear_composition } }
-      a: { tap: { value: "a", bubble: false }, swipe_up: "~", long_press: { display: "bubble", values: ["a", "A"] } }
-      s: { tap: { value: "s", bubble: false }, swipe_up: "/", long_press: { display: "bubble", values: ["s", "S"] } }
-      d: { tap: { value: "d", bubble: false }, swipe_up: ":", long_press: { display: "bubble", values: ["d", "D"] } }
-      f: { tap: { value: "f", bubble: false }, swipe_up: ";", long_press: { display: "bubble", values: ["f", "F"] } }
-      g: { tap: { value: "g", bubble: false }, swipe_up: "\"", long_press: { display: "bubble", values: ["g", "G"] } }
-      h: { tap: { value: "h", bubble: false }, swipe_up: "\"", long_press: { display: "bubble", values: ["h", "H"] } }
-      j: { tap: { value: "j", bubble: false }, swipe_up: "-", long_press: { display: "bubble", values: ["j", "J"] } }
-      k: { tap: { value: "k", bubble: false }, swipe_up: "(", long_press: { display: "bubble", values: ["k", "K"] } }
-      l: { tap: { value: "l", bubble: false }, swipe_up: ")", long_press: { display: "bubble", values: ["l", "L"] } }
+      a: { tap: { value: "a", bubble: false }, swipe_up: "~", long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "A" }] } }
+      s: { tap: { value: "s", bubble: false }, swipe_up: "/", long_press: { display: "bubble", values: [{ action: commit, value: "s" }, { action: commit, value: "S" }] } }
+      d: { tap: { value: "d", bubble: false }, swipe_up: ":", long_press: { display: "bubble", values: [{ action: commit, value: "d" }, { action: commit, value: "D" }] } }
+      f: { tap: { value: "f", bubble: false }, swipe_up: ";", long_press: { display: "bubble", values: [{ action: commit, value: "f" }, { action: commit, value: "F" }] } }
+      g: { tap: { value: "g", bubble: false }, swipe_up: "\"", long_press: { display: "bubble", values: [{ action: commit, value: "g" }, { action: commit, value: "G" }] } }
+      h: { tap: { value: "h", bubble: false }, swipe_up: "\"", long_press: { display: "bubble", values: [{ action: commit, value: "h" }, { action: commit, value: "H" }] } }
+      j: { tap: { value: "j", bubble: false }, swipe_up: "-", long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "J" }] } }
+      k: { tap: { value: "k", bubble: false }, swipe_up: "(", long_press: { display: "bubble", values: [{ action: commit, value: "k" }, { action: commit, value: "K" }] } }
+      l: { tap: { value: "l", bubble: false }, swipe_up: ")", long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
       enter: { width: 1.4, tap: {  action: enter, bubble: false } }
       caps: { width: 1.4 }
       shift_left: { width: 1.6 }
       shift_right: { width: 1.2 }
-      z: { tap: { value: "z", bubble: false }, swipe_up: "*", long_press: { display: "bubble", values: ["z", "Z"] } }
-      x: { tap: { value: "x", bubble: false }, swipe_up: "@", long_press: { display: "bubble", values: ["x", "X"] } }
-      c: { tap: { value: "c", bubble: false }, swipe_up: "、", long_press: { display: "bubble", values: ["c", "C"] } }
-      v: { tap: { value: "v", bubble: false }, swipe_up: "?", long_press: { display: "bubble", values: ["v", "V"] } }
-      b: { tap: { value: "b", bubble: false }, swipe_up: "!", long_press: { display: "bubble", values: ["b", "B"] } }
-      n: { tap: { value: "n", bubble: false }, swipe_up: "%", long_press: { display: "bubble", values: ["n", "N"] } }
-      m: { tap: { value: "m", bubble: false }, swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
+      z: { tap: { value: "z", bubble: false }, swipe_up: "*", long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "Z" }] } }
+      x: { tap: { value: "x", bubble: false }, swipe_up: "@", long_press: { display: "bubble", values: [{ action: commit, value: "x" }, { action: commit, value: "X" }] } }
+      c: { tap: { value: "c", bubble: false }, swipe_up: "、", long_press: { display: "bubble", values: [{ action: commit, value: "c" }, { action: commit, value: "C" }] } }
+      v: { tap: { value: "v", bubble: false }, swipe_up: "?", long_press: { display: "bubble", values: [{ action: commit, value: "v" }, { action: commit, value: "V" }] } }
+      b: { tap: { value: "b", bubble: false }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "B" }] } }
+      n: { tap: { value: "n", bubble: false }, swipe_up: "%", long_press: { display: "bubble", values: [{ action: commit, value: "n" }, { action: commit, value: "N" }] } }
+      m: { tap: { value: "m", bubble: false }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { width: 1, tap: {  label: ",", value: ",", bubble: false } }
       period: { width: 1, tap: {  label: ".", value: ".", bubble: false } }
       mode_change: { width: 1.2, tap: {  action: command, value: mode_change, bubble: false }, long_press: { display: bubble, values: [ { label: number, action: command, value: mode_change_number }, { label: common_symbol, action: command, value: mode_change_common_symbol } ] } }
@@ -756,21 +760,21 @@ keyboard:
         - [[z, x], [c, v], [b, n], [m]]
     keys:
       # swipe_up 数字按行序排布：上排 1-5、中排 6-0
-      qw: { tap: { label: "qw", value: "q" }, swipe_up: "1", long_press: { display: "bubble", values: ["q", "w", "Q", "W"] } }
-      er: { tap: { label: "er", value: "e" }, swipe_up: "2", long_press: { display: "bubble", values: ["e", "r", "E", "R"] } }
-      ty: { tap: { label: "ty", value: "t" }, swipe_up: "3", long_press: { display: "bubble", values: ["t", "y", "T", "Y"] } }
-      ui: { tap: { label: "ui", value: "u" }, swipe_up: "4", long_press: { display: "bubble", values: ["u", "i", "U", "I"] } }
-      op: { tap: { label: "op", value: "o" }, swipe_up: "5", long_press: { display: "bubble", values: ["o", "p", "O", "P"] } }
-      as: { tap: { label: "as", value: "a" }, swipe_up: "6", long_press: { display: "bubble", values: ["a", "s", "A", "S"] } }
-      df: { tap: { label: "df", value: "d" }, swipe_up: "7", long_press: { display: "bubble", values: ["d", "f", "D", "F"] } }
-      gh: { tap: { label: "gh", value: "g" }, swipe_up: "8", long_press: { display: "bubble", values: ["g", "h", "G", "H"] } }
-      jk: { tap: { label: "jk", value: "j" }, swipe_up: "9", long_press: { display: "bubble", values: ["j", "k", "J", "K"] } }
-      l:  { tap: { label: "l", value: "l" }, swipe_up: "0", long_press: { display: "bubble", values: ["l", "L"] } }
-      zx: { tap: { label: "zx", value: "z" }, swipe_up: "*", long_press: { display: "bubble", values: ["z", "x", "Z", "X"] } }
-      cv: { tap: { label: "cv", value: "c" }, swipe_up: "、", long_press: { display: "bubble", values: ["c", "v", "C", "V"] } }
-      bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: ["b", "n", "B", "N"] } }
-      m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
-      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
+      qw: { tap: { label: "qw", value: "q" }, swipe_up: "1", long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "w" }, { action: commit, value: "Q" }, { action: commit, value: "W" }] } }
+      er: { tap: { label: "er", value: "e" }, swipe_up: "2", long_press: { display: "bubble", values: [{ action: commit, value: "e" }, { action: commit, value: "r" }, { action: commit, value: "E" }, { action: commit, value: "R" }] } }
+      ty: { tap: { label: "ty", value: "t" }, swipe_up: "3", long_press: { display: "bubble", values: [{ action: commit, value: "t" }, { action: commit, value: "y" }, { action: commit, value: "T" }, { action: commit, value: "Y" }] } }
+      ui: { tap: { label: "ui", value: "u" }, swipe_up: "4", long_press: { display: "bubble", values: [{ action: commit, value: "u" }, { action: commit, value: "i" }, { action: commit, value: "U" }, { action: commit, value: "I" }] } }
+      op: { tap: { label: "op", value: "o" }, swipe_up: "5", long_press: { display: "bubble", values: [{ action: commit, value: "o" }, { action: commit, value: "p" }, { action: commit, value: "O" }, { action: commit, value: "P" }] } }
+      as: { tap: { label: "as", value: "a" }, swipe_up: "6", long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "s" }, { action: commit, value: "A" }, { action: commit, value: "S" }] } }
+      df: { tap: { label: "df", value: "d" }, swipe_up: "7", long_press: { display: "bubble", values: [{ action: commit, value: "d" }, { action: commit, value: "f" }, { action: commit, value: "D" }, { action: commit, value: "F" }] } }
+      gh: { tap: { label: "gh", value: "g" }, swipe_up: "8", long_press: { display: "bubble", values: [{ action: commit, value: "g" }, { action: commit, value: "h" }, { action: commit, value: "G" }, { action: commit, value: "H" }] } }
+      jk: { tap: { label: "jk", value: "j" }, swipe_up: "9", long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "k" }, { action: commit, value: "J" }, { action: commit, value: "K" }] } }
+      l:  { tap: { label: "l", value: "l" }, swipe_up: "0", long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
+      zx: { tap: { label: "zx", value: "z" }, swipe_up: "*", long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "x" }, { action: commit, value: "Z" }, { action: commit, value: "X" }] } }
+      cv: { tap: { label: "cv", value: "c" }, swipe_up: "、", long_press: { display: "bubble", values: [{ action: commit, value: "c" }, { action: commit, value: "v" }, { action: commit, value: "C" }, { action: commit, value: "V" }] } }
+      bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
+      m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
+      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
       earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 拼音 17 键：we/rt/yu/op、sd/fg/jk、xc/bn（对应方案 pinyin_17jian）
@@ -786,24 +790,24 @@ keyboard:
         - [z, [x, c], v, [b, n], m]
     keys:
       # swipe_up 数字按行序排布：上排 1-6、中排 7-0
-      q:  { tap: { label: "q", value: "q" }, swipe_up: "1", long_press: { display: "bubble", values: ["q", "Q"] } }
-      we: { tap: { label: "we", value: "w" }, swipe_up: "2", long_press: { display: "bubble", values: ["w", "e", "W", "E"] } }
-      rt: { tap: { label: "rt", value: "r" }, swipe_up: "3", long_press: { display: "bubble", values: ["r", "t", "R", "T"] } }
-      yu: { tap: { label: "yu", value: "y" }, swipe_up: "4", long_press: { display: "bubble", values: ["y", "u", "Y", "U"] } }
-      i:  { tap: { label: "i", value: "i" }, swipe_up: "5", long_press: { display: "bubble", values: ["i", "I"] } }
-      op: { tap: { label: "op", value: "o" }, swipe_up: "6", long_press: { display: "bubble", values: ["o", "p", "O", "P"] } }
-      a:  { tap: { label: "a", value: "a" }, swipe_up: "7", long_press: { display: "bubble", values: ["a", "A"] } }
-      sd: { tap: { label: "sd", value: "s" }, swipe_up: "8", long_press: { display: "bubble", values: ["s", "d", "S", "D"] } }
-      fg: { tap: { label: "fg", value: "f" }, swipe_up: "9", long_press: { display: "bubble", values: ["f", "g", "F", "G"] } }
-      h:  { tap: { label: "h", value: "h" }, swipe_up: "0", long_press: { display: "bubble", values: ["h", "H"] } }
-      jk: { tap: { label: "jk", value: "j" }, swipe_up: "-", long_press: { display: "bubble", values: ["j", "k", "J", "K"] } }
-      l:  { tap: { label: "l", value: "l" }, swipe_up: ")", long_press: { display: "bubble", values: ["l", "L"] } }
-      z:  { tap: { label: "z", value: "z" }, swipe_up: "*", long_press: { display: "bubble", values: ["z", "Z"] } }
-      xc: { tap: { label: "xc", value: "x" }, swipe_up: "@", long_press: { display: "bubble", values: ["x", "c", "X", "C"] } }
-      v:  { tap: { label: "v", value: "v" }, swipe_up: "?", long_press: { display: "bubble", values: ["v", "V"] } }
-      bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: ["b", "n", "B", "N"] } }
-      m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
-      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
+      q:  { tap: { label: "q", value: "q" }, swipe_up: "1", long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "Q" }] } }
+      we: { tap: { label: "we", value: "w" }, swipe_up: "2", long_press: { display: "bubble", values: [{ action: commit, value: "w" }, { action: commit, value: "e" }, { action: commit, value: "W" }, { action: commit, value: "E" }] } }
+      rt: { tap: { label: "rt", value: "r" }, swipe_up: "3", long_press: { display: "bubble", values: [{ action: commit, value: "r" }, { action: commit, value: "t" }, { action: commit, value: "R" }, { action: commit, value: "T" }] } }
+      yu: { tap: { label: "yu", value: "y" }, swipe_up: "4", long_press: { display: "bubble", values: [{ action: commit, value: "y" }, { action: commit, value: "u" }, { action: commit, value: "Y" }, { action: commit, value: "U" }] } }
+      i:  { tap: { label: "i", value: "i" }, swipe_up: "5", long_press: { display: "bubble", values: [{ action: commit, value: "i" }, { action: commit, value: "I" }] } }
+      op: { tap: { label: "op", value: "o" }, swipe_up: "6", long_press: { display: "bubble", values: [{ action: commit, value: "o" }, { action: commit, value: "p" }, { action: commit, value: "O" }, { action: commit, value: "P" }] } }
+      a:  { tap: { label: "a", value: "a" }, swipe_up: "7", long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "A" }] } }
+      sd: { tap: { label: "sd", value: "s" }, swipe_up: "8", long_press: { display: "bubble", values: [{ action: commit, value: "s" }, { action: commit, value: "d" }, { action: commit, value: "S" }, { action: commit, value: "D" }] } }
+      fg: { tap: { label: "fg", value: "f" }, swipe_up: "9", long_press: { display: "bubble", values: [{ action: commit, value: "f" }, { action: commit, value: "g" }, { action: commit, value: "F" }, { action: commit, value: "G" }] } }
+      h:  { tap: { label: "h", value: "h" }, swipe_up: "0", long_press: { display: "bubble", values: [{ action: commit, value: "h" }, { action: commit, value: "H" }] } }
+      jk: { tap: { label: "jk", value: "j" }, swipe_up: "-", long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "k" }, { action: commit, value: "J" }, { action: commit, value: "K" }] } }
+      l:  { tap: { label: "l", value: "l" }, swipe_up: ")", long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
+      z:  { tap: { label: "z", value: "z" }, swipe_up: "*", long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "Z" }] } }
+      xc: { tap: { label: "xc", value: "x" }, swipe_up: "@", long_press: { display: "bubble", values: [{ action: commit, value: "x" }, { action: commit, value: "c" }, { action: commit, value: "X" }, { action: commit, value: "C" }] } }
+      v:  { tap: { label: "v", value: "v" }, swipe_up: "?", long_press: { display: "bubble", values: [{ action: commit, value: "v" }, { action: commit, value: "V" }] } }
+      bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
+      m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
+      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
       earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 拼音 18 键：we/rt/io、sd/fg/jk、xc/bn（对应方案 pinyin_18jian）
@@ -819,25 +823,25 @@ keyboard:
         - [z, [x, c], v, [b, n], m]
     keys:
       # swipe_up 数字按行序排布：上排 1-7、中排 8-0
-      q:  { tap: { label: "q", value: "q" }, swipe_up: "1", long_press: { display: "bubble", values: ["q", "Q"] } }
-      we: { tap: { label: "we", value: "w" }, swipe_up: "2", long_press: { display: "bubble", values: ["w", "e", "W", "E"] } }
-      rt: { tap: { label: "rt", value: "r" }, swipe_up: "3", long_press: { display: "bubble", values: ["r", "t", "R", "T"] } }
-      y:  { tap: { label: "y", value: "y" }, swipe_up: "4", long_press: { display: "bubble", values: ["y", "Y"] } }
-      u:  { tap: { label: "u", value: "u" }, swipe_up: "5", long_press: { display: "bubble", values: ["u", "U"] } }
-      io: { tap: { label: "io", value: "i" }, swipe_up: "6", long_press: { display: "bubble", values: ["i", "o", "I", "O"] } }
-      p:  { tap: { label: "p", value: "p" }, swipe_up: "7", long_press: { display: "bubble", values: ["p", "P"] } }
-      a:  { tap: { label: "a", value: "a" }, swipe_up: "8", long_press: { display: "bubble", values: ["a", "A"] } }
-      sd: { tap: { label: "sd", value: "s" }, swipe_up: "9", long_press: { display: "bubble", values: ["s", "d", "S", "D"] } }
-      fg: { tap: { label: "fg", value: "f" }, swipe_up: "0", long_press: { display: "bubble", values: ["f", "g", "F", "G"] } }
-      h:  { tap: { label: "h", value: "h" }, swipe_up: "”", long_press: { display: "bubble", values: ["h", "H"] } }
-      jk: { tap: { label: "jk", value: "j" }, swipe_up: "-", long_press: { display: "bubble", values: ["j", "k", "J", "K"] } }
-      l:  { tap: { label: "l", value: "l" }, swipe_up: ")", long_press: { display: "bubble", values: ["l", "L"] } }
-      z:  { tap: { label: "z", value: "z" }, swipe_up: "*", long_press: { display: "bubble", values: ["z", "Z"] } }
-      xc: { tap: { label: "xc", value: "x" }, swipe_up: "@", long_press: { display: "bubble", values: ["x", "c", "X", "C"] } }
-      v:  { tap: { label: "v", value: "v" }, swipe_up: "?", long_press: { display: "bubble", values: ["v", "V"] } }
-      bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: ["b", "n", "B", "N"] } }
-      m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
-      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
+      q:  { tap: { label: "q", value: "q" }, swipe_up: "1", long_press: { display: "bubble", values: [{ action: commit, value: "q" }, { action: commit, value: "Q" }] } }
+      we: { tap: { label: "we", value: "w" }, swipe_up: "2", long_press: { display: "bubble", values: [{ action: commit, value: "w" }, { action: commit, value: "e" }, { action: commit, value: "W" }, { action: commit, value: "E" }] } }
+      rt: { tap: { label: "rt", value: "r" }, swipe_up: "3", long_press: { display: "bubble", values: [{ action: commit, value: "r" }, { action: commit, value: "t" }, { action: commit, value: "R" }, { action: commit, value: "T" }] } }
+      y:  { tap: { label: "y", value: "y" }, swipe_up: "4", long_press: { display: "bubble", values: [{ action: commit, value: "y" }, { action: commit, value: "Y" }] } }
+      u:  { tap: { label: "u", value: "u" }, swipe_up: "5", long_press: { display: "bubble", values: [{ action: commit, value: "u" }, { action: commit, value: "U" }] } }
+      io: { tap: { label: "io", value: "i" }, swipe_up: "6", long_press: { display: "bubble", values: [{ action: commit, value: "i" }, { action: commit, value: "o" }, { action: commit, value: "I" }, { action: commit, value: "O" }] } }
+      p:  { tap: { label: "p", value: "p" }, swipe_up: "7", long_press: { display: "bubble", values: [{ action: commit, value: "p" }, { action: commit, value: "P" }] } }
+      a:  { tap: { label: "a", value: "a" }, swipe_up: "8", long_press: { display: "bubble", values: [{ action: commit, value: "a" }, { action: commit, value: "A" }] } }
+      sd: { tap: { label: "sd", value: "s" }, swipe_up: "9", long_press: { display: "bubble", values: [{ action: commit, value: "s" }, { action: commit, value: "d" }, { action: commit, value: "S" }, { action: commit, value: "D" }] } }
+      fg: { tap: { label: "fg", value: "f" }, swipe_up: "0", long_press: { display: "bubble", values: [{ action: commit, value: "f" }, { action: commit, value: "g" }, { action: commit, value: "F" }, { action: commit, value: "G" }] } }
+      h:  { tap: { label: "h", value: "h" }, swipe_up: "”", long_press: { display: "bubble", values: [{ action: commit, value: "h" }, { action: commit, value: "H" }] } }
+      jk: { tap: { label: "jk", value: "j" }, swipe_up: "-", long_press: { display: "bubble", values: [{ action: commit, value: "j" }, { action: commit, value: "k" }, { action: commit, value: "J" }, { action: commit, value: "K" }] } }
+      l:  { tap: { label: "l", value: "l" }, swipe_up: ")", long_press: { display: "bubble", values: [{ action: commit, value: "l" }, { action: commit, value: "L" }] } }
+      z:  { tap: { label: "z", value: "z" }, swipe_up: "*", long_press: { display: "bubble", values: [{ action: commit, value: "z" }, { action: commit, value: "Z" }] } }
+      xc: { tap: { label: "xc", value: "x" }, swipe_up: "@", long_press: { display: "bubble", values: [{ action: commit, value: "x" }, { action: commit, value: "c" }, { action: commit, value: "X" }, { action: commit, value: "C" }] } }
+      v:  { tap: { label: "v", value: "v" }, swipe_up: "?", long_press: { display: "bubble", values: [{ action: commit, value: "v" }, { action: commit, value: "V" }] } }
+      bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
+      m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
+      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
       earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 九键（T9）键盘配置
@@ -903,18 +907,18 @@ keyboard:
       # 滑动选择后上屏所选文本）直接写在下方，可按需修改；"1" 无长按为历史行为。
       # 注意 keys 覆盖是键级整体替换：在 xime.custom.yaml 覆盖某个数字键时，
       # 键面/长按/手势要一并写上，漏写的字段回退代码内置兜底。
-      "1": { tap: { label: "分词" }, swipe_up: { value: "1", display: "key", bubble: false } }
-      "2": { tap: { label: "ABC" }, long_press: { display: "bubble", values: ["A", "B", "C"] }, swipe_up: { value: "2", display: "key", bubble: false } }
-      "3": { tap: { label: "DEF" }, long_press: { display: "bubble", values: ["D", "E", "F"] }, swipe_up: { value: "3", display: "key", bubble: false } }
-      "4": { tap: { label: "GHI" }, long_press: { display: "bubble", values: ["G", "H", "I"] }, swipe_up: { value: "4", display: "key", bubble: false } }
-      "5": { tap: { label: "JKL" }, long_press: { display: "bubble", values: ["J", "K", "L"] }, swipe_up: { value: "5", display: "key", bubble: false } }
-      "6": { tap: { label: "MNO" }, long_press: { display: "bubble", values: ["M", "N", "O"] }, swipe_up: { value: "6", display: "key", bubble: false } }
-      "7": { tap: { label: "PQRS" }, long_press: { display: "bubble", values: ["P", "Q", "R", "S"] }, swipe_up: { value: "7", display: "key", bubble: false } }
-      "8": { tap: { label: "TUV" }, long_press: { display: "bubble", values: ["T", "U", "V"] }, swipe_up: { value: "8", display: "key", bubble: false } }
-      "9": { tap: { label: "WXYZ" }, long_press: { display: "bubble", values: ["W", "X", "Y", "Z"] }, swipe_up: { value: "9", display: "key", bubble: false } }
+      "1": { tap: { label: "分词" }, swipe_up: { action: commit, value: "1", display: "key", bubble: false } }
+      "2": { tap: { label: "ABC" }, long_press: { display: "bubble", values: [{ action: commit, value: "A" }, { action: commit, value: "B" }, { action: commit, value: "C" }] }, swipe_up: { action: commit, value: "2", display: "key", bubble: false } }
+      "3": { tap: { label: "DEF" }, long_press: { display: "bubble", values: [{ action: commit, value: "D" }, { action: commit, value: "E" }, { action: commit, value: "F" }] }, swipe_up: { action: commit, value: "3", display: "key", bubble: false } }
+      "4": { tap: { label: "GHI" }, long_press: { display: "bubble", values: [{ action: commit, value: "G" }, { action: commit, value: "H" }, { action: commit, value: "I" }] }, swipe_up: { action: commit, value: "4", display: "key", bubble: false } }
+      "5": { tap: { label: "JKL" }, long_press: { display: "bubble", values: [{ action: commit, value: "J" }, { action: commit, value: "K" }, { action: commit, value: "L" }] }, swipe_up: { action: commit, value: "5", display: "key", bubble: false } }
+      "6": { tap: { label: "MNO" }, long_press: { display: "bubble", values: [{ action: commit, value: "M" }, { action: commit, value: "N" }, { action: commit, value: "O" }] }, swipe_up: { action: commit, value: "6", display: "key", bubble: false } }
+      "7": { tap: { label: "PQRS" }, long_press: { display: "bubble", values: [{ action: commit, value: "P" }, { action: commit, value: "Q" }, { action: commit, value: "R" }, { action: commit, value: "S" }] }, swipe_up: { action: commit, value: "7", display: "key", bubble: false } }
+      "8": { tap: { label: "TUV" }, long_press: { display: "bubble", values: [{ action: commit, value: "T" }, { action: commit, value: "U" }, { action: commit, value: "V" }] }, swipe_up: { action: commit, value: "8", display: "key", bubble: false } }
+      "9": { tap: { label: "WXYZ" }, long_press: { display: "bubble", values: [{ action: commit, value: "W" }, { action: commit, value: "X" }, { action: commit, value: "Y" }, { action: commit, value: "Z" }] }, swipe_up: { action: commit, value: "9", display: "key", bubble: false } }
       # 空格上滑直接输入 0（不经九键组合，与数字键上滑同路径）；
       # 功能键也可按此方式配置手势（space/earth/delete/clear/enter 等）
-      space: { swipe_up: { value: "0", display: "key", bubble: false } }
+      space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
 
   # 笔画键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；
@@ -939,17 +943,17 @@ keyboard:
     # 数字提示由键面角标承担）；tap 内置 bubble: false（按压不弹预览气泡，与九键拼音
     # 键盘的无气泡交互对齐）。手势功能与提示相互独立。
     keys:
-      "一": { tap: { bubble: false }, swipe_up: { value: "1", display: "key", bubble: false } }
-      "丨": { tap: { bubble: false }, swipe_up: { value: "2", display: "key", bubble: false } }
-      "丿": { tap: { bubble: false }, swipe_up: { value: "3", display: "key", bubble: false } }
-      "丶": { tap: { bubble: false }, swipe_up: { value: "4", display: "key", bubble: false } }
-      "乛": { tap: { bubble: false }, swipe_up: { value: "5", display: "key", bubble: false } }
-      "*": { tap: { bubble: false }, swipe_up: { value: "6", display: "key", bubble: false } }
-      "分词": { tap: { bubble: false }, swipe_up: { value: "7", display: "key", bubble: false } }
-      "，": { tap: { bubble: false }, swipe_up: { value: "8", display: "key", bubble: false } }
-      "英": { tap: { bubble: false }, swipe_up: { value: "9", display: "key", bubble: false } }
+      "一": { tap: { bubble: false }, swipe_up: { action: commit, value: "1", display: "key", bubble: false } }
+      "丨": { tap: { bubble: false }, swipe_up: { action: commit, value: "2", display: "key", bubble: false } }
+      "丿": { tap: { bubble: false }, swipe_up: { action: commit, value: "3", display: "key", bubble: false } }
+      "丶": { tap: { bubble: false }, swipe_up: { action: commit, value: "4", display: "key", bubble: false } }
+      "乛": { tap: { bubble: false }, swipe_up: { action: commit, value: "5", display: "key", bubble: false } }
+      "*": { tap: { bubble: false }, swipe_up: { action: commit, value: "6", display: "key", bubble: false } }
+      "分词": { tap: { bubble: false }, swipe_up: { action: commit, value: "7", display: "key", bubble: false } }
+      "，": { tap: { bubble: false }, swipe_up: { action: commit, value: "8", display: "key", bubble: false } }
+      "英": { tap: { bubble: false }, swipe_up: { action: commit, value: "9", display: "key", bubble: false } }
       # 空格上滑直接输入 0（与笔画键上滑同路径，直接上屏）
-      space: { swipe_up: { value: "0", display: "key", bubble: false } }
+      space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
 
   # 手写键盘配置
   # schemas 声明使用手写布局的方案：手写不经过 rime 引擎（由 HandwritingEngine

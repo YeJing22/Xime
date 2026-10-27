@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.association
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import com.kingzcheung.xime.model.ModelRuntime
 import com.kingzcheung.xime.model.ModelStorage
@@ -33,7 +37,7 @@ object OnnxAssociationEngine {
             id = "predictive_text",
             loader = { initialize(context) },
             releaser = { release() },
-            label = "智能联想模型"
+            label = tr(R.string.s_zhinenglianxiangmoxing)
         )
 
         try {

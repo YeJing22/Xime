@@ -128,4 +128,28 @@ class RimeExportScopeTest {
         assertFalse(included("build\\default.table.bin"))
         assertFalse(included("pinyin_simp.userdb\\MANIFEST-000002"))
     }
+
+    // ---- 完整备份包文件名：按机型 + 日期 ----
+
+    /**
+     * 回归：云端目录多设备共用且同名覆盖写。只按日期命名会让两台设备同一天
+     * 产生同名包、互相覆盖（用户反馈"云端词库没合并，而是互相覆盖"）。
+     */
+    @Test
+    fun `backup file name carries device model so devices do not collide`() {
+        val phone = RimeExportManager.backupFileName("Redmi K60", "2026-10-23")
+        val pad = RimeExportManager.backupFileName("Xiaomi Pad 6", "2026-10-23")
+
+        assertTrue("机型进文件名", phone.contains("RedmiK60"))
+        assertTrue("同一天不同机型不得同名", phone != pad)
+        assertTrue("仍保留日期便于按时间点恢复", phone.endsWith("-2026-10-23.zip"))
+    }
+
+    @Test
+    fun `device tag strips illegal characters and blanks`() {
+        assertTrue(RimeExportManager.backupFileName("Pixel 7 / Pro", "2026-10-23").contains("Pixel7_Pro"))
+        assertTrue(RimeExportManager.backupFileName("  ", "2026-10-23").let { it == "Xime完整备份-2026-10-23.zip" })
+        assertTrue(RimeExportManager.backupFileName("A".repeat(40), "2026-10-23").contains("A".repeat(24)))
+        assertFalse(RimeExportManager.backupFileName("A".repeat(40), "2026-10-23").contains("A".repeat(25)))
+    }
 }

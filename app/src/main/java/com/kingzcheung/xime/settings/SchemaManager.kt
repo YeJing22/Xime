@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.net.Uri
 import android.os.PowerManager
@@ -243,13 +247,13 @@ object SchemaManager {
             val dir = getMarketDir(context, packageId)
             if (!dir.exists() || dir.listFiles()?.none { it.isFile } != false) {
                 FileLogger.w(TAG, "installPackageFromMarketDir: dir not found or empty: $dir")
-                return@withContext InstallFromDirResult(success = false, failureReason = "压缩包不存在")
+                return@withContext InstallFromDirResult(success = false, failureReason = tr(R.string.s_yasuobaobucunzai))
             }
 
             val targetFiles = listInstallTargetFiles(context, packageId)
             if (targetFiles.isEmpty()) {
                 FileLogger.w(TAG, "installPackageFromMarketDir: no target files in $packageId")
-                return@withContext InstallFromDirResult(success = false, failureReason = "归档中没有文件")
+                return@withContext InstallFromDirResult(success = false, failureReason = tr(R.string.s_guidangzhongmeiyouwenjian))
             }
             FileLogger.i(TAG, "installPackageFromMarketDir: found ${targetFiles.size} target files for $packageId")
 
@@ -268,7 +272,7 @@ object SchemaManager {
             val ok = installFromMarketToRime(context, packageId)
             if (!ok) {
                 FileLogger.e(TAG, "installPackageFromMarketDir: installFromMarketToRime returned false")
-                return@withContext InstallFromDirResult(success = false, failureReason = "安装失败")
+                return@withContext InstallFromDirResult(success = false, failureReason = tr(R.string.s_anzhuangshibai))
             }
 
             val after = discoverSchemas(context).map { it.schemaId }.toSet()
@@ -282,7 +286,7 @@ object SchemaManager {
                 .toSet()
             val failedIds = targetSchemaIds - after
             val parseFailures = if (failedIds.isEmpty()) emptyList()
-                else failedIds.map { "$it.schema.yaml 解析失败" }
+                else failedIds.map { tr(R.string.s_schema_yaml_jiexishibai, it) }
             if (parseFailures.isNotEmpty()) {
                 FileLogger.w(TAG, "installPackageFromMarketDir: some schemas failed to parse: $parseFailures")
             }
@@ -327,7 +331,7 @@ object SchemaManager {
             InstallFromDirResult(success = true, newSchemaIds = newIds, unresolvedDeps = unresolved, parseFailures = parseFailures)
         } catch (e: Exception) {
             FileLogger.e(TAG, "installPackageFromMarketDir: UNCAUGHT exception for $packageId", e)
-            return@withContext InstallFromDirResult(success = false, failureReason = "安装异常: ${e.message}")
+            return@withContext InstallFromDirResult(success = false, failureReason = tr(R.string.s_anzhuangyichang, e.message))
         }
     }
 
@@ -585,12 +589,12 @@ object SchemaManager {
         val issues = mutableListOf<String>()
         val schemaFile = File(getRimeDir(context), "$schemaId.schema.yaml")
         if (!schemaFile.exists()) {
-            issues.add("缺少 .schema.yaml 文件")
+            issues.add(tr(R.string.s_queshao_schema_yaml_wenjian))
             return issues
         }
         val dictName = getReferencedDictName(context, schemaId) ?: schemaId
         if (!File(getRimeDir(context), "$dictName.dict.yaml").exists()) {
-            issues.add("缺少 $dictName.dict.yaml 词典文件，无法编译")
+            issues.add(tr(R.string.s_queshao_dict_yaml_cidianwenjia_e4311, dictName))
         }
         return issues
     }
@@ -781,107 +785,107 @@ object SchemaManager {
         return if (missing.isEmpty()) enabled else enabled + missing
     }
 
+    /**
+     * 启用方案列表读取（持久层为 prefs，见 [setEnabledSchemas]）。
+     * 迁移（[migrateDefaultCustomSchemaList]）在引擎数据初始化时先行执行，
+     * 保证任何消费者读到 prefs 前存量列表已迁入。
+     */
     fun getEnabledSchemas(context: Context): List<String> {
-        val customFile = getCustomYamlFile(context)
-        if (!customFile.exists()) {
+        val stored = SettingsPreferences.getEnabledSchemaList(context) ?: run {
+            // 从未写入（全新安装）：以内置方案集启用，避免 RimeEngine 因
+            // schema_list 为空而挂起；存量用户的列表由迁移先行写入 prefs。
+            // 不置 builtin-merged 标记：若 IME 服务与迁移并发走到这里，标记
+            // 置位会让迁移进来的老列表错过内置补齐（全量列表下补齐本就是
+            // 无操作，晚置一次无副作用）。
             setEnabledSchemas(context, BUILTIN_SCHEMAS)
-            SettingsPreferences.setBuiltinSchemasMerged(context, true)
             return BUILTIN_SCHEMAS
         }
+        if (stored.isEmpty()) return BUILTIN_SCHEMAS
 
-        try {
-            val content = customFile.readText()
-            val schemas = mutableListOf<String>()
-            var inSchemaList = false
-            for (line in content.lines()) {
-                val trimmed = line.trim()
-                if (trimmed == "schema_list:") {
-                    inSchemaList = true
-                    continue
-                }
-                if (inSchemaList) {
-                    if (trimmed.startsWith("- schema:")) {
-                        val id = trimmed.removePrefix("- schema:").trim()
-                        if (id.isNotEmpty()) schemas.add(id)
-                    } else if (!trimmed.startsWith("- ")) {
-                        inSchemaList = false
-                    }
-                }
+        // 内置方案补齐只执行一次（新版本首次运行，治老版本升级残留：
+        // 列表无 t9_pinyin → 方案永不部署 → 切九键静默失败）。之后用户
+        // 在方案管理中移除内置方案是有效选择，不得每次读取强行补回。
+        // 补齐写回后 schema_list 计入部署 hash、build 产物按方案校验，
+        // 缺失的方案会自动触发重部署。
+        val merged = if (SettingsPreferences.isBuiltinSchemasMerged(context)) {
+            stored
+        } else {
+            val m = mergeBuiltinSchemas(stored)
+            if (m != stored) {
+                setEnabledSchemas(context, m)
             }
-            if (schemas.isNotEmpty()) {
-                // 内置方案补齐只执行一次（新版本首次运行，治老版本升级残留：
-                // 列表无 t9_pinyin → 方案永不部署 → 切九键静默失败）。之后用户
-                // 在方案管理中移除内置方案是有效选择，不得每次读取强行补回。
-                // 补齐写回后 schema_list 计入部署 hash、build 产物按方案校验，
-                // 缺失的方案会自动触发重部署。
-                val merged = if (SettingsPreferences.isBuiltinSchemasMerged(context)) {
-                    schemas
-                } else {
-                    val m = mergeBuiltinSchemas(schemas)
-                    if (m != schemas) {
-                        setEnabledSchemas(context, m)
-                    }
-                    SettingsPreferences.setBuiltinSchemasMerged(context, true)
-                    m
-                }
-                return merged
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to read custom.yaml", e)
+            SettingsPreferences.setBuiltinSchemasMerged(context, true)
+            m
         }
-
-        return BUILTIN_SCHEMAS
+        return merged
     }
 
+    /**
+     * 写入启用方案列表：持久层为 prefs（升级/备份均随 app 存储不丢）；
+     * default.yaml 的 schema_list 是派生物——升级被资产覆盖后由
+     * initializeRimeDataAsync / 备份恢复流程从 prefs 重新镜像。
+     * default.custom.yaml 自迁移（[migrateDefaultCustomSchemaList]）起完全归用户。
+     */
     fun setEnabledSchemas(context: Context, schemaIds: List<String>) {
-        val customFile = getCustomYamlFile(context)
-        if (!customFile.exists()) {
-            // 首次写入以 app 固定模板为基底（含 menu/page_size 等默认 patch），
-            // 不再把整文件重写成只剩 schema_list 的空壳——那会丢掉 default.custom.yaml
-            // 的全部补丁（menu/page_size 丢失后每页候选数漂移回引擎兜底值 5）
-            if (!copyBuiltinDefaultCustom(context, customFile)) {
-                // 模板复制失败兜底：保留旧行为，至少保证文件存在（getEnabledSchemas
-                // 以文件存在为前提）且 schema_list 有效
-                writeSchemaListOnlyCustom(customFile, schemaIds)
-                applyEnabledSchemasToDefaultYaml(context, schemaIds)
-                return
-            }
-        }
-        // 只替换 schema_list 块，保留 menu/switcher/key_binder 等其余 patch
-        try {
-            val text = customFile.readText()
-            val updated = replaceSchemaListBlock(text, schemaIds)
-            if (updated != text) {
-                customFile.writeText(updated)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to write custom.yaml schema_list", e)
-        }
-        // F1: 同步写进 default.yaml，确保 librime 真正编译启用的方案
+        SettingsPreferences.setEnabledSchemaList(context, schemaIds)
         applyEnabledSchemasToDefaultYaml(context, schemaIds)
     }
 
-    private fun writeSchemaListOnlyCustom(customFile: File, schemaIds: List<String>) {
-        val sb = StringBuilder()
-        sb.appendLine("patch:")
-        sb.appendLine("  schema_list:")
-        for (id in schemaIds) {
-            sb.appendLine("    - schema: $id")
+    /**
+     * 存量迁移（一次性）：把 default.custom.yaml 里 app 托管的 schema_list 迁入
+     * prefs 并从用户文件中删除该块——此后该文件完全归用户、app 零写入，用户对
+     * page_size/key_binder 等任何内容的修改不再被覆盖。
+     * [force] 供备份恢复用：旧格式备份包会带回带 schema_list 的文件，无视标记重跑。
+     * 幂等：无块时为无操作。失败不置标记，下次启动重试。
+     */
+    fun migrateDefaultCustomSchemaList(context: Context, force: Boolean = false) {
+        if (!force && SettingsPreferences.isDefaultCustomMigrated(context)) return
+        try {
+            val customFile = getCustomYamlFile(context)
+            if (customFile.exists()) {
+                val text = customFile.readText()
+                val (stripped, schemas) = stripSchemaListBlock(text)
+                if (schemas.isNotEmpty()) {
+                    SettingsPreferences.setEnabledSchemaList(context, schemas)
+                    applyEnabledSchemasToDefaultYaml(context, schemas)
+                }
+                if (stripped != text) {
+                    customFile.writeText(stripped)
+                    FileLogger.i(TAG, "Migrated schema_list out of default.custom.yaml (${schemas.size} schemas)")
+                }
+            }
+            SettingsPreferences.setDefaultCustomMigrated(context, true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to migrate default.custom.yaml schema_list", e)
         }
-        customFile.writeText(sb.toString())
     }
 
-    /** 复制 app 固定的 assets/default.custom.yaml 模板（assets 根与 rime 目录同名，与 RimeConfigHelper 同步的是同一份）。 */
-    private fun copyBuiltinDefaultCustom(context: Context, target: File): Boolean {
-        return try {
-            context.assets.open(CUSTOM_YAML).use { input ->
-                target.outputStream().use { output -> input.copyTo(output) }
+    /**
+     * 从 default.custom.yaml 文本剥离 app 托管的 schema_list 块（"schema_list:" 行
+     * 及其后连续的 "- " 列表项），返回 (新文本, 原方案列表)。保留原换行风格与
+     * 块外全部内容；无块时原样返回。
+     */
+    internal fun stripSchemaListBlock(text: String): Pair<String, List<String>> {
+        val sep = if (text.contains("\r\n")) "\r\n" else "\n"
+        val lines = text.lines()
+        val headerIdx = lines.indexOfFirst { it.trim() == "schema_list:" }
+        if (headerIdx < 0) return text to emptyList()
+        var end = headerIdx + 1
+        val schemas = mutableListOf<String>()
+        while (end < lines.size) {
+            val trimmed = lines[end].trim()
+            if (trimmed.startsWith("- schema:")) {
+                val id = trimmed.removePrefix("- schema:").trim()
+                if (id.isNotEmpty()) schemas.add(id)
+            } else if (!trimmed.startsWith("-")) {
+                break
             }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to copy builtin $CUSTOM_YAML", e)
-            false
+            end++
         }
+        val rebuilt = lines.subList(0, headerIdx) + lines.subList(end, lines.size)
+        var result = rebuilt.joinToString(sep)
+        if (text.endsWith("\n") && !result.endsWith("\n")) result += sep
+        return result to schemas
     }
 
     fun toggleSchema(context: Context, schemaId: String) {

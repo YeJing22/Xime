@@ -875,7 +875,9 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     private suspend fun commitComposingInput(candState: CandidateState, schemaId: String) {
         val isT9 = isT9Schema(schemaId)
         val input = if (isT9 && candState.preeditText.isNotEmpty()) {
-            candState.preeditText
+            // preedit 是展示形态：rime 用空格渲染音节边界（"kong kong"）、分词键为 '。
+            // 回车上屏的是原始编码，须去掉分隔符（→"kongkong"），空格分隔符不属于用户输入。
+            candState.preeditText.replace(" ", "").replace("'", "")
         } else {
             service.rimeEngine.getInput()
         }

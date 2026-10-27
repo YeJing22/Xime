@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.service
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
@@ -150,18 +154,28 @@ internal fun rememberImeKeyboardCallbacks(
             onHandwritingFinalize = { service.finalizeHandwritingPrediction() },
             onQuickSend = {},
             onKeyboardResize = {
-                val config = service.resources.configuration
-                val isLandscape = config.screenWidthDp > config.screenHeightDp
-                // 按当前屏宽收紧已存边距（横竖屏切换后旧值可能超出上限）
-                val maxMargin = KeyboardResizeBounds.maxHorizontalMarginDp(config.screenWidthDp)
-                service.uiState.value = service.uiState.value.copy(
-                    showKeyboardResize = true,
-                    resizePreviewHeightDp = SettingsPreferences.getKeyboardHeightDp(service, isLandscape),
-                    resizePreviewMarginStartDp = SettingsPreferences.getKeyboardMarginStartDp(service)
-                        .coerceIn(0, maxMargin),
-                    resizePreviewMarginEndDp = SettingsPreferences.getKeyboardMarginEndDp(service)
-                        .coerceIn(0, maxMargin),
-                )
+                if (service.isHostConstrained()) {
+                    // 独立 IME 面板：调节页按屏幕尺寸给的边界远大于面板，确定/取消按钮会
+                    // 落到可见区外关不掉，直接拒绝进入
+                    android.widget.Toast.makeText(
+                        service,
+                        tr(R.string.s_dangqianxianshiquyubuzhichijia_20f47),
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    val config = service.resources.configuration
+                    val isLandscape = config.screenWidthDp > config.screenHeightDp
+                    // 按当前屏宽收紧已存边距（横竖屏切换后旧值可能超出上限）
+                    val maxMargin = KeyboardResizeBounds.maxHorizontalMarginDp(config.screenWidthDp)
+                    service.uiState.value = service.uiState.value.copy(
+                        showKeyboardResize = true,
+                        resizePreviewHeightDp = SettingsPreferences.getKeyboardHeightDp(service, isLandscape),
+                        resizePreviewMarginStartDp = SettingsPreferences.getKeyboardMarginStartDp(service)
+                            .coerceIn(0, maxMargin),
+                        resizePreviewMarginEndDp = SettingsPreferences.getKeyboardMarginEndDp(service)
+                            .coerceIn(0, maxMargin),
+                    )
+                }
             },
             onReloadConfig = { service.schemaController.reloadConfig() },
             onSettings = { service.schemaController.openSettings() },
@@ -179,7 +193,7 @@ internal fun rememberImeKeyboardCallbacks(
                 if (!success) {
                     android.widget.Toast.makeText(
                         service,
-                        "发送失败，已复制到剪贴板",
+                        tr(R.string.s_fasongshibai_yifuzhidaojiantieban),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                     service.clipboardManager.copyImageToSystemClipboard(imagePath)
@@ -443,7 +457,7 @@ internal fun rememberImeKeyboardCallbacks(
                     quickSendEditingItemId = null,
                     quickSendEditingItemText = "",
                     quickSendEditingItemCode = "",
-                    enterKeyText = "确定",
+                    enterKeyText = tr(R.string.s_queding),
                 )
                 // 撑高由 SideEffect 驱动：uiState 变化 → Compose 内容高度变化 →
                 // updateHeight 改容器物理高度 → relayout → onComputeInsets 自动重算。
@@ -458,7 +472,7 @@ internal fun rememberImeKeyboardCallbacks(
                     quickSendEditingItemId = id,
                     quickSendEditingItemText = text,
                     quickSendEditingItemCode = code,
-                    enterKeyText = "确定",
+                    enterKeyText = tr(R.string.s_queding),
                 )
                 QuickSendFormEditTextHolder.editText?.let { et ->
                     et.setText(text)
@@ -474,7 +488,7 @@ internal fun rememberImeKeyboardCallbacks(
                     quickSendEditingItemId = null,
                     quickSendEditingItemText = "",
                     quickSendEditingItemCode = "",
-                    enterKeyText = "发送",
+                    enterKeyText = tr(R.string.s_fasong),
                 )
                 QuickSendFormEditTextHolder.editText = null
                 QuickSendFormCodeEditTextHolder.editText = null
@@ -489,7 +503,7 @@ internal fun rememberImeKeyboardCallbacks(
                 val s = service.uiState.value
                 service.uiState.value = if (focused) {
                     // 文本框抢回焦点：编码焦点清除，按键输入回到文本框
-                    s.copy(quickSendFormFocused = true, quickSendCodeFocused = false, enterKeyText = "确定")
+                    s.copy(quickSendFormFocused = true, quickSendCodeFocused = false, enterKeyText = tr(R.string.s_queding))
                 } else {
                     s.copy(quickSendFormFocused = false, quickSendCodeFocused = false)
                 }
@@ -498,7 +512,7 @@ internal fun rememberImeKeyboardCallbacks(
                 val s = service.uiState.value
                 service.uiState.value = if (focused) {
                     // 编码框获得焦点：同样视为表单聚焦（回车"确定"/按键路由生效）
-                    s.copy(quickSendFormFocused = true, quickSendCodeFocused = true, enterKeyText = "确定")
+                    s.copy(quickSendFormFocused = true, quickSendCodeFocused = true, enterKeyText = tr(R.string.s_queding))
                 } else {
                     s.copy(quickSendCodeFocused = false)
                 }

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.graphics.Typeface
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -123,7 +127,7 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
         }
         showDeleteDialog = null
         refresh()
-        Toast.makeText(context, "已删除: ${file.name}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, tr(R.string.s_yishanchu, file.name), Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(currentDir) { refresh() }
@@ -142,7 +146,7 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
             TopAppBar(
                 title = {
                     Column {
-                        Text("文件管理器", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(tr(R.string.s_wenjianguanliqi), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val rel = if (currentDir == rootDir) "" else
                             currentDir.absolutePath.removePrefix(rootDir.absolutePath)
                         if (rel.isNotEmpty()) {
@@ -155,23 +159,23 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
                 navigationIcon = {
                     if (currentDir == rootDir) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                         }
                     } else {
                         IconButton(onClick = { currentDir = currentDir.parentFile ?: rootDir }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "上级目录")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_shangjimulu))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = { currentDir = rootDir }) {
-                        Icon(Icons.Default.Home, contentDescription = "根目录")
+                        Icon(Icons.Default.Home, contentDescription = tr(R.string.s_genmulu))
                     }
                     IconButton(onClick = { refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = tr(R.string.s_shuaxin))
                     }
                     IconButton(onClick = { showExportDialog = true }) {
-                        Icon(Icons.Default.IosShare, contentDescription = "导出")
+                        Icon(Icons.Default.IosShare, contentDescription = tr(R.string.s_daochu))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -185,7 +189,7 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
         if (entries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center) {
-                Text("空目录", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr(R.string.s_kongmulu), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -198,7 +202,7 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
                             if (entry.isDirectory) {
                                 currentDir = entry.file
                             } else if (entry.name.endsWith(".bin") || entry.name.endsWith(".gram")) {
-                                Toast.makeText(context, "不支持打开二进制文件", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, tr(R.string.s_buzhichidakaierjinzhiwenjian), Toast.LENGTH_SHORT).show()
                             } else {
                                 viewingFile = entry.file
                             }
@@ -223,16 +227,16 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
         val isDir = file.isDirectory
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text(if (isDir) "删除目录" else "删除文件") },
-            text = { Text("确定删除「${file.name}」？${if (isDir) "\n目录内的所有内容将被删除。" else ""}") },
+            title = { Text(if (isDir) tr(R.string.s_shanchumulu) else tr(R.string.s_shanchuwenjian)) },
+            text = { Text(tr(R.string.s_queding_shanchu, file.name, if (isDir) tr(R.string.s_muluneirong_shanchu) else "")) },
             confirmButton = {
                 TextButton(onClick = { deleteFile(file) }) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(tr(R.string.s_shanchu), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("取消")
+                    Text(tr(R.string.s_quxiao))
                 }
             }
         )
@@ -241,11 +245,11 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
     if (showExportDialog) {
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
-            title = { Text("导出 Rime 配置") },
+            title = { Text(tr(R.string.s_daochu_rime_peizhi)) },
             text = {
                 Text(
-                    "导出整机完整快照（设置与补丁、方案本体与资源、插件包、自造词快照）为 zip，保存到下载目录。" +
-                        "与云备份是同一个包；不含编译产物 build/ 与用户词典库 *.userdb。",
+                    tr(R.string.s_daochuzhengjiwanzhengkuaizhao_44789) +
+                        tr(R.string.s_yuyunbeifenshitongyigebao_buha_44f27),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -265,20 +269,20 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
                             result.fold(
                                 onSuccess = { exportResult ->
                                     val msg = if (exportResult.savedToDownloads)
-                                        "已保存到 Downloads/${exportResult.fileName}"
+                                        tr(R.string.s_yibaocundao_downloads, exportResult.fileName)
                                     else
-                                        "导出完成"
+                                        tr(R.string.s_daochuwancheng)
                                     snackbarHostState.showSnackbar(msg)
                                 },
                                 onFailure = { error ->
-                                    snackbarHostState.showSnackbar("导出失败: ${error.message}")
+                                    snackbarHostState.showSnackbar(tr(R.string.s_daochushibai_2, error.message))
                                 }
                             )
                         }
                     },
                     enabled = !exportInProgress
                 ) {
-                    Text(if (exportInProgress) "导出中..." else "开始导出")
+                    Text(if (exportInProgress) tr(R.string.s_daochuzhong) else tr(R.string.s_kaishidaochu))
                 }
             },
             dismissButton = {
@@ -286,7 +290,7 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
                     onClick = { showExportDialog = false },
                     enabled = !exportInProgress
                 ) {
-                    Text("取消")
+                    Text(tr(R.string.s_quxiao))
                 }
             }
         )
@@ -295,8 +299,8 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
     if (exportInProgress) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("导出中") },
-            text = { Text("正在打包 Rime 配置…") },
+            title = { Text(tr(R.string.s_daochuzhong_2)) },
+            text = { Text(tr(R.string.s_zhengzaidabao_rime_peizhi)) },
             confirmButton = {}
         )
     }
@@ -326,30 +330,30 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
         try {
             file.writeText(content, Charsets.UTF_8)
             isModified = false
-            Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, tr(R.string.s_yibaocun), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, tr(R.string.s_baocunshibai_2, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("删除文件") },
-            text = { Text("确定删除「${file.name}」？此操作不可撤销。") },
+            title = { Text(tr(R.string.s_shanchuwenjian)) },
+            text = { Text(tr(R.string.s_quedingshanchu_cicaozuobukechexiao, file.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     file.delete()
-                    Toast.makeText(context, "已删除: ${file.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, tr(R.string.s_yishanchu, file.name), Toast.LENGTH_SHORT).show()
                     onDeleted()
                 }) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(tr(R.string.s_shanchu), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("取消")
+                    Text(tr(R.string.s_quxiao))
                 }
             }
         )
@@ -384,7 +388,7 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
                         Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val sizeStr = formatSize(file.length())
                         val dateStr = dateFormat.format(Date(file.lastModified()))
-                        val flag = if (isModified) " · 未保存" else ""
+                        val flag = if (isModified) tr(R.string.s_weibaocun) else ""
                         Text("$sizeStr · $dateStr$flag",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (isModified) MaterialTheme.colorScheme.error
@@ -393,13 +397,13 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 actions = {
                     if (isEditing) {
                         IconButton(onClick = { save() }) {
-                            Icon(Icons.Default.Check, contentDescription = "保存",
+                            Icon(Icons.Default.Check, contentDescription = tr(R.string.s_baocun),
                                 tint = MaterialTheme.colorScheme.primary)
                         }
                     }
@@ -409,7 +413,7 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
                     }) {
                         Icon(
                             if (isEditing) Icons.Default.Visibility else Icons.Default.Edit,
-                            contentDescription = if (isEditing) "预览" else "编辑",
+                            contentDescription = if (isEditing) tr(R.string.s_yulan) else tr(R.string.s_bianji),
                             tint = if (isEditing) MaterialTheme.colorScheme.primary
                                    else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -417,7 +421,7 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "删除",
+                            contentDescription = tr(R.string.s_shanchu),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -533,14 +537,14 @@ private fun FileEntryRow(entry: FileEntry, onView: () -> Unit, onDelete: () -> U
                     IconButton(onClick = onShare) {
                         Icon(
                             Icons.Default.Share,
-                            contentDescription = "分享",
+                            contentDescription = tr(R.string.s_fenxiang),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     IconButton(onClick = onDelete) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "删除",
+                            contentDescription = tr(R.string.s_shanchu),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }

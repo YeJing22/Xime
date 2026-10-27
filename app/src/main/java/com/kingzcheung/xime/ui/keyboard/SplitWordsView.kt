@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -159,7 +163,7 @@ fun SplitWordsView(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = "返回",
+                    contentDescription = tr(R.string.s_fanhui),
                     tint = accentColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -168,7 +172,7 @@ fun SplitWordsView(
             Spacer(modifier = Modifier.width(12.dp))
 
             Text(
-                text = "拆词",
+                text = tr(R.string.s_chaici),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = textColor,
@@ -191,7 +195,7 @@ fun SplitWordsView(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("添加到快捷发送", color = accentColor, fontSize = 13.sp)
+                Text(tr(R.string.s_tianjiadaokuaijiefasong), color = accentColor, fontSize = 13.sp)
             }
         }
 

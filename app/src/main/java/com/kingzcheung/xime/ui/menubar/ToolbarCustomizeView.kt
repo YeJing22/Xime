@@ -31,12 +31,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kingzcheung.xime.R
+import com.kingzcheung.xime.i18n.tr
 import com.kingzcheung.xime.keyboard.ToolbarButton
 import com.kingzcheung.xime.keyboard.ToolbarButtonItem
 import com.kingzcheung.xime.keyboard.isBuiltinToolbarButtonAvailable
@@ -121,7 +123,7 @@ fun ToolbarCustomizeView(
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "确定",
+                    contentDescription = tr(R.string.s_queding),
                     tint = keyTextColor,
                     modifier = Modifier.size(24.dp)
                 )

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -359,7 +363,7 @@ fun CandidatePage(
                 ) {
                     // 显示当前模式：候选（全部）/ 单字（筛选中，高亮底色）
                     Text(
-                        text = if (state.singleCharFilter) "单字" else "候选",
+                        text = if (state.singleCharFilter) tr(R.string.s_danzi) else tr(R.string.s_houxuan),
                         color = state.textColor,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal,
@@ -482,7 +486,7 @@ fun CandidatePage(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Backspace,
-                        contentDescription = "退格",
+                        contentDescription = tr(R.string.s_tuige),
                         tint = state.textColor,
                         modifier = Modifier.size(20.dp)
                     )
@@ -498,7 +502,7 @@ fun CandidatePage(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowUp,
-                        contentDescription = "上一页",
+                        contentDescription = tr(R.string.s_shangyiye),
                         tint = if (listState.canScrollBackward) state.textColor else state.textColor.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -514,7 +518,7 @@ fun CandidatePage(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "下一页",
+                        contentDescription = tr(R.string.s_xiayiye),
                         tint = if (listState.canScrollForward) state.textColor else state.textColor.copy(alpha = 0.3f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -527,7 +531,7 @@ fun CandidatePage(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardReturn,
-                        contentDescription = "回车",
+                        contentDescription = tr(R.string.s_huiche),
                         tint = state.textColor,
                         modifier = Modifier.size(20.dp)
                     )

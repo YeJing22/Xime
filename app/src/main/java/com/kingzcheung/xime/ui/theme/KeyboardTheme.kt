@@ -8,6 +8,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.core.graphics.ColorUtils
+import com.kingzcheung.xime.R
+import com.kingzcheung.xime.i18n.tr
 import com.kingzcheung.xime.settings.BackgroundConfig
 import com.kingzcheung.xime.settings.ColorSchemeEntry
 import com.kingzcheung.xime.settings.KeysConfigHelper
@@ -105,7 +107,7 @@ object KeyboardThemes {
     private val defaultThemes = listOf(
         KeyboardColorScheme(
             id = "lavender_purple",
-            name = "薰衣草紫",
+            name = tr(R.string.s_xunyicaozi),
             specialKeyLight = Color(0xFFE8DEF8),
             specialKeyDark = Color(0xFF6750A4),
             accentLight = Color(0xFF8F73E2),

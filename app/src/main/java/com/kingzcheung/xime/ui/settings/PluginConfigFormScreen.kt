@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -75,7 +79,7 @@ fun PluginConfigFormScreen(
     onBack: () -> Unit,
     embedded: Boolean = false,
     /** 字段未声明 section 时的分组标题（默认「插件配置」）；嵌入到多插件页面时可带上插件名标明归属。 */
-    fallbackSectionTitle: String = "插件配置",
+    fallbackSectionTitle: String = tr(R.string.s_chajianpeizhi),
 ) {
     val context = LocalContext.current
     val configStore = remember(pluginId) {
@@ -152,11 +156,11 @@ fun PluginConfigFormScreen(
                     }
                 }
                 if (!allValid) {
-                    Toast.makeText(context, "请填写必填配置", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, tr(R.string.s_qingtianxiebitianpeizhi), Toast.LENGTH_SHORT).show()
                     return@Button
                 }
                 autoAuthorizeConfiguredHosts()
-                Toast.makeText(context, "配置已保存", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, tr(R.string.s_peizhiyibaocun), Toast.LENGTH_SHORT).show()
                 if (!embedded) onBack()
             },
             modifier = Modifier.fillMaxWidth(),
@@ -165,7 +169,7 @@ fun PluginConfigFormScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text("保存")
+            Text(tr(R.string.s_baocun))
         }
     }
 
@@ -190,7 +194,7 @@ fun PluginConfigFormScreen(
                         IconButton(onClick = onBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回"
+                                contentDescription = tr(R.string.s_fanhui)
                             )
                         }
                     },
@@ -316,7 +320,7 @@ private fun UiNodeEditor(
                     IconButton(onClick = { showSecret = !showSecret }) {
                         Icon(
                             imageVector = if (showSecret) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (showSecret) "隐藏" else "显示"
+                            contentDescription = if (showSecret) tr(R.string.s_yincang) else tr(R.string.s_xianshi)
                         )
                     }
                 },
@@ -378,7 +382,7 @@ private fun UiNodeEditor(
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     },
                     supportingText = if (options.isEmpty() && field.options.isEmpty())
-                        { { Text("暂无可用选项") } }
+                        { { Text(tr(R.string.s_zanwukeyongxuanxiang)) } }
                     else
                         field.helpText?.let { { Text(it) } },
                     modifier = Modifier
@@ -425,7 +429,7 @@ private fun UiNodeEditor(
                 }
                 if (options.isEmpty()) {
                     Text(
-                        text = "暂无可用选项",
+                        text = tr(R.string.s_zanwukeyongxuanxiang),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -458,7 +462,7 @@ private fun UiNodeEditor(
                 onClick = {
                     val action = key
                     if (action.isNullOrBlank()) {
-                        Toast.makeText(context, "未配置动作", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, tr(R.string.s_weipeizhidongzuo), Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     buttonBusy = true
@@ -472,12 +476,12 @@ private fun UiNodeEditor(
                         buttonBusy = false
                         val failure = outcome.exceptionOrNull()
                         val error = if (failure != null) {
-                            "执行失败：${failure.message ?: failure.javaClass.simpleName}"
+                            tr(R.string.s_zhixingshibai, failure.message ?: failure.javaClass.simpleName)
                         } else {
                             outcome.getOrNull()
                         }
                         if (error.isNullOrBlank()) {
-                            Toast.makeText(context, "成功", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, tr(R.string.s_chenggong), Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                         }
@@ -490,7 +494,7 @@ private fun UiNodeEditor(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text(if (buttonBusy) "处理中…" else field.label ?: "")
+                Text(if (buttonBusy) tr(R.string.s_chulizhong) else field.label ?: "")
             }
         }
     }

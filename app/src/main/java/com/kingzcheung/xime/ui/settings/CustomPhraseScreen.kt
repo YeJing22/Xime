@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,10 +87,10 @@ fun CustomPhraseSettingsContent(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("快捷短语") },
+                title = { Text(tr(R.string.s_kuaijieduanyu)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -100,15 +104,15 @@ fun CustomPhraseSettingsContent(onBack: () -> Unit) {
                 onClick = { viewModel.showAddDialog() },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加", tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Add, contentDescription = tr(R.string.s_tianjia), tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             val schema = schemaState.availableSchemas.find { it.schemaId == schemaState.selectedSchema }
             ContextSelectorCard(
-                title = schema?.name ?: schemaState.selectedSchema.ifEmpty { "未选择输入方案" },
-                subtitle = "快捷短语随该输入方案生效，改方案后需重新部署",
+                title = schema?.name ?: schemaState.selectedSchema.ifEmpty { tr(R.string.s_weixuanzeshurufangan) },
+                subtitle = tr(R.string.s_kuaijieduanyusuigaishurufangan_759f0),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 enabled = schemaState.availableSchemas.size > 1
             ) { dismiss ->
@@ -147,7 +151,7 @@ private fun CustomPhraseBody(
         query = uiState.searchQuery,
         onQueryChange = viewModel::setSearchQuery,
         modifier = Modifier.padding(horizontal = 16.dp),
-        placeholder = "搜索短语或编码"
+        placeholder = tr(R.string.s_sousuoduanyuhuobianma)
     )
     Spacer(modifier = Modifier.height(8.dp))
 
@@ -158,22 +162,22 @@ private fun CustomPhraseBody(
     } else if (uiState.entries.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             UsageHint(
-                title = "暂无快捷短语",
-                message = "快捷短语用于补充方案码表之外的常用短语",
-                action = "点右下角「+」添加，然后在「输入方案」重新部署即可生效"
+                title = tr(R.string.s_zanwukuaijieduanyu),
+                message = tr(R.string.s_kuaijieduanyuyongyubuchongfang_d0b76),
+                action = tr(R.string.s_dianyouxiajiao_tianjia_ranhouz_fd08d)
             )
         }
     } else {
         Text(
-            text = "共 ${uiState.entries.size} 条" +
-                if (uiState.searchQuery.isNotEmpty()) "，匹配 ${uiState.filteredEntries.size} 条" else "",
+            text = tr(R.string.s_gong_tiao, uiState.entries.size) +
+                if (uiState.searchQuery.isNotEmpty()) tr(R.string.s_pipei_tiao, uiState.filteredEntries.size) else "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
         if (uiState.filteredEntries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("未找到匹配条目", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr(R.string.s_weizhaodaopipeitiaomu), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -204,7 +208,7 @@ private fun CustomPhraseBody(
 
     if (uiState.showAddDialog) {
         PhraseEditDialog(
-            title = "添加快捷短语",
+            title = tr(R.string.s_tianjiakuaijieduanyu),
             word = uiState.editWord,
             code = uiState.editCode,
             weight = uiState.editWeight,
@@ -220,7 +224,7 @@ private fun CustomPhraseBody(
     }
     if (uiState.showEditDialog) {
         PhraseEditDialog(
-            title = "编辑快捷短语",
+            title = tr(R.string.s_bianjikuaijieduanyu),
             word = uiState.editWord,
             code = uiState.editCode,
             weight = uiState.editWeight,
@@ -252,18 +256,18 @@ private fun PhraseItem(entry: DictEntry, onEdit: () -> Unit, onDelete: () -> Uni
                 Text(entry.code, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                 if (entry.weight != null) {
                     Text(
-                        "权重: ${entry.weight}",
+                        tr(R.string.s_quanzhong, entry.weight),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
             }
             IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "编辑", modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Edit, contentDescription = tr(R.string.s_bianji), modifier = Modifier.size(18.dp))
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(
-                    Icons.Default.Delete, contentDescription = "删除",
+                    Icons.Default.Delete, contentDescription = tr(R.string.s_shanchu),
                     tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)
                 )
             }
@@ -296,31 +300,31 @@ private fun PhraseEditDialog(
             )
             OutlinedTextField(
                 value = word, onValueChange = onWordChange,
-                label = { Text("短语") }, shape = RoundedCornerShape(12.dp), singleLine = true,
+                label = { Text(tr(R.string.s_duanyu)) }, shape = RoundedCornerShape(12.dp), singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = code, onValueChange = onCodeChange,
-                label = { Text("编码") }, shape = RoundedCornerShape(12.dp), singleLine = true,
+                label = { Text(tr(R.string.s_bianma)) }, shape = RoundedCornerShape(12.dp), singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = weight, onValueChange = onWeightChange,
-                label = { Text("权重（可选，越大越优先）") }, shape = RoundedCornerShape(12.dp), singleLine = true,
+                label = { Text(tr(R.string.s_quanzhong_kexuan_yuedayueyouxian)) }, shape = RoundedCornerShape(12.dp), singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(24.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss) { Text("取消") }
+                TextButton(onClick = onDismiss) { Text(tr(R.string.s_quxiao)) }
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     modifier = Modifier.clickable(enabled = word.isNotBlank() && code.isNotBlank(), onClick = onConfirm),
                     shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary
                 ) {
                     Text(
-                        "确定", modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
+                        tr(R.string.s_queding), modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
                         style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary
                     )
                 }

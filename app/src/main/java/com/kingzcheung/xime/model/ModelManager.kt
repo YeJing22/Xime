@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.model
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import com.kingzcheung.xime.util.FileLogger
 import java.io.File
@@ -102,7 +106,7 @@ object ModelManager {
     ) {
         val model = getModel(id)
         if (model == null) {
-            onProgress(ModelDownloadState.Error("未知模型: $id"))
+            onProgress(ModelDownloadState.Error(tr(R.string.s_weizhimoxing, id)))
             return
         }
         downloadModel(context, model, onProgress)

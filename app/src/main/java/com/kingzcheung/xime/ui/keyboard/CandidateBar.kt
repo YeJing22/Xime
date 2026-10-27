@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.i18n.tr
+
 import com.kingzcheung.xime.service.PredictionManager
 import android.annotation.SuppressLint
 import androidx.compose.animation.core.animateFloatAsState
@@ -14,6 +16,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -495,7 +498,7 @@ fun CandidateBar(
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                    contentDescription = "返回菜单",
+                                    contentDescription = tr(R.string.s_fanhuicaidan),
                                     tint = visuals.accentColor,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -511,7 +514,7 @@ fun CandidateBar(
                             ) {
                                 Icon(
                                     painter = painterResource(id = if (visuals.isDarkTheme) R.drawable.logo_dark else R.drawable.logo),
-                                    contentDescription = "曦码 Logo",
+                                    contentDescription = tr(R.string.s_xima_logo),
                                     tint = Color.Unspecified,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -526,7 +529,7 @@ fun CandidateBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "剪切板",
+                                contentDescription = tr(R.string.s_jianqieban),
                                 tint = visuals.accentColor,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -537,28 +540,35 @@ fun CandidateBar(
             }
 
             if (inlineSuggestions.isNotEmpty()) {
-                LazyRow(
-                    // 占满配额：内容少时建议靠左、右侧留白到收起按钮（收起按钮
-                    // 因此固定最右）；内容超出配额时占满并可横向滑动查看后续建议；
-                    // clipToBounds：滑动时滑出边界的建议裁剪掉，避免与左侧 logo 重叠
-                    modifier = Modifier
-                        .weight(1f)
-                        .clipToBounds(),
-                ) {
-                    itemsIndexed(inlineSuggestions, key = { index, _ -> index }) { _, suggestion ->
-                        Box(modifier = Modifier.fillMaxHeight()) {
-                            InlineSuggestionView(
-                                suggestion = suggestion,
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .width(180.dp),
-                            )
-                            // 每条尾部 1dp 分隔线：条目之间为间隔，最后一条的尾线
-                            // 同时充当与候选词区的分界（与旧平铺布局视觉一致）
-                            InlineSuggestionDivider(
-                                modifier = Modifier.align(Alignment.CenterEnd),
-                                color = visuals.dividerColor,
-                            )
+                BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                    // 建议宽度不超过本行实际分到的栏宽（独占候选栏时仍为 180dp）：
+                    // 与候选/剪贴板同显时本行只有一半栏宽，固定 180dp 会越界——
+                    // InlineContentView 是独立 surface 渲染，clipToBounds 裁不住，
+                    // 越界部分会压到右侧候选上（issue #1136）。
+                    val suggestionWidth = minOf(maxWidth, 180.dp)
+                    LazyRow(
+                        // 占满配额：内容少时建议靠左、右侧留白到收起按钮（收起按钮
+                        // 因此固定最右）；内容超出配额时占满并可横向滑动查看后续建议；
+                        // clipToBounds：滑动时滑出边界的建议裁剪掉，避免与左侧 logo 重叠
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clipToBounds(),
+                    ) {
+                        itemsIndexed(inlineSuggestions, key = { index, _ -> index }) { _, suggestion ->
+                            Box(modifier = Modifier.fillMaxHeight()) {
+                                InlineSuggestionView(
+                                    suggestion = suggestion,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .width(suggestionWidth),
+                                )
+                                // 每条尾部 1dp 分隔线：条目之间为间隔，最后一条的尾线
+                                // 同时充当与候选词区的分界（与旧平铺布局视觉一致）
+                                InlineSuggestionDivider(
+                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                    color = visuals.dividerColor,
+                                )
+                            }
                         }
                     }
                 }
@@ -711,7 +721,7 @@ fun CandidateBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "收起键盘",
+                                contentDescription = tr(R.string.s_shouqijianpan),
                                 tint = if (isHideKeyboardPressed) iconButtonTint.copy(alpha = 0.6f) else iconButtonTint,
                                 modifier = Modifier.size(22.dp)
                             )
@@ -730,7 +740,7 @@ fun CandidateBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "返回键盘",
+                                contentDescription = tr(R.string.s_fanhuijianpan),
                                 tint = visuals.accentColor,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -767,7 +777,7 @@ fun CandidateBar(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "清空",
+                            text = tr(R.string.s_qingkong),
                             color = if (isClearPressed) visuals.textColor.copy(alpha = 0.6f) else visuals.textColor,
                             fontSize = 11.sp
                         )
@@ -798,7 +808,7 @@ fun CandidateBar(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "更多候选",
+                            contentDescription = tr(R.string.s_gengduohouxuan),
                             tint = if (isMorePressed) visuals.textColor.copy(alpha = 0.6f) else visuals.textColor,
                             modifier = Modifier.size(22.dp)
                         )
@@ -876,7 +886,7 @@ fun ClipboardImageCandidateItem(
         }
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "图片",
+            text = tr(R.string.s_tupian_2),
             color = textColor,
             // 标注型标签：比候选文字小一档，并夹住上下限（超大字号设置下也不至于撑满芯片）
             fontSize = (fontSize.value * 0.7f).coerceIn(11f, 16f).sp,

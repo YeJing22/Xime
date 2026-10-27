@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.service
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
@@ -34,7 +38,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
         
         service.mainHandler.post {
             service.requestHideSelf(0)
-            android.widget.Toast.makeText(service, "方案部署中...", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(service, tr(R.string.s_fanganbushuzhong), android.widget.Toast.LENGTH_SHORT).show()
         }
         
         // 部署投递到 key-processing 队列：与按键/切换同队列串行执行，
@@ -85,7 +89,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                         currentSchemaId = currentSchemaId,
                     )
                     service.updateUI()
-                    android.widget.Toast.makeText(service, "方案部署完成", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(service, tr(R.string.s_fanganbushuwancheng), android.widget.Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 FileLogger.e(XimeInputMethodService.TAG, "Failed to reload config", e)
@@ -220,7 +224,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             if (!com.kingzcheung.xime.handwriting.HandwritingEngine.hasModel(service)) {
                 FileLogger.w(XimeInputMethodService.TAG, "Handwriting model not found, redirecting to download")
                 android.widget.Toast.makeText(
-                    service, "请先下载手写模型", android.widget.Toast.LENGTH_LONG
+                    service, tr(R.string.s_qingxianxiazaishouxiemoxing), android.widget.Toast.LENGTH_LONG
                 ).show()
                 val intent = android.content.Intent(
                     service, com.kingzcheung.xime.MainActivity::class.java
@@ -252,7 +256,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             if (!service.rimeEngine.switchSchema(schemaId)) {
                 if (service.rimeEngine.isMaintaining()) {
                     FileLogger.w(XimeInputMethodService.TAG, "switchSchema skipped: deployment in progress")
-                    Toast.makeText(service, "词库部署中，请稍后再切换方案", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(service, tr(R.string.s_cikubushuzhong_qingshaohouzaiq_7d5ce), Toast.LENGTH_SHORT).show()
                     return
                 }
                 // 引擎切换失败（常见：方案未部署/不在 schema_list，老版本升级残留）。
@@ -265,7 +269,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                     SettingsPreferences.setCurrentSchema(service, actual)
                 }
                 FileLogger.w(XimeInputMethodService.TAG, "switchSchema failed: target=$schemaId actual=$actual")
-                Toast.makeText(service, "方案未部署，请在方案管理中部署后再试", Toast.LENGTH_SHORT).show()
+                Toast.makeText(service, tr(R.string.s_fanganweibushu_qingzaifangangu_63cf5), Toast.LENGTH_SHORT).show()
                 return
             }
             if (!service.rimeEngine.isAsciiMode()) {
@@ -279,7 +283,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                     service.rimeEngine.isAsciiMode(), schemaId
                 )
             )
-            Toast.makeText(service, "已切换输入方案", Toast.LENGTH_SHORT).show()
+            Toast.makeText(service, tr(R.string.s_yiqiehuanshurufangan), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             FileLogger.e(XimeInputMethodService.TAG, "Failed to switch schema", e)
         }
@@ -287,15 +291,15 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
     
     private fun downloadSchema(schemaId: String) {
         service.serviceScope.launch(Dispatchers.IO) {
-            service.notifyDeploymentStatus(true, "正在下载 $schemaId...")
+            service.notifyDeploymentStatus(true, tr(R.string.s_zhengzaixiazai, schemaId))
             
             val success = SchemaConfigHelper.downloadSchema(service, schemaId)
             
             withContext(Dispatchers.Main) {
                 if (success) {
-                    Toast.makeText(service, "$schemaId 下载成功，请点击部署", Toast.LENGTH_LONG).show()
+                    Toast.makeText(service, tr(R.string.s_xiazaichenggong_qingdianjibushu, schemaId), Toast.LENGTH_LONG).show()
                 } else {
-                    Toast.makeText(service, "$schemaId 下载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(service, tr(R.string.s_xiazaishibai_2, schemaId), Toast.LENGTH_SHORT).show()
                 }
                 service.notifyDeploymentStatus(false, "")
             }
@@ -309,7 +313,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             KeysConfigHelper.loadConfig(service)
             KeyboardThemes.reload(service)
             
-            service.notifyDeploymentStatus(true, "正在部署...")
+            service.notifyDeploymentStatus(true, tr(R.string.s_zhengzaibushu))
             // 先补齐内置基础文件（symbols/default 等），避免方案 __include 失败导致编译报错
             RimeConfigHelper.ensureBuiltinBaseFiles(service)
 
@@ -317,10 +321,10 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             
             withContext(Dispatchers.Main) {
                 if (success) {
-                    Toast.makeText(service, "部署成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(service, tr(R.string.s_bushuchenggong), Toast.LENGTH_SHORT).show()
                     service.updateUI()
                 } else {
-                    Toast.makeText(service, "部署失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(service, tr(R.string.s_bushushibai), Toast.LENGTH_SHORT).show()
                 }
                 service.notifyDeploymentStatus(false, "")
             }
@@ -340,6 +344,15 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
     }
 
     internal fun toggleFloatingMode(enabled: Boolean, floatingMinY: Int = 0) {
+        if (enabled && service.isHostConstrained()) {
+            // 独立 IME 面板：承载区比键盘还小，浮动卡片没有可拖动/可停靠的空间
+            android.widget.Toast.makeText(
+                service,
+                tr(R.string.s_dangqianxianshiquyubuzhichifud_d72e1),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
         // 任何路径切悬浮都清掉拖动提示态（正常由拖动松手消费，这里兜底防光效残留）
         service.floatingExitHintState.value = false
         val isLandscape = service.resources.configuration.screenWidthDp > service.resources.configuration.screenHeightDp

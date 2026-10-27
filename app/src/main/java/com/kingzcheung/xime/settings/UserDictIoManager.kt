@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import android.net.Uri
 import com.kingzcheung.xime.rime.RimeEngine
@@ -76,10 +80,10 @@ object UserDictIoManager {
         val temp = File(context.cacheDir, EXPORT_TEMP_NAME)
         try {
             val count = RimeEngine.getInstance().exportUserDict(dictName, temp.absolutePath)
-            if (count < 0) throw IOException("导出失败：打不开「$dictName」用户词库")
+            if (count < 0) throw IOException(tr(R.string.s_daochushibai_dabukai_yonghuciku, dictName))
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 temp.inputStream().use { it.copyTo(output) }
-            } ?: throw IOException("无法写入所选文件")
+            } ?: throw IOException(tr(R.string.s_wufaxierusuoxuanwenjian))
             count
         } finally {
             temp.delete()
@@ -98,9 +102,9 @@ object UserDictIoManager {
     fun importFrom(context: Context, dictName: String, uri: Uri): Result<Int> = runCatching {
         val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
             readAllBytesLimited(input, MAX_IMPORT_BYTES)
-        } ?: throw IOException("无法读取所选文件")
+        } ?: throw IOException(tr(R.string.s_wufaduqusuoxuanwenjian))
         if (bytes.size > MAX_IMPORT_BYTES) {
-            throw IOException("文件过大（超过 ${MAX_IMPORT_BYTES / 1024 / 1024} MB），不像是码表")
+            throw IOException(tr(R.string.s_wenjianguoda_chaoguo_mb_buxian_d5be8, MAX_IMPORT_BYTES / 1024 / 1024))
         }
         val text = bytes.toString(Charsets.UTF_8)
         validateImportText(text)?.let { throw IOException(it) }
@@ -109,7 +113,7 @@ object UserDictIoManager {
         try {
             temp.writeText(text, Charsets.UTF_8)
             val count = RimeEngine.getInstance().importUserDict(dictName, temp.absolutePath)
-            if (count < 0) throw IOException("导入失败：引擎拒绝了这个文件")
+            if (count < 0) throw IOException(tr(R.string.s_daorushibai_yinqingjujuelezheg_d34a6))
             count
         } finally {
             temp.delete()
@@ -149,14 +153,14 @@ object UserDictIoManager {
         val c = code.trim()
         if (w.isEmpty() || c.isEmpty()) return EntryInputCheck.Incomplete
         if (w.any { it == '\t' || it == '\n' || it == '\r' }) {
-            return EntryInputCheck.Error("词不能含制表符或换行")
+            return EntryInputCheck.Error(tr(R.string.s_cibunenghanzhibiaofuhuohuanxing))
         }
         if (c.any { it == '\t' || it == '\n' || it == '\r' }) {
-            return EntryInputCheck.Error("编码不能含制表符或换行")
+            return EntryInputCheck.Error(tr(R.string.s_bianmabunenghanzhibiaofuhuohua_4b44f))
         }
         val text = weightText.trim()
         val commits = if (text.isEmpty()) DEFAULT_COMMITS else (text.toIntOrNull() ?: 0)
-        if (commits <= 0) return EntryInputCheck.Error("频率要填正整数（留空即 1）")
+        if (commits <= 0) return EntryInputCheck.Error(tr(R.string.s_pinlvyaotianzhengzhengshu_liuk_64c40))
         return EntryInputCheck.Ok(EntryInput(w, c, commits))
     }
 
@@ -200,7 +204,7 @@ object UserDictIoManager {
             try {
                 temp.writeText(text, Charsets.UTF_8)
                 val count = RimeEngine.getInstance().importUserDict(dictName, temp.absolutePath)
-                if (count <= 0) throw IOException("写入失败：引擎没有接受这条词条")
+                if (count <= 0) throw IOException(tr(R.string.s_xierushibai_yinqingmeiyoujiesh_be409))
                 count
             } finally {
                 temp.delete()
@@ -215,15 +219,15 @@ object UserDictIoManager {
      * 只挡住"空文件 / 二进制文件 / 完全没有码表行"这三种典型误选。
      */
     internal fun validateImportText(text: String): String? {
-        if (text.isBlank()) return "文件是空的"
-        if (text.contains('\u0000')) return "不是文本文件（含有空字节），请选择导出的 .txt 码表"
+        if (text.isBlank()) return tr(R.string.s_wenjianshikongde)
+        if (text.contains('\u0000')) return tr(R.string.s_bushiwenben_wenjian)
         // 词库快照（`<词典名>.userdb.txt`）与码表列序不同：快照是「码 \t 词 \t c=.. d=.. t=..」，
         // 用码表导入器读会把码与词写反。快照请走 同步与备份 → 导入快照（由引擎按时间戳合并）。
         val firstLine = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
         if (firstLine.startsWith("# Rime user dictionary") &&
             !firstLine.startsWith("# Rime user dictionary export")
         ) {
-            return "这是词库快照（.userdb.txt），请到「同步与备份 → 导入快照」导入；此处只收 .txt 词条码表"
+            return tr(R.string.s_zheshicikukuaizhao_userdb_txt_21427)
         }
         val entries = text.lineSequence()
             .map { it.trim() }
@@ -232,7 +236,7 @@ object UserDictIoManager {
                 val parts = line.split('\t')
                 parts.size >= 2 && parts[0].isNotBlank() && parts[1].isNotBlank()
             }
-        if (entries == 0) return "没找到「词<制表符>码」格式的词条，请选择导出的 .txt 码表"
+        if (entries == 0) return tr(R.string.s_meizhaodao_ci_zhibiaofu_ma_ges_1e4af)
         return null
     }
 

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -48,20 +52,20 @@ class PluginsSettingsViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch {
             val displayName = queryDisplayName(uri)
             if (displayName == null || !ImportManager.isPluginFile(displayName)) {
-                _importMessage.value = "请选择有效的插件文件"
+                _importMessage.value = tr(R.string.s_qingxuanzeyouxiaodechajianwenjian)
                 return@launch
             }
             when (val result = ImportManager.import(context, uri)) {
                 is ImportManager.ImportResult.Plugin -> {
                     PluginManager.loadEnabledPlugins()
                     refreshPlugins()
-                    _importMessage.value = "插件「${result.pluginInfo?.name ?: ""}」安装成功"
+                    _importMessage.value = tr(R.string.s_chajian_anzhuangchenggong, result.pluginInfo?.name ?: "")
                 }
                 is ImportManager.ImportResult.Failed -> {
-                    _importMessage.value = "安装失败：${result.reason}"
+                    _importMessage.value = tr(R.string.s_anzhuangshibai_2, result.reason)
                 }
                 else -> {
-                    _importMessage.value = "安装失败：未知错误"
+                    _importMessage.value = tr(R.string.s_anzhuangshibai_weizhicuowu)
                 }
             }
         }

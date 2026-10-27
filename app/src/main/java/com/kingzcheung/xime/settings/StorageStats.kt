@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import com.kingzcheung.xime.clipboard.ClipboardImageStore
 import com.kingzcheung.xime.clipboard.ClipboardManager
@@ -104,65 +108,65 @@ object StorageStats {
         return listOf(
             Category(
                 id = ID_MODELS,
-                title = "离线模型",
-                description = "联想 / 手写 / 语音识别模型，清除后需重新下载",
+                title = tr(R.string.s_lixianmoxing),
+                description = tr(R.string.s_lianxiang_shouxie_yuyinshibiem_92b32),
                 sizeBytes = modelsSize,
                 clearable = true,
             ),
             Category(
                 id = ID_SCHEMA_CACHE,
-                title = "方案编译缓存",
-                description = "输入方案的编译产物与日志，清除后下次启动自动重建，不影响词库与自定义配置",
+                title = tr(R.string.s_fanganbianyihuancun),
+                description = tr(R.string.s_shurufangandebianyichanwuyuriz_09c3d),
                 sizeBytes = buildSize,
                 clearable = true,
             ),
             Category(
                 id = ID_SCHEMAS,
-                title = "方案与词库",
-                description = "已安装方案、用户词库与自定义配置，暂不支持一键清理",
+                title = tr(R.string.s_fanganyuciku),
+                description = tr(R.string.s_yianzhuangfangan_yonghucikuyuz_4ff01),
                 sizeBytes = (rimeSize - buildSize).coerceAtLeast(0L),
                 clearable = false,
             ),
             Category(
                 id = ID_PLUGINS,
-                title = "插件",
-                description = "已安装插件及其资源，卸载请前往插件管理",
+                title = tr(R.string.s_chajian),
+                description = tr(R.string.s_yianzhuangchajianjiqiziyuan_xi_10fe0),
                 sizeBytes = pluginsSize,
                 clearable = false,
                 navigable = true,
             ),
             Category(
                 id = ID_MARKET_PACKAGES,
-                title = "已下载方案包",
-                description = "方案市场的安装包（内置方案除外）；已安装的方案不受影响，重装时需重新下载",
+                title = tr(R.string.s_yixiazaifanganbao),
+                description = tr(R.string.s_fanganshichangdeanzhuangbao_ne_dc374),
                 sizeBytes = marketSize,
                 clearable = true,
             ),
             Category(
                 id = ID_CLIPBOARD,
-                title = "剪贴板历史",
-                description = "本地剪贴板文字与图片记录（不含快捷发送与置顶内容）",
+                title = tr(R.string.s_jiantiebanlishi),
+                description = tr(R.string.s_bendijiantiebanwenziyutupianji_4f15c),
                 sizeBytes = clipboardSize,
                 clearable = true,
             ),
             Category(
                 id = ID_LOGS,
-                title = "日志",
-                description = "运行日志文件（保留当日日志）",
+                title = tr(R.string.s_rizhi),
+                description = tr(R.string.s_yunxingrizhiwenjian_baoliudang_cea09),
                 sizeBytes = logsSize,
                 clearable = true,
             ),
             Category(
                 id = ID_CACHE,
-                title = "缓存",
-                description = "图片与临时文件缓存，可安全清理",
+                title = tr(R.string.s_huancun),
+                description = tr(R.string.s_tupianyulinshiwenjianhuancun_k_c74ad),
                 sizeBytes = cacheSize,
                 clearable = true,
             ),
             Category(
                 id = ID_OTHER,
-                title = "其他数据",
-                description = "用户配置索引、联想词频缓存等",
+                title = tr(R.string.s_qitashuju),
+                description = tr(R.string.s_yonghupeizhisuoyin_lianxiangci_d85b5),
                 sizeBytes = otherSize,
                 clearable = false,
             ),

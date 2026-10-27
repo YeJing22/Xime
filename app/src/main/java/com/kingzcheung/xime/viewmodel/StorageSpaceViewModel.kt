@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.viewmodel
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -53,9 +57,9 @@ class StorageSpaceViewModel(application: Application) : AndroidViewModel(applica
             }
             _cleaningId.value = null
             _message.value = when (ok) {
-                true -> "$title 已清理"
-                false -> "$title 清理失败，请重试"
-                null -> "$title 清理出错"
+                true -> tr(R.string.s_yiqingli, title)
+                false -> tr(R.string.s_qinglishibai_qingzhongshi, title)
+                null -> tr(R.string.s_qinglichucuo, title)
             }
             refresh()
         }

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -116,7 +120,7 @@ fun EditKeyboardLayout(
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowLeft,
-                        contentDescription = "返回",
+                        contentDescription = tr(R.string.s_fanhui),
                         tint = textColor,
                         modifier = Modifier.size(24.dp)
                     )
@@ -133,8 +137,8 @@ fun EditKeyboardLayout(
         ) {
             SideButtonGrid(
                 items = listOf(
-                    "复制" to "copy", "粘贴" to "paste",
-                    "全选" to "select_all", "剪切" to "cut"
+                    tr(R.string.s_fuzhi) to "copy", tr(R.string.s_zhantie) to "paste",
+                    tr(R.string.s_quanxuan) to "select_all", tr(R.string.s_jianqie) to "cut"
                 ),
                 columns = if (isWide) 2 else 1,
                 onAction = onAction,
@@ -177,8 +181,8 @@ fun EditKeyboardLayout(
 
             SideButtonGrid(
                 items = listOf(
-                    "段首" to "home", "段尾" to "end",
-                    "删除" to "delete", "回车" to "enter"
+                    tr(R.string.s_duanshou) to "home", tr(R.string.s_duanwei) to "end",
+                    tr(R.string.s_shanchu) to "delete", tr(R.string.s_huiche) to "enter"
                 ),
                 columns = if (isWide) 2 else 1,
                 onAction = onAction,
@@ -372,7 +376,7 @@ private fun CircularDPad(
                 )
             }
 
-            val centerLabel = if (isSelecting) "取消" else "选择"
+            val centerLabel = if (isSelecting) tr(R.string.s_quxiao) else tr(R.string.s_xuanze)
             centerLabelPaint.textSize = 13.sp.toPx()
             centerLabelPaint.color = if (isSelecting) accentColor.toArgb() else textColor.toArgb()
             drawContext.canvas.nativeCanvas.drawText(

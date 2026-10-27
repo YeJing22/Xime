@@ -332,4 +332,51 @@ class BackupManagerTest {
 
         assertEquals(0, outcome.dictSnapshotCount)
     }
+
+    // ---- 词库：恢复只合并不覆盖 ----
+
+    private val snapshotText = "# Rime user dictionary\n#@/db_type\tuserdb\nni hao \t你好\tc=3 d=4e-08 t=0"
+
+    /**
+     * 回归：旧版本导出的包里有 `*.userdb/` leveldb 目录。恢复时若直接落盘，
+     * 就是整库覆盖，本机新打的词当场消失（用户反馈"恢复没有 merge，而是覆盖"）。
+     * 词库必须只走 `*.userdb.txt` 快照合并。
+     */
+    @Test
+    fun `restore never overwrites local leveldb user dict`() {
+        val filesDir = tempDir.newFolder("files")
+        val installationId = "11111111-2222-3333-4444-555555555555"
+        val localDb = File(filesDir, "rime/pinyin_simp.userdb").apply { mkdirs() }
+        val localManifest = File(localDb, "MANIFEST-000002").apply { writeText("本机现有词库") }
+
+        val bytes = zipOfText(
+            mapOf(
+                "pinyin_simp.userdb/MANIFEST-000002" to "备份里的旧词库",
+                "pinyin_simp.userdb/000003.log" to "旧日志",
+                "rime.db" to "别的二进制",
+                "sync/$installationId/pinyin_simp.userdb.txt" to snapshotText
+            )
+        )
+
+        val outcome = BackupManager.restoreArchiveOutcome(filesDir, { _, _ -> }, bytes).getOrThrow()
+
+        assertEquals("本机 leveldb 内容不得被覆盖", "本机现有词库", localManifest.readText())
+        assertFalse("包内日志文件也不落盘", File(localDb, "000003.log").exists())
+        assertFalse("包内 *.db 也不落盘", File(filesDir, "rime/rime.db").exists())
+        assertEquals("快照仍然落盘并计数（交给引擎合并）", 1, outcome.dictSnapshotCount)
+        assertEquals(
+            snapshotText,
+            File(filesDir, "rime/sync/$installationId/pinyin_simp.userdb.txt").readText()
+        )
+    }
+
+    @Test
+    fun `leveldb user dict entries are recognized but snapshots are not`() {
+        assertTrue(BackupManager.isUserDbLeveldbEntry("pinyin_simp.userdb/CURRENT"))
+        assertTrue(BackupManager.isUserDbLeveldbEntry("t9_digit.userdb/LOCK"))
+        assertTrue(BackupManager.isUserDbLeveldbEntry("pinyin_simp.db"))
+        assertTrue(BackupManager.isUserDbLeveldbEntry("pinyin_simp.db-wal"))
+        assertFalse("快照不是 leveldb", BackupManager.isUserDbLeveldbEntry("sync/id/pinyin_simp.userdb.txt"))
+        assertFalse("普通配置照常落盘", BackupManager.isUserDbLeveldbEntry("default.custom.yaml"))
+    }
 }

@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.settings
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,7 +78,7 @@ import com.kingzcheung.xime.viewmodel.SchemaSettingsViewModel
 @Composable
 fun SchemaLocalContent(
     onBack: () -> Unit,
-    title: String = "本地方案",
+    title: String = tr(R.string.s_bendifangan),
 ) {
     val context = LocalContext.current
     val viewModel: SchemaLocalViewModel = viewModel()
@@ -141,16 +145,16 @@ fun SchemaLocalContent(
         AlertDialog(
             onDismissRequest = { showImportWarning = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("导入方案须知", fontWeight = FontWeight.SemiBold) },
+            title = { Text(tr(R.string.s_daorufanganxuzhi), fontWeight = FontWeight.SemiBold) },
             text = {
                 Column {
                     Text(
-                        "使用导入方案功能时，请先去了解 Rime 配置方案以及相关文档（ime.ximei.me），并确保你知道自己正在做什么。",
+                        tr(R.string.s_shiyongdaorufangangongnengshi_b308e),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "如果你不知道自己在做什么，请使用默认方案。",
+                        tr(R.string.s_ruguonibuzhidaozijizaizuoshenm_2fa73),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -161,7 +165,7 @@ fun SchemaLocalContent(
                     ) {
                         Checkbox(checked = dontShowImportWarning, onCheckedChange = { dontShowImportWarning = it })
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("不再显示", style = MaterialTheme.typography.bodySmall)
+                        Text(tr(R.string.s_buzaixianshi), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
@@ -172,11 +176,11 @@ fun SchemaLocalContent(
                         showImportWarning = false
                         pendingImportAction()
                     }
-                ) { Text("继续导入") }
+                ) { Text(tr(R.string.s_jixudaoru)) }
             },
             dismissButton = {
                 TextButton(onClick = { showImportWarning = false }) {
-                    Text("取消")
+                    Text(tr(R.string.s_quxiao))
                 }
             }
         )
@@ -198,17 +202,17 @@ fun SchemaLocalContent(
                 if (!importUiState.isDownloading) { showUrlDialog = false; urlInput = "" }
             },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("网络导入", fontWeight = FontWeight.SemiBold) },
+            title = { Text(tr(R.string.s_wangluodaoru), fontWeight = FontWeight.SemiBold) },
             text = {
                 Column {
                     Text(
-                        "输入压缩包下载地址",
+                        tr(R.string.s_shuruyasuobaoxiazaidizhi),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "支持 .zip 和 .tar.gz 格式",
+                        tr(R.string.s_zhichi_zip_he_tar_gz_geshi),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -258,7 +262,7 @@ fun SchemaLocalContent(
                             )
                         ) {
                             Text(
-                                text = "使用导入方案功能时，请先了解 Rime 配置方案以及文档（ime.ximei.me），以及确保你知道自己正在做什么。如果你不知道自己在做什么，请使用默认方案。",
+                                text = tr(R.string.s_shiyongdaorufangangongnengshi_3fb80),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(12.dp)
@@ -271,7 +275,7 @@ fun SchemaLocalContent(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "正在下载并解压...",
+                            tr(R.string.s_zhengzaixiazaibingjieya),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -285,10 +289,10 @@ fun SchemaLocalContent(
                         importViewModel.importFromUrl(urlInput)
                     },
                     enabled = urlInput.isNotBlank() && !importUiState.isDownloading
-                ) { Text("确定") }
+                ) { Text(tr(R.string.s_queding)) }
             },
             dismissButton = {
-                TextButton(onClick = { showUrlDialog = false; urlInput = "" }) { Text("取消") }
+                TextButton(onClick = { showUrlDialog = false; urlInput = "" }) { Text(tr(R.string.s_quxiao)) }
             }
         )
     }
@@ -296,18 +300,18 @@ fun SchemaLocalContent(
     if (uiState.conflictPackageId != null) {
         AlertDialog(
             onDismissRequest = { viewModel.cancelConflictInstall() },
-            title = { Text("文件冲突") },
+            title = { Text(tr(R.string.s_wenjianchongtu)) },
             text = {
-                Text("需要先卸载冲突方案：${uiState.conflictingSchemeIds.joinToString("、")}，是否继续？")
+                Text(tr(R.string.s_xiezai_chongtufangan, uiState.conflictingSchemeIds.joinToString("、")))
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.confirmInstallWithUninstall() }) {
-                    Text("确认卸载并安装")
+                    Text(tr(R.string.s_querenxiezaibinganzhuang))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.cancelConflictInstall() }) {
-                    Text("取消")
+                    Text(tr(R.string.s_quxiao))
                 }
             },
         )
@@ -320,16 +324,16 @@ fun SchemaLocalContent(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr(R.string.s_fanhui))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadLocalPackages() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = tr(R.string.s_shuaxin))
                     }
                     Box {
                         IconButton(onClick = { importMenuExpanded = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "导入方案")
+                            Icon(Icons.Default.Add, contentDescription = tr(R.string.s_daorufangan))
                         }
                         DropdownMenu(
                             expanded = importMenuExpanded,
@@ -338,7 +342,7 @@ fun SchemaLocalContent(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("浏览器导入") },
+                                text = { Text(tr(R.string.s_liulanqidaoru)) },
                                 onClick = {
                                     importMenuExpanded = false
                                     requireImportWarning { showWirelessSheet = true }
@@ -350,7 +354,7 @@ fun SchemaLocalContent(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("网络导入") },
+                                text = { Text(tr(R.string.s_wangluodaoru)) },
                                 onClick = {
                                     importMenuExpanded = false
                                     requireImportWarning { showUrlDialog = true }
@@ -362,7 +366,7 @@ fun SchemaLocalContent(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("从文件选择") },
+                                text = { Text(tr(R.string.s_congwenjianxuanze)) },
                                 onClick = {
                                     importMenuExpanded = false
                                     requireImportWarning { importLauncher.launch(arrayOf("*/*")) }
@@ -392,7 +396,7 @@ fun SchemaLocalContent(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            if (uiState.isLoading) "加载中…" else "暂无本地方案",
+                            if (uiState.isLoading) tr(R.string.s_jiazaizhong_2) else tr(R.string.s_zanwubendifangan),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -414,7 +418,7 @@ fun SchemaLocalContent(
                             val installedCount = uiState.packages.count { it.installed }
                             val downloadedCount = uiState.packages.count { it.downloaded }
                             Text(
-                                "共 ${uiState.packages.size} 个（已安装 $installedCount，可安装 ${downloadedCount - installedCount}）",
+                                tr(R.string.s_gong_ge_yianzhuang_keanzhuang, uiState.packages.size, installedCount, downloadedCount - installedCount),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline,
                             )
@@ -466,7 +470,7 @@ private fun LocalPackageCard(
                     else -> MaterialTheme.colorScheme.error
                 }
                 TagText(
-                    if (item.installed) "已安装" else if (item.downloaded) "已下载" else "未知",
+                    if (item.installed) tr(R.string.s_yianzhuang) else if (item.downloaded) tr(R.string.s_yixiazai) else tr(R.string.s_weizhi),
                     tagColor,
                 )
             }
@@ -480,10 +484,10 @@ private fun LocalPackageCard(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     buildString {
-                        if (item.version.isNotEmpty()) append("版本: ${item.version}")
+                        if (item.version.isNotEmpty()) append(tr(R.string.s_banben_3, item.version))
                         if (item.fileCount > 0) {
                             if (isNotEmpty()) append(" · ")
-                            append("${item.fileCount} 个文件")
+                            append(tr(R.string.s_gewenjian, item.fileCount))
                         }
                     },
                     style = MaterialTheme.typography.labelSmall,
@@ -502,17 +506,17 @@ private fun LocalPackageCard(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 when (phase) {
-                                    LocalPackagePhase.INSTALLING -> "安装中…"
-                                    LocalPackagePhase.DEPLOYING -> "部署中…"
+                                    LocalPackagePhase.INSTALLING -> tr(R.string.s_anzhuangzhong)
+                                    LocalPackagePhase.DEPLOYING -> tr(R.string.s_bushuzhong)
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         }
                     }
                     item.installed -> {
-                        OutlinedButton(onClick = onUninstall) { Text("卸载") }
+                        OutlinedButton(onClick = onUninstall) { Text(tr(R.string.s_xiezai)) }
                     }
-                    item.downloaded -> OutlinedButton(onClick = onInstall) { Text("安装") }
+                    item.downloaded -> OutlinedButton(onClick = onInstall) { Text(tr(R.string.s_anzhuang)) }
                 }
                 Spacer(Modifier.weight(1f))
                 if (item.packageId != "builtin" && item.downloaded) {
@@ -522,7 +526,7 @@ private fun LocalPackageCard(
                     ) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "删除下载文件",
+                            contentDescription = tr(R.string.s_shanchuxiazaiwenjian),
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp),
                         )

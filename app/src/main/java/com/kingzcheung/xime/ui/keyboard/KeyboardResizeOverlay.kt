@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -212,17 +216,17 @@ fun KeyboardResizeOverlay(
         ) {
             ResizeActionButton(
                 icon = Icons.Default.RestartAlt,
-                label = "重置",
+                label = tr(R.string.s_zhongzhi),
                 onClick = onReset,
             )
             ResizeActionButton(
                 icon = Icons.Default.Close,
-                label = "取消",
+                label = tr(R.string.s_quxiao),
                 onClick = onCancel,
             )
             ResizeActionButton(
                 icon = Icons.Default.Check,
-                label = "确定",
+                label = tr(R.string.s_queding),
                 onClick = onConfirm,
             )
         }

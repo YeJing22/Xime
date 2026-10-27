@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.correction
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.content.Context
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.settings.KeysConfigHelper
@@ -79,7 +83,7 @@ object CorrectionPriors {
 
     /** 最近一次推送状态（供设置页/日志诊断）。 */
     @Volatile
-    var lastPush: String = "未初始化"
+    var lastPush: String = tr(R.string.s_weichushihua)
 
     @Volatile
     var enabled: Boolean = false
@@ -87,7 +91,7 @@ object CorrectionPriors {
             field = value
             if (value) {
                 val ok = ensureLoaded()
-                lastPush = if (ok) "已启用，等待按键" else "启用失败（模型/码表不可用）"
+                lastPush = if (ok) tr(R.string.s_yiqiyong_dengdaianjian) else tr(R.string.s_qiyongshibai_moxing_mabiaobukeyong)
                 FileLogger.i(TAG, "enabled=$ok ctx=${appContext != null}")
             } else {
                 if (nativeActive) {
@@ -96,7 +100,7 @@ object CorrectionPriors {
                     nativeActive = false
                 }
                 letters.clear(); offX.clear(); offY.clear()
-                lastPush = "已关闭"
+                lastPush = tr(R.string.s_yiguanbi)
                 FileLogger.i(TAG, "disabled")
             }
         }
@@ -231,7 +235,7 @@ object CorrectionPriors {
                 }
             }
             f.writeText(buildJsonObject {
-                put("unit", "off_x=(lx-bw/2)/bw, off_y=(ly-bh/2)/bh；端上自校准（滑窗中位数），送信道前逐键减去")
+                put("unit", tr(R.string.s_off_x_lx_bw_2_bw_off_y_ly_bh_2_9edec))
                 put("n_taps", ringTotal)
                 if (!globalX.isNaN()) {
                     put("global", buildJsonArray {
@@ -344,12 +348,12 @@ object CorrectionPriors {
         val code = inputText.lowercase()
         if (code.isEmpty()) {
             CorrectionNative.clearTaps()
-            lastPush = "编码为空 → 清空先验"
+            lastPush = tr(R.string.s_bianmaweikong_qingkongxianyan)
             return
         }
         if (letters.size < code.length) {
             CorrectionNative.clearTaps()
-            lastPush = "按键数(${letters.size})<编码(${code.length}) → 清空"
+            lastPush = tr(R.string.s_anjianshu_bianma_qingkong, letters.size, code.length)
             FileLogger.d(TAG, lastPush!!)
             return
         }
@@ -359,7 +363,7 @@ object CorrectionPriors {
         for (i in 0 until n) {
             if (arr[off + i] != code[i]) {
                 CorrectionNative.clearTaps()
-                lastPush = "按键序列与编码不一致(${String(arr)} vs $code) → 清空"
+                lastPush = tr(R.string.s_anjianxulieyubianmabuyizhi_vs_30afd, String(arr), code)
                 FileLogger.d(TAG, lastPush!!)
                 return
             }
@@ -377,7 +381,7 @@ object CorrectionPriors {
             sb.append(String.format("%.2f/%.2f ", ox[i], oy[i]))
         }
         CorrectionNative.setTaps(l, ox, oy)
-        lastPush = "已推送 code=$code off=[$sb]"
+        lastPush = tr(R.string.s_yituisong_code_off, code, sb)
         FileLogger.d(TAG, lastPush!!)
     }
 }

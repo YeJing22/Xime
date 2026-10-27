@@ -1,5 +1,9 @@
 package com.kingzcheung.xime.service
 
+import com.kingzcheung.xime.R
+
+import com.kingzcheung.xime.i18n.tr
+
 import android.view.inputmethod.EditorInfo
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.util.FileLogger
@@ -70,7 +74,7 @@ internal class AsciiModeController(private val service: XimeInputMethodService) 
         if (!service.rimeEngine.toggleAsciiMode()) {
             FileLogger.e(XimeInputMethodService.TAG, "switchAscii[$reason]: toggleAsciiMode FAILED (engine unavailable)")
             withContext(Dispatchers.Main) {
-                android.widget.Toast.makeText(service, "输入法引擎不可用，请稍后再试", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(service, tr(R.string.s_shurufayinqingbukeyong_qingsha_73e8c), android.widget.Toast.LENGTH_SHORT).show()
             }
             return false
         }
