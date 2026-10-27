@@ -734,10 +734,7 @@ internal fun buildUiGestureHandler(
 ): (GestureAction, String) -> Unit = { action, value ->
     when (action) {
         // 面板切换映射的唯一实现（三处 UI 手势入口共用，含 clipboard）
-        GestureAction.SWITCH_ROUTE -> when (value) {
-            "number" -> viewModel.enterPanel(com.kingzcheung.xime.keyboard.PanelType.NUMBER)
-            else -> switchRouteOverlay(value)?.let { viewModel.showOverlay(it) }
-        }
+        GestureAction.SWITCH_ROUTE -> switchRouteOverlay(value)?.let { viewModel.showOverlay(it) }
         // command 的值统一走按键路由（tap/上滑与手势分发同一条解析；命令名白名单见 dispatchCommandAction）
         GestureAction.COMMAND -> dispatchCommandAction(value, onKeyPress)
         GestureAction.TOGGLE_ASCII -> {
@@ -903,16 +900,8 @@ internal fun FunctionKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier) 
         "space" -> SpaceCell(env, modifier)
         "earth" -> EarthCell(env, modifier)
         "enter" -> EnterCell(env, modifier, env.ctrlFontSize)
-        "symbol" -> KeyButton(
-            text = "符",
-            onClick = { env.onGestureAction?.invoke(GestureAction.SWITCH_ROUTE, "symbol") },
-            backgroundColor = env.specialKeyBackgroundColor,
-            textColor = env.specialKeyTextColor,
-            modifier = modifier,
-            onPress = { env.onKeyPressDown?.invoke("symbol") },
-            shadowEnabled = env.shadowEnabled,
-            shadowElevation = env.shadowElevation,
-            shadowShapeRadius = env.shadowShapeRadius,
+        "symbol" -> PanelActionCell(
+            "symbol", GestureAction.TOGGLE_SYMBOLS, "", rememberVectorPainter(Icons.TwoTone.KeyboardAlt), env, modifier,
         )
         "emoji" -> PanelActionCell(
             "emoji", GestureAction.SWITCH_ROUTE, "emoji", rememberVectorPainter(Icons.Filled.EmojiEmotions), env, modifier,
@@ -928,19 +917,7 @@ internal fun FunctionKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier) 
         // 面板专用功能键（数字/常用符号键盘；行为内置，与旧硬编码面板一致）
         "back" -> PanelBackCell(env, modifier)
         "back_right" -> PanelBackCell(env, modifier, id = "back_right")
-        // 我方：数字面板「123」键用 KeyButton 渲染，才能吃到自定义边框/阴影/圆角配置
-        // （官方 3.4.0 改回 PanelTextCell 并接了 i18n，此处保留我方渲染方式）
-        "number" -> KeyButton(
-            text = "123",
-            onClick = { env.onGestureAction?.invoke(GestureAction.SWITCH_ROUTE, "number") },
-            backgroundColor = env.keyBackgroundColor,
-            textColor = env.keyTextColor,
-            modifier = modifier,
-            onPress = { env.onKeyPressDown?.invoke("number") },
-            shadowEnabled = env.shadowEnabled,
-            shadowElevation = env.shadowElevation,
-            shadowShapeRadius = env.shadowShapeRadius,
-        )
+        "number" -> PanelTextCell("number", "123", "number", special = true, env, modifier)
         "open_symbols" -> PanelTextCell("open_symbols", stringResource(R.string.keyboard_symbol), "symbol", special = true, env, modifier)
         "space_bar" -> PanelTextCell("space_bar", stringResource(R.string.keyboard_space), "space", special = true, env, modifier)
         "space_key" -> PanelTextCell("space_key", stringResource(R.string.keyboard_space), "space", special = false, env, modifier)
