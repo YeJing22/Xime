@@ -13,6 +13,10 @@ plugins {
 apply(from = "build-logic/tasks-native.gradle.kts")
 apply(from = "build-logic/tasks-plugin-dev.gradle.kts")
 
+// 目标 ABI：默认 arm64-v8a（自用机）。要在 x86_64 模拟器上调试用 -Pabi=x86_64；
+// 传 -Pabi=all 则打官方默认的四架构。
+val dbgAbi: String = (project.findProperty("abi")?.toString() ?: "arm64-v8a")
+
 // 获取 Git 提交哈希
 fun getGitHash(): String {
     return try {
@@ -59,9 +63,14 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // NDK 配置
+        // NDK 配置：默认只打 arm64-v8a（自用机是 arm64，省编译时间）。
+        // 需要在 x86_64 模拟器上调试时用 -Pabi=x86_64 临时切换。
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += if (dbgAbi == "all") {
+                listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            } else {
+                listOf(dbgAbi)
+            }
         }
 
         // 构建信息
@@ -162,7 +171,8 @@ android {
 android.applicationVariants.all {
     val appName = "Xime"
     outputs.all {
-        (this as BaseVariantOutputImpl).outputFileName = "$appName-$versionName-arm64-v8a.apk"
+        (this as BaseVariantOutputImpl).outputFileName =
+            if (dbgAbi == "all") "$appName-$versionName.apk" else "$appName-$versionName-$dbgAbi.apk"
     }
 }
 
