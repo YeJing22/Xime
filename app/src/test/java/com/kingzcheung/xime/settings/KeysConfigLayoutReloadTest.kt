@@ -67,4 +67,29 @@ class KeysConfigLayoutReloadTest {
             KeysConfigHelper.getRowsLayout(false).rows[1].keys,
         )
     }
+
+    /**
+     * 首帧兜底：配置完全读不到时用内置默认行渲染，第三行必须带 shift/delete。
+     * 历史问题：默认行只有 3 行纯字母，首帧画出来的键盘第三行两端是空的，按一次键才补上。
+     */
+    @Test
+    fun `配置缺失时兜底行第三行含 shift 与 delete`() {
+        val filesDir = tmp.newFolder("files-fallback")
+
+        val assets = mock<AssetManager>()
+        whenever(assets.open(org.mockito.kotlin.any())).thenThrow(IOException("no assets"))
+
+        val context = mock<Context>()
+        whenever(context.assets).thenReturn(assets)
+        whenever(context.filesDir).thenReturn(filesDir)
+
+        KeysConfigHelper.loadConfig(context)
+
+        for (isAsciiMode in listOf(false, true)) {
+            val rows = KeysConfigHelper.getRowsLayout(isAsciiMode).rows
+            assertEquals(3, rows.size)
+            assertEquals("shift", rows[2].keys.first())
+            assertEquals("delete", rows[2].keys.last())
+        }
+    }
 }

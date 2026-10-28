@@ -100,8 +100,10 @@ fun MenuBar(
     val textColor = state.keyTextColor
     // 功能 item 背景：与键盘按键背景一致（keyBgColor，浅色纯白、深色跟随 keyboard.colors）
     val itemBgColor = state.keyBgColor
-    // 图标按钮容器色：surface 与 primary 的混合色调（带种子色但不过于强烈）
-    val iconButtonContainer = androidx.compose.ui.graphics.lerp(
+    // 圆形图标按钮底色（关闭 / 设置）：深色下沿用按键的半透明白材质，和下方菜单项同色；
+    // 亮色下用 surface 与 primary 的混合色调（带种子色但不过于强烈）
+    val iconButtonContainer = if (state.isDarkTheme) state.keyBgColor
+    else androidx.compose.ui.graphics.lerp(
         MaterialTheme.colorScheme.surface,
         MaterialTheme.colorScheme.primary,
         0.35f
@@ -164,17 +166,20 @@ fun MenuBar(
             .background(state.backgroundColor),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // 顶栏的尺寸与内边距跟候选栏一致：菜单开合时关闭按钮正好落在 logo 的位置。
+        // 横屏不再叠加 50dp 缩进——挖孔/导航栏的物理避让由服务层内容容器的边衬区统一处理，
+        // 叠加会让按钮比 logo 右移 42dp，开合菜单时整块图标左右跳。
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
-                .padding(horizontal = if (isLandscape) 50.dp else 8.dp),
+                .height(IconButtonRowHeight)
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(IconButtonSize)
                     .clip(CircleShape)
                     .background(iconButtonContainer)
                     .clickable { callbacks.onDismiss() },
@@ -184,14 +189,14 @@ fun MenuBar(
                     imageVector = Icons.Default.KeyboardArrowUp,
                     contentDescription = tr(R.string.s_guanbicaidan),
                     tint = textColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(IconButtonGlyphSize)
                 )
             }
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(IconButtonSize)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .background(iconButtonContainer)
                     .clickable { callbacks.onSettings() },
                 contentAlignment = Alignment.Center
             ) {
@@ -199,17 +204,18 @@ fun MenuBar(
                     painter = settingsIcon,
                     contentDescription = tr(R.string.s_shezhi),
                     tint = textColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(IconButtonGlyphSize)
                 )
             }
         }
         // 内容区（菜单项）
         if (isLandscape) {
-            // 横屏：一行 8 列
+            // 横屏：一行 8 列，左右留白跟顶栏按钮同一条线（8dp），
+            // 否则卡片比关闭按钮更靠里，菜单开合时左边线是参差的
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 50.dp)
+                    .padding(horizontal = 8.dp)
                     .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically

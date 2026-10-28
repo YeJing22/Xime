@@ -38,11 +38,18 @@ object AppLocale {
             locale
         }
 
-    /** 包装 Context，使其 resources/configuration 使用系统语言；[config] 用于配置变更时传入新配置。 */
-    fun wrap(base: Context, config: Configuration? = null): Context {
-        val cfg = Configuration(config ?: base.resources.configuration)
-        cfg.setLocales(currentLocales())
-        return ContextWrapper(base.createConfigurationContext(cfg))
+    /**
+     * 包装 Context，仅把 locale 覆盖为系统语言。
+     * 其余字段保持 UNSET 让系统配置继续生效；禁止拷贝完整配置快照，
+     * 否则创建时刻的 uiMode/屏幕尺寸被固化为 override，深浅色不再跟随系统。
+     */
+    fun wrap(base: Context): Context =
+        ContextWrapper(base.createConfigurationContext(localeOverrideConfig()))
+
+    internal fun localeOverrideConfig(locales: LocaleList = currentLocales()): Configuration {
+        val cfg = Configuration()
+        cfg.setLocales(locales)
+        return cfg
     }
 
     private fun normalizeLocales(list: LocaleList): LocaleList {

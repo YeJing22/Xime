@@ -243,7 +243,8 @@ object RimeExportManager {
      *
      * 排除项（均属"派生/可由引擎重建"或"另有合并通道"）：
      * - `build/` 目录：librime 编译产物（本机实测占 rime 目录一半），跨版本不兼容
-     * - `*.bin` / `*.gram` / `*.db*`：二进制词典与模型
+     * - `*.bin` / `*.db*`：二进制词典与库，编译产物引擎可重建（`.gram` 语法模型是
+     *   方案资产不可重建，不排除）
      * - `*.userdb/` 目录：leveldb 用户词典库——文件级覆盖一致性差，且会吃掉其他设备新词；
      *   自造词改走 `sync/` 文本快照 + 引擎按时间戳合并（见 [SyncManager]）
      * - `default.yaml`：由 `default.custom.yaml` + APK 内置基座派生，恢复后再镜像
@@ -260,7 +261,7 @@ object RimeExportManager {
         // 派生与二进制
         if (path.startsWith("build/")) return false
         if (path == "default.yaml") return false
-        if (path.endsWith(".bin") || path.endsWith(".gram")) return false
+        if (path.endsWith(".bin")) return false
         if (path.endsWith(".db") || path.endsWith(".db-wal") || path.endsWith(".db-shm")) return false
         // leveldb 用户词典**目录**（pinyin_simp.userdb/…）：按路径段精确判断，
         // 否则会把自造词快照 pinyin_simp.userdb.txt 一起误伤
@@ -278,7 +279,8 @@ object RimeExportManager {
             return path.endsWith(".userdb.txt")
         }
         // 其余为设置/用户补丁与方案本体/资源（*.custom.yaml、xime.custom.yaml、user.yaml、
-        // installation.yaml、custom_phrase.txt、symbols.yaml、方案 schema/dict、opencc/、lua/、fonts/、themes/）
+        // installation.yaml、custom_phrase.txt、symbols.yaml、方案 schema/dict、*.gram 语法模型、
+        // opencc/、lua/、fonts/、themes/）
         return true
     }
 

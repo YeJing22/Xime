@@ -610,7 +610,8 @@ fun KeyboardView(
                     dividerColor = dividerColor,
                     accentColor = accentColor,
                     selectedTextColor = candidateSelectedTextColor,
-                    isDarkTheme = state.isDarkTheme
+                    isDarkTheme = state.isDarkTheme,
+                    keyBgColor = keyBgColor
                 ),
                 callbacks = CandidateBarCallbacks(
                     // 常驻语音：点按候选栏频谱区域结束识别。

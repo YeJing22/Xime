@@ -63,7 +63,7 @@ class XimeApplication : Application(), ImageLoaderFactory {
         registerComponentCallbacks(object : android.content.ComponentCallbacks {
             override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
                 com.kingzcheung.xime.i18n.UiText.init(
-                    com.kingzcheung.xime.settings.AppLocale.wrap(this@XimeApplication, newConfig)
+                    com.kingzcheung.xime.settings.AppLocale.wrap(this@XimeApplication)
                 )
             }
 

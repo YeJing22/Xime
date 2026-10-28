@@ -13,6 +13,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.TimeUnit
 
 /** 下载校验状态：null=未提供sha256, true=校验通过, false=校验不通过。 */
@@ -90,9 +92,9 @@ object XimeIndexSource {
     private fun buildMirrors(userUrls: List<String>): List<String> = userUrls
 
     private fun ensureConfigured(context: Context) {
-        val cfg = KeysConfigHelper.loadXimeIndexConfig(context)
-        if (cfg.baseUrls != baseUrls) {
-            baseUrls = cfg.baseUrls
+        val configured = KeysConfigHelper.loadXimeIndexConfig(context).resolvedBaseUrls
+        if (configured != baseUrls) {
+            baseUrls = configured
             mirrors = buildMirrors(baseUrls)
         }
     }
@@ -363,8 +365,28 @@ object XimeIndexSource {
         }
         val rimeDir = File(context.filesDir, "rime")
         if (!rimeDir.exists()) rimeDir.mkdirs()
-        File(rimeDir, "xime.custom.yaml").writeText(text)
+        val target = File(rimeDir, "xime.custom.yaml")
+        if (!writeAtomically(target) { it.writeText(text) }) return null
         return listOf("xime.custom.yaml")
+    }
+
+    /**
+     * 原子落盘：先写同目录 `<name>.tmp` 再 rename 覆盖。
+     *
+     * xime.custom.yaml 是用户全部键盘配置的唯一载体，直接截断写时若进程被杀会留下
+     * 半截 YAML，解析失败后所有配置静默回退内置值（用户视角即「配置全丢」）。
+     * 同目录 rename 在同一分区内是原子的，失败时原文件保持不动。
+     */
+    private fun writeAtomically(target: File, write: (File) -> Unit): Boolean = try {
+        target.parentFile?.mkdirs()
+        val tmp = File(target.parentFile, "${target.name}.tmp")
+        write(tmp)
+        Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        true
+    } catch (e: Exception) {
+        Log.e(TAG, "atomic write failed: ${target.name}", e)
+        File(target.parentFile, "${target.name}.tmp").delete()
+        false
     }
 
     /** 探测 zip（PK\x03\x04 魔数）；否则按单文件（裸 xime.custom.yaml）处理。 */
@@ -458,10 +480,21 @@ object XimeIndexSource {
                     if (allowed) {
                         val target = File(rimeDir, rel).canonicalFile
                         if (target.path.startsWith(rimeCanonical.path + File.separator)) {
-                            target.parentFile?.mkdirs()
-                            target.outputStream().use { out -> zis.copyTo(out) }
-                            written.add(rel)
-                            if (rel == "xime.custom.yaml") hasCustom = true
+                            // 配置文件走原子写（半截 YAML 会让全部自定义配置静默失效）；
+                            // 主题/字体等资源直接写，损坏后重新应用布局即可覆盖
+                            val writtenOk = if (rel == "xime.custom.yaml") {
+                                writeAtomically(target) { tmp ->
+                                    tmp.outputStream().use { out -> zis.copyTo(out) }
+                                }
+                            } else {
+                                target.parentFile?.mkdirs()
+                                target.outputStream().use { out -> zis.copyTo(out) }
+                                true
+                            }
+                            if (writtenOk) {
+                                written.add(rel)
+                                if (rel == "xime.custom.yaml") hasCustom = true
+                            }
                         } else {
                             Log.w(TAG, "skip zip-slip layout entry: $name")
                         }

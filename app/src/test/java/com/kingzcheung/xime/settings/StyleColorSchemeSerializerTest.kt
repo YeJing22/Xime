@@ -123,4 +123,13 @@ class StyleColorSchemeSerializerTest {
         // custom 未配置 special_key_bg_color_dark 时保留内置值
         assertEquals(0xD97757L, entry?.specialKeyBgColorDark)
     }
+
+    @Test
+    fun `mergeColorSchemes 显式纯黑主色不被当作未配置`() {
+        val default = mapOf("mono" to ColorSchemeEntry(name = "墨黑", primaryColor = 0xE65100))
+        val custom = mapOf("mono" to ColorSchemeEntry(primaryColor = 0x000000))
+        val merged = KeysConfigHelper.mergeColorSchemesForTest(default, custom)
+        // 0x000000 是显式取值，必须覆盖内置主色，不能回退
+        assertEquals(0L, merged?.get("mono")?.primaryColor ?: -1L)
+    }
 }

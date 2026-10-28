@@ -2134,6 +2134,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             // 其余 Ctrl 组合（Ctrl+方向键词移动、Ctrl+Shift 系列等）交还系统与目标应用处理
             return super.onKeyDown(keyCode, event)
         }
+        // Caps Lock 的 meta state 由系统自动维护，与 Shift 同效（物理键盘大小写切换）
+        val isShifted = e.isShiftPressed || e.isCapsLockOn
         if (hasHardwareKeyboard && candidateState.value.candidates.isNotEmpty()) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
@@ -2164,23 +2166,24 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         return true
                     }
                 }
-                KeyEvent.KEYCODE_1 -> { keyRouter.selectCandidate(0); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_2 -> { keyRouter.selectCandidate(1); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_3 -> { keyRouter.selectCandidate(2); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_4 -> { keyRouter.selectCandidate(3); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_5 -> { keyRouter.selectCandidate(4); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_6 -> { keyRouter.selectCandidate(5); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_7 -> { keyRouter.selectCandidate(6); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_8 -> { keyRouter.selectCandidate(7); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_9 -> { keyRouter.selectCandidate(8); highlightIndex.intValue = 0; return true }
-                KeyEvent.KEYCODE_0 -> { keyRouter.selectCandidate(9); highlightIndex.intValue = 0; return true }
+                // 组合态 Shift+数字是打符号（如 Shift+1 = ！），放行到 Shift 转换路径，不选候选
+                KeyEvent.KEYCODE_1 -> if (!isShifted) { keyRouter.selectCandidate(0); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_2 -> if (!isShifted) { keyRouter.selectCandidate(1); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_3 -> if (!isShifted) { keyRouter.selectCandidate(2); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_4 -> if (!isShifted) { keyRouter.selectCandidate(3); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_5 -> if (!isShifted) { keyRouter.selectCandidate(4); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_6 -> if (!isShifted) { keyRouter.selectCandidate(5); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_7 -> if (!isShifted) { keyRouter.selectCandidate(6); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_8 -> if (!isShifted) { keyRouter.selectCandidate(7); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_9 -> if (!isShifted) { keyRouter.selectCandidate(8); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_0 -> if (!isShifted) { keyRouter.selectCandidate(9); highlightIndex.intValue = 0; return true }
             }
         }
-        // Caps Lock 的 meta state 由系统自动维护，与 Shift 同效（物理键盘大小写切换）
-        val isShifted = e.isShiftPressed || e.isCapsLockOn
         val key = keyCodeToKey(keyCode, isShifted)
         if (key != null) {
-            keyRouter.handleKeyPress(key, isShifted)
+            // 硬件 Shift+符号：keyCodeToKey 不转换 Shift，系统 keyCharacterMap 已被消费，在此补转换
+            val effKey = if (isShifted) (shiftedSymbol(key, !uiState.value.isAsciiMode) ?: key) else key
+            keyRouter.handleKeyPress(effKey, isShifted)
             return true
         }
         return super.onKeyDown(keyCode, event)
@@ -2189,8 +2192,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         // 物理 Shift 单击（按下到抬起间无其他按键）切换中英文，与 PC 中文输入法习惯一致；
         // 复用软键盘 earth 键的 ime_switch 链路（USER_TOGGLE，会话级不持久化）。
-        // 组合使用（Shift+字母等）时放行 super，不触发切换。
-        if (isShiftKeyCode(keyCode) && !shiftComboDetected) {
+        // 组合使用（Shift+字母等）时放行 super；CapsLock 按住时按 Shift 是换挡意图，不切。
+        if (isShiftKeyCode(keyCode) && !shiftComboDetected && event?.isCapsLockOn != true) {
             dispatchKey("ime_switch")
             return true
         }
@@ -2640,6 +2643,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        // sysNight 来自系统新配置，resNight 是 service 实际读到的值；深浅色跟随失效时两者会不一致
+        val sysNight = newConfig.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        val resNight =
+            resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        FileLogger.i(TAG, "onConfigurationChanged: sysNight=$sysNight resNight=$resNight darkMode=${uiState.value.darkMode}")
         val localeChanged = newConfig.locales != lastLocales
         lastLocales = newConfig.locales
         hasHardwareKeyboard = SettingsPreferences.isHardwareKeyboardDetectionEnabled(this) &&
@@ -2654,7 +2662,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         updateCursorUpdateMonitoring()
         if (localeChanged) {
             // 系统语言变化：刷新全局取词并重建键盘，Compose 才能取到新语言资源
-            com.kingzcheung.xime.i18n.UiText.init(AppLocale.wrap(this, newConfig))
+            com.kingzcheung.xime.i18n.UiText.init(AppLocale.wrap(this))
             if (isInputViewShown) setInputView(onCreateInputView())
         }
     }

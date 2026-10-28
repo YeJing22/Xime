@@ -300,14 +300,28 @@ class KeyboardConfigSyntaxCoverageTest {
     }
 
     @Test
-    fun `button_layout 非法值静默回退 standard`() {
-        // 固化现行行为：fromValue 对未知值回退 STANDARD（不报错）
+    fun `button_layout 非法值视为未配置`() {
+        // 非法值不再兜成 STANDARD（会压掉内置值），而是当未配置回退下一层；无下一层时才回落 STANDARD
         val text = """
             keyboard:
               qwerty: { button_layout: compct }
         """.trimIndent()
         val (zh, _) = KeysConfigHelper.parseButtonLayoutTexts(text, null)
         assertEquals(ButtonLayout.STANDARD, zh)
+    }
+
+    @Test
+    fun `button_layout custom 非法值回退内置值`() {
+        val default = """
+            keyboard:
+              qwerty: { button_layout: compact }
+        """.trimIndent()
+        val custom = """
+            keyboard:
+              qwerty: { button_layout: compct }
+        """.trimIndent()
+        val (zh, _) = KeysConfigHelper.parseButtonLayoutTexts(default, custom)
+        assertEquals(ButtonLayout.COMPACT, zh)
     }
 
     @Test

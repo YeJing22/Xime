@@ -1,3 +1,9 @@
+# ── 内置配置基座（随 APK 分发，升级时被覆盖，勿直接修改）──
+# 用户自定义请写同目录 xime.custom.yaml：
+#   · 只写要改的键，未写的键自动回退本文件的值；列表（layout.rows / schemas / base_urls）需整段写出
+#   · 它不是 Rime 的 patch 层：直接写 keyboard: / style:，写 patch: 会被静默忽略
+# 完整合并规则见 docs/config-merge-rules.md
+
 metadata:
   app_name: Xime
   app_version: ">=2.5.0"
@@ -73,6 +79,13 @@ correction:
 #                                                 primary_color 原色、暗色回退 primary 提亮 45%
 #                                                 （灰色系 primary 提亮后仍偏暗时建议单独配置）
 #
+# ── 暗色配色约束（新增皮肤时请遵守，详见 docs/theme-dark-colors.md）──
+# 1. 暗色功能键不再默认取 primary_color：主色的 OKLCH 彩度普遍在 0.16~0.21，
+#    整块铺在深底上会"发光"。请显式写 special_key_bg_color_dark，彩度压到 C ≤ 0.13。
+# 2. 渐变皮肤（type: gradient）的 colors_dark 暗端请压到 OKLCH L ≤ 0.32 / C ≤ 0.10：
+#    该色占了整块键面，是暗环境里最大的亮度来源。
+# 3. 深底皮肤的功能键与普通键亮度比（vs 普通键）建议 ≥ 1.3，否则只剩色相差异，看不清。
+#
 color_schemes:
   # 动态配色（Material You）：颜色由运行时从壁纸调色板派生，随壁纸变化，
   # 仅 Android 12+（API 31+）生效，低版本不显示此方案。
@@ -84,6 +97,8 @@ color_schemes:
   lavender_purple:
     name: "薰衣草紫"
     primary_color: 0x8F73E2
+    # 暗色功能键：主色 C=0.162 在 #1E1838 上偏艳，压到 C=0.13（明度不变，紫调仍可辨）。
+    special_key_bg_color_dark: 0x8d79d1
     keyboard_background:
       type: solid
       color: 0xE3E4E8
@@ -92,6 +107,8 @@ color_schemes:
   ocean_blue:
     name: "海洋蔚蓝"
     primary_color: 0x1A73E8
+    # 暗色功能键：主色 C=0.195（全表第二高）压在 #0D1B33 上荧光感强，压到 C=0.13。
+    special_key_bg_color_dark: 0x4478c4
     keyboard_background:
       type: solid
       color: 0xE3E4E8
@@ -121,6 +138,10 @@ color_schemes:
   rose_pink:
     name: "浪漫玫瑰"
     primary_color: 0xAD1457
+    # 深色下功能键整块铺色：直接取主色是 79% 饱和的洋红，压在 #2D1020 上过于刺眼。
+    # 降饱和会变成藕灰粉（撞樱花粉黛的粉色观感），故改为压明度到 33%、保留 64% 饱和，
+    # 走深酒红：暗色块不刺眼，同时保住玫瑰的色彩身份。
+    special_key_bg_color_dark: 0x8B1E42
     keyboard_background:
       type: solid
       color: 0xE3E4E8
@@ -227,7 +248,8 @@ color_schemes:
     keyboard_background:
       type: gradient
       colors: [0xe0f7fa, 0xb2ebf2]
-      colors_dark: [0x00332e, 0x015c56]
+      # 暗端原为 0x015c56（L0.43）：功能键彩度本身不高（C0.118），主要问题是背景偏亮，压到 L0.32 以下即可。
+      colors_dark: [0x001915, 0x003d38]
       angle: 90
     key_bg_color: 0xe6ffffff
     key_bg_color_dark: 0x5affffff
@@ -239,10 +261,13 @@ color_schemes:
   sunset_gradient:
     name: "落日余晖"
     primary_color: 0xff7043
+    # 暗色功能键：主色 C=0.185 / L0.71，是全部主题里最亮的高彩度块。压到 C=0.13 / L0.66。
+    special_key_bg_color_dark: 0xd57355
     keyboard_background:
       type: gradient
       colors: [0xfff3e0, 0xffccbc]
-      colors_dark: [0x3e1a12, 0x8c2f1d]
+      # 暗端原为 0x8c2f1d（L0.44 / C0.13）：锈红大面积铺色在暗环境偏亮，压到 L0.32 以下。
+      colors_dark: [0x260703, 0x5a170a]
       angle: 90
     key_bg_color: 0xe6ffffff
     key_bg_color_dark: 0x5affffff
@@ -254,10 +279,13 @@ color_schemes:
   ocean_gradient:
     name: "深海渐变"
     primary_color: 0x1e88e5
+    # 暗色功能键：主色 C=0.167，且与普通键亮度几乎同层（1.1:1）唯一区别就是"很蓝"，故压到 C=0.13。
+    special_key_bg_color_dark: 0x4f96df
     keyboard_background:
       type: gradient
       colors: [0xe3f2fd, 0x90caf9]
-      colors_dark: [0x0b2d52, 0x0d47a1]
+      # 暗端原为 0x0d47a1（L0.42 / C0.16）：压到 L0.32 以下，避免整块键面发亮。
+      colors_dark: [0x01132a, 0x0f2f63]
       angle: 90
     key_bg_color: 0xe6ffffff
     key_bg_color_dark: 0x5affffff
@@ -269,10 +297,13 @@ color_schemes:
   purple_gradient:
     name: "紫梦渐变"
     primary_color: 0x7e57c2
+    # 暗色功能键：原与普通键亮度几乎相同（1.17:1），只靠紫色区分；压彩度到 C=0.13 并提亮到 L0.66 拉开层次。
+    special_key_bg_color_dark: 0x9c7fd7
     keyboard_background:
       type: gradient
       colors: [0xede7f6, 0xd1c4e9]
-      colors_dark: [0x271852, 0x4527a0]
+      # 暗端原为 0x4527a0（C=0.181 是全表最高彩度），压到 C0.10 / L0.31。
+      colors_dark: [0x130d29, 0x2f2661]
       angle: 90
     key_bg_color: 0xe6ffffff
     key_bg_color_dark: 0x5affffff
@@ -284,10 +315,14 @@ color_schemes:
   rose_gradient:
     name: "玫瑰渐变"
     primary_color: 0xec407a
+    # 暗色功能键压彩度：主色 OKLCH C=0.21 是全部主题最高，压在深底上像荧光块。
+    # 压到 C=0.13（与默认主题 #6750A4 同档），保留色相与明度，与普通键拉开 1.4:1 亮度层次。
+    special_key_bg_color_dark: 0xd36d87
     keyboard_background:
       type: gradient
       colors: [0xfce4ec, 0xf8bbd0]
-      colors_dark: [0x3b0a22, 0x8c1356]
+      # 暗端原为 0x8c1356（L0.43 / C0.16）：整块键面在暗环境下像发光板，压到 L0.32 以下。
+      colors_dark: [0x240614, 0x551535]
       angle: 90
     key_bg_color: 0xe6ffffff
     key_bg_color_dark: 0x5affffff
@@ -299,10 +334,13 @@ color_schemes:
   forest_gradient:
     name: "森林迷雾"
     primary_color: 0x43a047
+    # 暗色功能键：主色 C=0.154 且与普通键亮度同层（1.19:1），压到 C=0.13 / L0.66。
+    special_key_bg_color_dark: 0x5ca75d
     keyboard_background:
       type: gradient
       colors: [0xe8f5e9, 0xc8e6c9]
-      colors_dark: [0x0f3016, 0x1b5e20]
+      # 暗端原为 0x1b5e20（L0.43 / C0.12）：压到 L0.32 以下，避免整块键面发亮。
+      colors_dark: [0x001904, 0x013e09]
       angle: 90
     key_bg_color: 0xe6ffffff
     key_bg_color_dark: 0x5affffff

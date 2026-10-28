@@ -42,11 +42,11 @@ class KeyboardConfigFallbackTest {
     }
 
     @Test
-    fun `mergeFontConfigs custom 空字符串不覆盖 builtIn`() {
+    fun `mergeFontConfigs custom 空字符串显式清空 builtIn`() {
         val builtIn = KeyboardFontPartial(keyFont = "builtin.ttf")
         val custom = KeyboardFontPartial(keyFont = "")
         val merged = KeysConfigHelper.mergeFontConfigs(custom, builtIn)
-        assertEquals("builtin.ttf", merged.keyFont)
+        assertEquals("", merged.keyFont)
     }
 
     @Test
@@ -154,5 +154,52 @@ class KeyboardConfigFallbackTest {
         val t9 = merged.spacingOverrides["t9"]!!
         assertEquals(3f, t9.spacingX!!, 0.001f)
         assertEquals(4f, t9.spacingY!!, 0.001f)
+    }
+
+    // ── metadata / xime_index（整块 → 逐字段） ──
+
+    @Test
+    fun `metadata 只写 modified_time 时保留内置 app_version 校验条件`() {
+        val builtIn = XimeConfig(
+            metadata = MetadataConfig(appName = "Xime", appVersion = ">=2.5.0", configVersion = 1),
+        )
+        val custom = XimeConfig(metadata = MetadataConfig(modifiedTime = "2026-10-27"))
+        val merged = KeysConfigHelper.mergeConfigForTest(builtIn, custom)
+        assertEquals(">=2.5.0", merged.metadata?.appVersion)
+        assertEquals("Xime", merged.metadata?.appName)
+        assertEquals(1, merged.metadata?.configVersion)
+        assertEquals("2026-10-27", merged.metadata?.modifiedTime)
+    }
+
+    @Test
+    fun `metadata custom 未写时整体沿用内置`() {
+        val builtIn = XimeConfig(metadata = MetadataConfig(appVersion = ">=2.5.0"))
+        val merged = KeysConfigHelper.mergeConfigForTest(builtIn, XimeConfig())
+        assertEquals(">=2.5.0", merged.metadata?.appVersion)
+    }
+
+    @Test
+    fun `xime_index 空块不再清掉内置 base_urls`() {
+        val builtIn = XimeConfig(ximeIndex = XimeIndexConfig(baseUrls = listOf("https://a/")))
+        val merged = KeysConfigHelper.mergeConfigForTest(builtIn, XimeConfig(ximeIndex = XimeIndexConfig()))
+        assertEquals(listOf("https://a/"), merged.ximeIndex?.baseUrls)
+    }
+
+    @Test
+    fun `xime_index 写出的 base_urls 整段覆盖内置`() {
+        val builtIn = XimeIndexConfig(baseUrls = listOf("https://a/"))
+        val custom = XimeIndexConfig(baseUrls = listOf("https://b/", "https://c/"))
+        val merged = KeysConfigHelper.mergeConfigForTest(
+            XimeConfig(ximeIndex = builtIn),
+            XimeConfig(ximeIndex = custom),
+        )
+        assertEquals(listOf("https://b/", "https://c/"), merged.ximeIndex?.baseUrls)
+    }
+
+    @Test
+    fun `xime_index 空列表视为未配置并回落兜底基址`() {
+        val cfg = XimeIndexConfig(baseUrls = emptyList())
+        assertEquals(DEFAULT_INDEX_BASE_URLS, cfg.resolvedBaseUrls)
+        assertEquals(DEFAULT_INDEX_BASE_URLS, XimeIndexConfig().resolvedBaseUrls)
     }
 }

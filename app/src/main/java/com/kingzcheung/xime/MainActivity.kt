@@ -314,6 +314,8 @@ class MainActivity : ComponentActivity() {
     private fun copyThemeConfigTemplate(fileName: String) {
         val schemeId = fileName.substringBeforeLast('.')
         val template = """
+            # 粘贴到 xime.custom.yaml 顶层使用。该文件不是 Rime 的 patch 层：
+            # 直接写顶层键，不要用 patch: 包一层（写了会被静默忽略）。
             color_schemes:
               $schemeId:
                 name: "${tr(R.string.s_zidingyibeijing)} ${schemeId.removePrefix("custom_")}"

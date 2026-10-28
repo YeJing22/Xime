@@ -7,8 +7,8 @@ import org.junit.Test
 /**
  * 备份包范围（**只有一个范围：完整备份**）——纯函数表驱动锚定。
  *
- * 包里应该有：设置与用户补丁、方案本体与资源、本机自造词快照。
- * 包里不该有（派生/可由引擎重建/另有合并通道）：`build/`、`*.bin/.gram/.db*`、
+ * 包里应该有：设置与用户补丁、方案本体与资源（含 *.gram 语法模型）、本机自造词快照。
+ * 包里不该有（派生/可由引擎重建/另有合并通道）：`build/`、`*.bin/.db*`、
  * `*.userdb/`（leveldb 用户词典库）、派生的 `default.yaml`、其他设备的 `sync/<其它 id>/`、
  * 以及 librime 镜像进 sync 的配置/词典副本。
  */
@@ -50,6 +50,7 @@ class RimeExportScopeTest {
             "pinyin_simp.schema.yaml",
             "pinyin_simp.dict.yaml",
             "stroke.dict.yaml",
+            "wanxiang.gram", // 语法模型是方案资产，引擎不重建
             "opencc/ts.txt",
             "lua/t9_filter.lua",
             "fonts/MyFont.ttf",
@@ -68,7 +69,6 @@ class RimeExportScopeTest {
             "build/default.table.bin",      // librime 编译产物
             "default.yaml",                 // 由 default.custom.yaml + 内置基座派生
             "pinyin_simp.table.bin",
-            "t9.gram",
             "user.db",
             "user.db-wal",
             "user.db-shm",

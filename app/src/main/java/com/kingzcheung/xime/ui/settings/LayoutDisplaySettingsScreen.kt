@@ -523,8 +523,8 @@ fun LayoutDisplaySettingsContent(
                                 val intValue = pageSizeSlider.toInt()
                                 SettingsPreferences.setPageSize(context, intValue)
                             },
-                            valueRange = 20f..50f,
-                            steps = 29
+                            valueRange = 5f..50f,
+                            steps = 44
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(

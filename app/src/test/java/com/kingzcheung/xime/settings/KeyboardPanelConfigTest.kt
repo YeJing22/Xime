@@ -393,10 +393,47 @@ class KeyboardPanelConfigTest {
         assertEquals(listOf(listOf("delete"), listOf("enter")), layout.right)
     }
 
+    @Test
+    fun `面板 layout 逐字段合并 custom 未写的键保留内置`() {
+        val builtIn = """
+            keyboard:
+              number:
+                type: columns
+                layout:
+                  left:
+                    - ["+", "-"]
+                    - back
+                  rows:
+                    - [1, 2, 3]
+                  right: [delete, enter]
+        """.trimIndent()
+        val custom = """
+            keyboard:
+              number:
+                layout:
+                  right: [enter]
+        """.trimIndent()
+        val merged = KeysConfigHelper.mergePanelLayouts(
+            KeysConfigHelper.parsePanelLayoutPartialYamlText(custom, "number"),
+            KeysConfigHelper.parsePanelLayoutPartialYamlText(builtIn, "number"),
+        )
+        assertNotNull(merged)
+        // columns 模式由合并后是否仍有 left/right 决定（不能因 custom 只写 right 就退化成行模式）
+        assertTrue(merged!!.columns)
+        assertEquals(listOf(listOf("+", "-"), listOf("back")), merged.left)
+        assertEquals(listOf(listOf("1", "2", "3")), merged.rows)
+        assertEquals(listOf(listOf("enter")), merged.right)
+    }
+
+    @Test
+    fun `面板 layout 双层都未配置时返回 null`() {
+        assertNull(KeysConfigHelper.mergePanelLayouts(null, null))
+    }
+
     // ═══ 4. loadConfig 装载链路（内置 + custom 覆盖） ═══
 
     @Test
-    fun `loadConfig 装载面板段：custom 整段覆盖布局与键级覆盖手势并把未覆盖项留给内置`() {
+    fun `loadConfig 装载面板段：custom 字段级覆盖布局与键级覆盖手势并把未覆盖项留给内置`() {
         val builtIn = """
             keyboard:
               number:
@@ -423,12 +460,7 @@ class KeyboardPanelConfigTest {
             keyboard:
               number:
                 layout:
-                  left:
-                    - ["%"]
-                    - back
-                  rows:
-                    - [7, 8, 9]
-                  right: [delete, enter]
+                  right: [enter]
                 keys:
                   enter: { tap: { label: "自定义" } }
         """.trimIndent()
@@ -444,13 +476,13 @@ class KeyboardPanelConfigTest {
 
         KeysConfigHelper.loadConfig(context)
 
-        // 布局：custom 写了 number.layout → 整段覆盖（内置的 left/right 不再生效）
+        // 布局：custom 只写 right → 其余字段保留内置，且仍为三列模式
         val number = KeysConfigHelper.getPanelLayout("number")
         assertNotNull("面板段未装载进缓存", number)
         assertTrue(number!!.columns)
-        assertEquals(listOf(listOf("%"), listOf("back")), number.left)
-        assertEquals(listOf(listOf("7", "8", "9")), number.rows)
-        assertEquals(listOf(listOf("delete"), listOf("enter")), number.right)
+        assertEquals(listOf(listOf("+", "-"), listOf("back")), number.left)
+        assertEquals(listOf(listOf("1", "2", "3")), number.rows)
+        assertEquals(listOf(listOf("enter")), number.right)
         // 手势：custom 覆盖同 id 键（整体替换，与主键盘 custom 同语义）
         assertEquals(
             "自定义",

@@ -185,8 +185,7 @@ object KeyboardThemes {
         if (entry.dynamicColor) {
             return DynamicThemes.create(context, id, entry.name.ifEmpty { id })
         }
-        val primary = if (entry.primaryColor != 0L) entry.primaryColor
-        else extractImageSeedColor(context, entry)
+        val primary = entry.primaryColor ?: extractImageSeedColor(context, entry)
         val cfgColor = longToColor(primary)
         val lightened = lightenColor(cfgColor)
         val veryLight = lightenColor(cfgColor, 0.8f)
@@ -404,8 +403,7 @@ object KeyboardThemes {
             return DynamicThemes.create(context, scheme.id, entry.name.ifEmpty { scheme.name })
                 ?: scheme
         }
-        val primary = if (entry.primaryColor != 0L) entry.primaryColor
-        else extractImageSeedColor(context, entry)
+        val primary = entry.primaryColor ?: extractImageSeedColor(context, entry)
         val cfgColor = longToColor(primary)
         val lightened = lightenColor(cfgColor)
         val global = KeysConfigHelper.getKeyboardColors()

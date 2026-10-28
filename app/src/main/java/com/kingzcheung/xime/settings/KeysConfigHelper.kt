@@ -48,8 +48,9 @@ enum class ButtonLayout(val value: String) {
     COMPACT("compact");
 
     companion object {
-        fun fromValue(value: String): ButtonLayout =
-            entries.firstOrNull { it.value == value } ?: STANDARD
+        /** 未知/空白取值返回 null（视为未配置，回退下一层），避免非法值把内置值压成 standard。 */
+        fun fromValueOrNull(value: String): ButtonLayout? =
+            entries.firstOrNull { it.value == value.trim() }
     }
 }
 
@@ -447,8 +448,9 @@ data class BackgroundConfig(
 @Serializable
 data class ColorSchemeEntry(
     val name: String = "",
+    /** 主色；null 表示未配置（可用 0x000000 显式指定纯黑，勿改用哨兵值判定）。 */
     @SerialName("primary_color")
-    val primaryColor: Long = 0,
+    val primaryColor: Long? = null,
     @SerialName("keyboard_bg_color")
     val keyboardBgColor: Long? = null,
     @SerialName("key_bg_color")
@@ -484,20 +486,24 @@ data class ColorSchemeEntry(
     val dynamicColor: Boolean = false,
 )
 
+/**
+ * 配置元信息。字段全部可空：null = 该层未配置，由 [KeysConfigHelper] 逐字段回退到下一层，
+ * 因此 custom 只写 `modified_time` 时不会连带清掉内置的 `app_version` 校验条件。
+ */
 @Serializable
 data class MetadataConfig(
     @SerialName("app_name")
-    val appName: String = "Xime",
+    val appName: String? = null,
     @SerialName("app_version")
-    val appVersion: String = "",
+    val appVersion: String? = null,
     @SerialName("platform")
-    val platform: String = "android",
+    val platform: String? = null,
     @SerialName("config_version")
-    val configVersion: Int = 1,
+    val configVersion: Int? = null,
     @SerialName("generator")
-    val generator: String = "",
+    val generator: String? = null,
     @SerialName("modified_time")
-    val modifiedTime: String = "",
+    val modifiedTime: String? = null,
 )
 
 @Serializable
@@ -634,18 +640,19 @@ internal data class KeyboardT9LayoutPartial(
     val right: List<String>? = null,
 )
 
+/** 面板段（number / common_symbols）layout 的未合并字段：null = 该层未写该键。 */
+internal data class PanelLayoutPartial(
+    val rows: List<List<String>>? = null,
+    val left: List<List<String>>? = null,
+    val right: List<List<String>>? = null,
+)
+
 internal data class KeyboardStrokePartial(
     val sideSymbols: List<String>? = null,
 )
 
 /** 字段级一路 fallback：custom → builtIn → 代码默认值。 */
 internal inline fun <T> tiered(custom: T?, builtIn: T?, default: T): T = custom ?: builtIn ?: default
-
-/** 字符串字段的 fallback：空白视为未配置，路由到下一级。 */
-internal fun tieredText(custom: String?, builtIn: String?, default: String): String =
-    custom?.takeIf { it.isNotBlank() }
-        ?: builtIn?.takeIf { it.isNotBlank() }
-        ?: default
 
 /**
  * kaml 0.104 的 [YamlMap.get] 是 reified 泛型取值，值类型与期望类型不符时抛
@@ -685,11 +692,22 @@ data class XimeConfig(
     val metadata: MetadataConfig? = null,
 )
 
+/**
+ * 方案市场镜像基址。`baseUrls` 可空：null = 该层未配置，逐层回退；
+ * 列表本身仍是整段替换（写 `[]` 视为未配置，回退到内置基址）。
+ */
 @Serializable
 data class XimeIndexConfig(
     @SerialName("base_urls")
-    val baseUrls: List<String> = listOf("https://index.ximei.me/")
-)
+    val baseUrls: List<String>? = null,
+) {
+    /** 取值后的镜像基址：未配置或写空回退内置列表，调用方无需再判空。 */
+    val resolvedBaseUrls: List<String>
+        get() = baseUrls?.takeIf { it.isNotEmpty() } ?: DEFAULT_INDEX_BASE_URLS
+}
+
+/** 方案市场镜像基址兜底值（xime.yaml 与 custom 层均未配置 base_urls 时使用）。 */
+internal val DEFAULT_INDEX_BASE_URLS: List<String> = listOf("https://index.ximei.me/")
 
 data class KeysConfig(
     val swipeUp: Map<String, String> = emptyMap(),
@@ -830,21 +848,24 @@ object KeysConfigHelper {
     fun getButtonLayout(isAsciiMode: Boolean): ButtonLayout =
         resolveButtonLayout(isAsciiMode, _activeMergedSection, _buttonLayoutBySection, _buttonLayoutZh, _buttonLayoutEn)
 
-    // 键盘行布局默认值
+    // 键盘行布局默认值：3 字母行（第三行两端功能键与控制行分离，与 xime.yaml 同行结构），
+    // 控制行由 normalizeQwertyRows 补齐。第三行必须带 shift/delete：
+    // 首帧早于配置装载时就是靠这份兜底布局，缺键会表现为「shift/退格不显示」。
     private val DEFAULT_ZH_ROWS: List<List<String>> = listOf(
         listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
         listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
-        listOf("z", "x", "c", "v", "b", "n", "m"),
+        listOf("shift", "z", "x", "c", "v", "b", "n", "m", "delete"),
     )
     private val DEFAULT_EN_ROWS: List<List<String>> = listOf(
         listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
         listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
-        listOf("z", "x", "c", "v", "b", "n", "m"),
+        listOf("shift", "z", "x", "c", "v", "b", "n", "m", "delete"),
     )
 
-    // 键盘行布局缓存（中文 / 英文）
-    private var _zhLayout: KeyboardRowsLayout = KeyboardRowsLayout(DEFAULT_ZH_ROWS.map { KeyboardRow(it) })
-    private var _enLayout: KeyboardRowsLayout = KeyboardRowsLayout(DEFAULT_EN_ROWS.map { KeyboardRow(it) })
+    // 键盘行布局缓存（中文 / 英文）：用 Compose 状态，配置晚于首帧就绪时自动触发重组
+    // （普通字段做不到——首帧画完兜底布局后没人通知重画，直到按一次键才更新）
+    private val _zhLayout = mutableStateOf(KeyboardRowsLayout(DEFAULT_ZH_ROWS.map { KeyboardRow(it) }))
+    private val _enLayout = mutableStateOf(KeyboardRowsLayout(DEFAULT_EN_ROWS.map { KeyboardRow(it) }))
 
     // 标准 26 键的基线缓存（合并键布局切换退出时恢复）
     private var _zhLayoutBase: KeyboardRowsLayout = KeyboardRowsLayout(DEFAULT_ZH_ROWS.map { KeyboardRow(it) })
@@ -960,11 +981,11 @@ object KeysConfigHelper {
         if (merged == _activeMergedSection && t9 == _activeT9Section && stroke == _activeStrokeSection) return
         _activeMergedSection = merged
         if (merged != null) {
-            _zhLayout = _mergedLayouts[merged]
+            _zhLayout.value = _mergedLayouts[merged]
                 ?: KeyboardRowsLayout(DEFAULT_ZH_ROWS.map { KeyboardRow(it) })
             _keyGestureConfig.value = _mergedGestureConfigs[merged] ?: emptyMap()
         } else {
-            _zhLayout = _zhLayoutBase
+            _zhLayout.value = _zhLayoutBase
             _keyGestureConfig.value = _keyGestureConfigZhBase
         }
         // 代码布局按段切换：type 声明的任意段名可并存多份九键/笔画配置，激活哪个段就换入哪份
@@ -984,9 +1005,10 @@ object KeysConfigHelper {
      * 获取键盘行布局：行声明（含行级 align/width）+ 参考列数 + 键盘级对齐策略。
      * 每个 [KeyboardRow] 的 keys 为一行的按键 ID 列表，索引 0 = 第一行；
      * 合并键布局中合并键的 ID 为组内字母拼接（如 "qw"），渲染层按 ID 长度分配键宽。
+     * 读取的是 Compose 状态：配置就绪后调用方所在组合作用域会自动重组。
      */
     fun getRowsLayout(isAsciiMode: Boolean): KeyboardRowsLayout =
-        if (isAsciiMode) _enLayout else _zhLayout
+        if (isAsciiMode) _enLayout.value else _zhLayout.value
     
     /** 配置版本号，每次 loadConfig 时递增，用于 Compose 感知配置变更。 */
     private val _configVersion = MutableStateFlow(0)
@@ -1078,7 +1100,7 @@ object KeysConfigHelper {
             // 键盘行布局
             val parsedRows = parseKeyboardLayoutFromAssets(context)
             _zhLayoutBase = parsedRows.zhLayout
-            _enLayout = parsedRows.enLayout
+            _enLayout.value = parsedRows.enLayout
             // 合并键绑定（keyboard.<section>.schemas，custom 覆盖 builtIn 同名方案的绑定）
             // 内置/自定义两份 YAML 文本只读一次，后面几处复用（面板段装载也用同一份）
             val builtInText = readAssetText(context, XIME_CONFIG_FILE)
@@ -1154,18 +1176,16 @@ object KeysConfigHelper {
             // setActiveKeyboardSchema 覆盖。不能只依赖 setActiveKeyboardSchema：
             // 非合并键方案 section 为 null，与刚重置的 _activeMergedSection(null) 相等
             // 会被提前 return，导致 xime.custom.yaml 的行布局/手势不生效（重新部署也无效）。
-            _zhLayout = _zhLayoutBase
+            _zhLayout.value = _zhLayoutBase
             _keyGestureConfig.value = _keyGestureConfigZhBase
             // 重新应用当前方案对应的合并键布局（上面重置了基线缓存）
             _activeMergedSection = null
             setActiveKeyboardSchema(_activeSchemaId)
             // 校验配置版本兼容性
             val merged = try { loadMergedConfig(context) } catch (_: YamlException) { null }
-            val meta = merged?.metadata
-            if (meta != null && meta.appVersion.isNotBlank()) {
-                if (!checkVersionConstraint(BuildConfig.VERSION_NAME, meta.appVersion)) {
-                    Log.w(TAG, "Config requires app_version ${meta.appVersion}, current is ${BuildConfig.VERSION_NAME}")
-                }
+            val constraint = merged?.metadata?.appVersion?.takeIf { it.isNotBlank() }
+            if (constraint != null && !checkVersionConstraint(BuildConfig.VERSION_NAME, constraint)) {
+                Log.w(TAG, "Config requires app_version $constraint, current is ${BuildConfig.VERSION_NAME}")
             }
             _configVersion.value++
         } catch (e: Exception) {
@@ -1596,14 +1616,22 @@ object KeysConfigHelper {
         return mergeFontConfigs(custom, builtIn)
     }
 
-    /** 字段级一路 fallback 合并字体配置：custom → builtIn → 代码默认值（空字符串视为未配置）。 */
-    internal fun mergeFontConfigs(custom: KeyboardFontPartial?, builtIn: KeyboardFontPartial?): KeyboardFontConfig =
-        KeyboardFontConfig(
-            keyFont = tieredText(custom?.keyFont, builtIn?.keyFont, ""),
-            keyLabelFont = tieredText(custom?.keyLabelFont, builtIn?.keyLabelFont, ""),
-            candidateFont = tieredText(custom?.candidateFont, builtIn?.candidateFont, ""),
-            commentFont = tieredText(custom?.commentFont, builtIn?.commentFont, ""),
+    /**
+     * 字段级一路 fallback 合并字体配置：custom → builtIn → 代码默认值。
+     *
+     * 与其它段不同，字体字段的**空串是有意义的显式取值**（= 改用系统默认字体），
+     * 不能被「空白视为未配置」的规则折叠掉，否则内置字体无法在 custom 里清空。
+     * builtIn 层的空白仍视为脏数据丢弃，避免内置配置写脏后锁死该字段。
+     */
+    internal fun mergeFontConfigs(custom: KeyboardFontPartial?, builtIn: KeyboardFontPartial?): KeyboardFontConfig {
+        fun tier(c: String?, b: String?): String = c ?: b?.takeIf { it.isNotBlank() } ?: ""
+        return KeyboardFontConfig(
+            keyFont = tier(custom?.keyFont, builtIn?.keyFont),
+            keyLabelFont = tier(custom?.keyLabelFont, builtIn?.keyLabelFont),
+            candidateFont = tier(custom?.candidateFont, builtIn?.candidateFont),
+            commentFont = tier(custom?.commentFont, builtIn?.commentFont),
         )
+    }
 
     /** 从 YAML 文本中提取 keyboard.fonts 字体配置段（仅显式字段非 null）。 */
     internal fun parseKeyboardFontsYamlText(yamlText: String): KeyboardFontPartial? {
@@ -1645,7 +1673,7 @@ object KeysConfigHelper {
         return parseButtonLayoutTexts(defaultText, customText, isTabletDevice(context))
     }
 
-    /** 纯文本合并解析按键布局：custom 段级覆盖 default，中英文独立，缺省回退 STANDARD。 */
+    /** 纯文本合并解析按键布局：custom 覆盖 default（单标量叶级，非法值视为未配置），中英文独立，缺省回退 STANDARD。 */
     internal fun parseButtonLayoutTexts(
         defaultText: String,
         customText: String?,
@@ -1795,29 +1823,51 @@ object KeysConfigHelper {
      * layout 有 left/right 节点 → columns 模式（数字键盘三列，列项支持键柱子数组）；
      * 否则 rows → rows 模式（常用符号，行列表）。
      */
-    internal fun parsePanelLayoutYamlText(yamlText: String, section: String): PanelLayoutConfig? {
+    internal fun parsePanelLayoutYamlText(yamlText: String, section: String): PanelLayoutConfig? =
+        parsePanelLayoutPartialYamlText(yamlText, section)?.let { panelPartialToConfig(it) }
+
+    /**
+     * 解析 keyboard.<section>.layout 的**未合并**字段：null 字段 = 该层没写这个键。
+     * 面板段要按字段合并（只写 right 时不能丢掉内置的 rows/left），所以需要保留「没写」与「写了空」的区别。
+     */
+    internal fun parsePanelLayoutPartialYamlText(yamlText: String, section: String): PanelLayoutPartial? {
         return try {
             val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
             val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
             val sectionNode = keyboardNode.opt<YamlMap>(section) ?: return null
             val layoutNode = sectionNode.opt<YamlMap>("layout") ?: return null
-            val rowsNode = layoutNode.opt<YamlList>("rows")
-            val leftNode = layoutNode.opt<YamlList>("left")
-            val rightNode = layoutNode.opt<YamlList>("right")
-            if (leftNode != null || rightNode != null) {
-                PanelLayoutConfig(
-                    columns = true,
-                    rows = rowsNode?.let { parseRowsNode(it).map { row -> row.keys } } ?: emptyList(),
-                    left = leftNode?.let { parsePanelColumnItems(it) } ?: emptyList(),
-                    right = rightNode?.let { parsePanelColumnItems(it) } ?: emptyList(),
-                )
-            } else {
-                PanelLayoutConfig(columns = false, rows = rowsNode?.let { parseRowsNode(it).map { row -> row.keys } } ?: emptyList())
-            }
+            PanelLayoutPartial(
+                rows = layoutNode.opt<YamlList>("rows")?.let { parseRowsNode(it).map { row -> row.keys } },
+                left = layoutNode.opt<YamlList>("left")?.let { parsePanelColumnItems(it) },
+                right = layoutNode.opt<YamlList>("right")?.let { parsePanelColumnItems(it) },
+            )
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse panel layout config", e)
             null
         }
+    }
+
+    /** partial → 配置形态：columns 模式由 left/right 是否出现决定，缺省字段落为空列表。 */
+    private fun panelPartialToConfig(partial: PanelLayoutPartial): PanelLayoutConfig = PanelLayoutConfig(
+        columns = partial.left != null || partial.right != null,
+        rows = partial.rows ?: emptyList(),
+        left = partial.left ?: emptyList(),
+        right = partial.right ?: emptyList(),
+    )
+
+    /** 面板 layout 逐字段合并：custom 显式写出的字段覆盖 builtIn，其余保留内置。 */
+    internal fun mergePanelLayouts(
+        custom: PanelLayoutPartial?,
+        builtIn: PanelLayoutPartial?,
+    ): PanelLayoutConfig? {
+        if (custom == null && builtIn == null) return null
+        return panelPartialToConfig(
+            PanelLayoutPartial(
+                rows = custom?.rows ?: builtIn?.rows,
+                left = custom?.left ?: builtIn?.left,
+                right = custom?.right ?: builtIn?.right,
+            )
+        )
     }
 
     /** 列节点 → 列项列表：子数组 = 纵向键柱（如加减乘除四键一柱），标量 = 单键。 */
@@ -1831,18 +1881,23 @@ object KeysConfigHelper {
             }
         }
 
-    /** 合并解析面板段布局（custom 整段覆盖 built-in；平板变体段缺失时回退基础段）。 */
+    /**
+     * 合并解析面板段布局：逐字段 custom → builtIn（同为 resolved 段）。
+     * 平板变体段（`<section>_tablet`）整段缺失时才回退基础段——变体段是另一种键面模式
+     * （如 number 为三列、number_tablet 为逐行），跨段按字段混拼会拼出畸形键盘。
+     */
     private fun parsePanelLayoutSection(
         defaultText: String?,
         customText: String?,
         baseSection: String,
         resolvedSection: String,
     ): PanelLayoutConfig? {
-        customText?.let { parsePanelLayoutYamlText(it, resolvedSection) }?.let { return it }
-        defaultText?.let { parsePanelLayoutYamlText(it, resolvedSection) }?.let { return it }
-        return if (resolvedSection != baseSection) {
-            defaultText?.let { parsePanelLayoutYamlText(it, baseSection) }
-        } else null
+        fun builtInOf(section: String): PanelLayoutPartial? =
+            defaultText?.let { parsePanelLayoutPartialYamlText(it, section) }
+        val builtIn = builtInOf(resolvedSection)
+            ?: if (resolvedSection != baseSection) builtInOf(baseSection) else null
+        val custom = customText?.let { parsePanelLayoutPartialYamlText(it, resolvedSection) }
+        return mergePanelLayouts(custom, builtIn)
     }
 
     /** 合并解析面板段手势（default + custom 键级覆盖；平板变体段缺失时回退基础段）。 */
@@ -2022,7 +2077,7 @@ object KeysConfigHelper {
             val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
             val sectionNode = keyboardNode.opt<YamlMap>(section) ?: return null
             val layoutNode = sectionNode.opt<YamlScalar>("button_layout") ?: return null
-            ButtonLayout.fromValue(layoutNode.content)
+            ButtonLayout.fromValueOrNull(layoutNode.content)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse button layout config", e)
             null
@@ -2101,12 +2156,33 @@ object KeysConfigHelper {
         if (custom == null) return default ?: XimeConfig()
         if (default == null) return custom
         return XimeConfig(
-            ximeIndex = custom.ximeIndex ?: default.ximeIndex,
+            ximeIndex = mergeXimeIndex(default.ximeIndex, custom.ximeIndex),
             // 合并而非替换：custom 覆盖同名字题，其余保留内置主题，
             // 这样用户只需在 xime.custom.yaml 中添加自定义背景主题而不会丢失内置主题。
             colorSchemes = mergeColorSchemes(default.colorSchemes, custom.colorSchemes),
             style = mergeStyle(default.style, custom.style),
-            metadata = custom.metadata ?: default.metadata,
+            metadata = mergeMetadata(default.metadata, custom.metadata),
+        )
+    }
+
+    /** xime_index 逐字段合并：custom 只覆盖显式写出的 base_urls（列表整段替换，`[]` 视为未配置）。 */
+    private fun mergeXimeIndex(default: XimeIndexConfig?, custom: XimeIndexConfig?): XimeIndexConfig? {
+        if (custom == null) return default
+        if (default == null) return custom
+        return XimeIndexConfig(baseUrls = custom.baseUrls?.takeIf { it.isNotEmpty() } ?: default.baseUrls)
+    }
+
+    /** metadata 逐字段合并：custom 只覆盖显式写出的字段。 */
+    private fun mergeMetadata(default: MetadataConfig?, custom: MetadataConfig?): MetadataConfig? {
+        if (custom == null) return default
+        if (default == null) return custom
+        return MetadataConfig(
+            appName = custom.appName ?: default.appName,
+            appVersion = custom.appVersion ?: default.appVersion,
+            platform = custom.platform ?: default.platform,
+            configVersion = custom.configVersion ?: default.configVersion,
+            generator = custom.generator ?: default.generator,
+            modifiedTime = custom.modifiedTime ?: default.modifiedTime,
         )
     }
 
@@ -2136,6 +2212,10 @@ object KeysConfigHelper {
     /** 仅供单元测试验证 style 合并逻辑。 */
     internal fun mergeStyleForTest(default: StyleConfig?, custom: StyleConfig?): StyleConfig? =
         mergeStyle(default, custom)
+
+    /** 仅供单元测试验证整份配置（xime_index / metadata）合并逻辑。 */
+    internal fun mergeConfigForTest(default: XimeConfig?, custom: XimeConfig?): XimeConfig =
+        mergeConfig(default, custom)
 
     /** 仅供单元测试验证 color_schemes 合并逻辑。 */
     internal fun mergeColorSchemesForTest(
@@ -2167,7 +2247,7 @@ object KeysConfigHelper {
             }
             result[id] = base.copy(
                 name = customEntry.name.ifEmpty { base.name },
-                primaryColor = customEntry.primaryColor.takeIf { it != 0L } ?: base.primaryColor,
+                primaryColor = customEntry.primaryColor ?: base.primaryColor,
                 keyboardBgColor = customEntry.keyboardBgColor ?: base.keyboardBgColor,
                 keyBgColor = customEntry.keyBgColor ?: base.keyBgColor,
                 keyBgColorDark = customEntry.keyBgColorDark ?: base.keyBgColorDark,
@@ -2220,10 +2300,9 @@ object KeysConfigHelper {
         readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
             ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
 
-    fun loadXimeIndexConfig(context: Context): XimeIndexConfig {
-        val merged = loadMergedConfig(context)
-        return merged.ximeIndex ?: XimeIndexConfig()
-    }
+    /** 读取合并后的方案市场镜像配置；`base_urls` 缺省时回退内置基址（对外保证非空列表）。 */
+    fun loadXimeIndexConfig(context: Context): XimeIndexConfig =
+        XimeIndexConfig(baseUrls = loadMergedConfig(context).ximeIndex?.resolvedBaseUrls ?: DEFAULT_INDEX_BASE_URLS)
 
     /** 从 xime.yaml 加载 color_schemes 配置。 */
     fun loadColorSchemes(context: Context): Map<String, ColorSchemeEntry> {
