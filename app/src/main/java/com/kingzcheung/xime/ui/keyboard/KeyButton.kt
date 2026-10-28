@@ -92,10 +92,14 @@ val LocalKeyCornerRadius = staticCompositionLocalOf { 8.dp }
  *
  * 官方原为 1.5。1.5 的问题：全键盘字母键（键高 > 84dp 时）直接顶格放大到 24sp，
  * 而同屏的功能键走 [KeyButton]（不做自适应）保持 16sp，"同一把键盘两种字号"非常明显；
- * 数字键盘右列跨 4 行的 enter 同样顶格。收敛到 1.15 后，大键约 18sp，与 16sp 的功能键
- * 只差一档，视觉上属于"同一族"，仍保留"大键字稍大"的原意。
+ * 数字键盘右列跨 4 行的 enter 同样顶格。
+ *
+ * **现取 1.0 = 彻底关闭自适应放大**：所有键按各自字号原样渲染，同屏不再有字差。
+ * 1.0 时 [adaptiveKeyContentScale] 恒返回 1f，下游的 `× contentScale` 全部变成空操作，
+ * 滑动提示（[adaptiveHintScale]）也回到基准尺寸。
+ * 想恢复"大键字稍大"只改这一个数即可（1.15 约 18sp、1.3 约 21sp）。
  */
-internal const val MAX_ADAPTIVE_KEY_CONTENT_SCALE = 1.15f
+internal const val MAX_ADAPTIVE_KEY_CONTENT_SCALE = 1f
 
 /** 按键内容随按键实际高度放大；手机尺寸下保持原字号。 */
 internal fun adaptiveKeyContentScale(
