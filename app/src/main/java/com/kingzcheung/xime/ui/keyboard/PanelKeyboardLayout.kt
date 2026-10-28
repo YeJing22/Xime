@@ -133,7 +133,7 @@ fun PanelKeyboardLayout(
 
     val layout = KeysConfigHelper.getPanelLayout(section)
     // 值键字号：数字键盘 = KeyButton 默认（与旧版 keyFontSize Unspecified 一致）；常用符号 = 20sp
-    val valueFontSize: TextUnit = if (section == "number") 22.sp else 20.sp
+    val valueFontSize: TextUnit = if (section == "number") TextUnit.Unspecified else 20.sp
     val env = QwertyRowEnv(
         isAsciiMode = isAsciiMode,
         isShifted = false,
