@@ -87,13 +87,23 @@ val LocalHintExtraScale = staticCompositionLocalOf { 1f }
  *  独立于 shadow.shape_radius，为统一配置化而设。 */
 val LocalKeyCornerRadius = staticCompositionLocalOf { 8.dp }
 
+/**
+ * 按键内容随按键实际高度放大的**上限**。
+ *
+ * 官方原为 1.5。1.5 的问题：全键盘字母键（键高 > 84dp 时）直接顶格放大到 24sp，
+ * 而同屏的功能键走 [KeyButton]（不做自适应）保持 16sp，"同一把键盘两种字号"非常明显；
+ * 数字键盘右列跨 4 行的 enter 同样顶格。收敛到 1.15 后，大键约 18sp，与 16sp 的功能键
+ * 只差一档，视觉上属于"同一族"，仍保留"大键字稍大"的原意。
+ */
+internal const val MAX_ADAPTIVE_KEY_CONTENT_SCALE = 1.15f
+
 /** 按键内容随按键实际高度放大；手机尺寸下保持原字号。 */
 internal fun adaptiveKeyContentScale(
     keyHeightDp: Float,
     referenceHeightDp: Float = 56f,
 ): Float {
     if (!keyHeightDp.isFinite() || keyHeightDp <= 0f) return 1f
-    return (keyHeightDp / referenceHeightDp).coerceIn(1f, 1.5f)
+    return (keyHeightDp / referenceHeightDp).coerceIn(1f, MAX_ADAPTIVE_KEY_CONTENT_SCALE)
 }
 
 /** 滑动提示在大按键上比主字符增长稍快，避免视觉上仍然偏小。 */
@@ -541,6 +551,14 @@ fun SwipeableKeyButton(
     a11yDescription: String? = null,
     /** TalkBack 状态播报 */
     a11yState: String? = null,
+    /**
+     * 是否按按键实际高度自适应放大字号（见 [adaptiveKeyContentScale]）。
+     *
+     * 跨行键（数字键盘右列的 enter、全键盘竖排 delete 等）高度是普通键的 2~4 倍，
+     * 自适应会让其字号顶格，与同屏其他键严重不一致 —— 这类键传 false，字号按
+     * [fontSize]/默认值固定。普通键保持 true。
+     */
+    adaptiveContentScale: Boolean = true,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var dragOffsetY by remember { mutableStateOf(0f) }
@@ -925,7 +943,8 @@ fun SwipeableKeyButton(
             .keySemantics(a11yDescription, a11yState) { currentOnClick() },
         contentAlignment = if (layoutMode == ButtonLayout.COMPACT) Alignment.TopStart else Alignment.Center
     ) {
-        val contentScale = adaptiveKeyContentScale(maxHeight.value)
+        // 跨行键（enter/竖排 delete）关掉自适应，避免键高带来的"顶格大字"
+        val contentScale = if (adaptiveContentScale) adaptiveKeyContentScale(maxHeight.value) else 1f
         val hintScale = adaptiveHintScale(contentScale)
         val hintOffset = adaptiveHintOffsetDp(contentScale).dp
         val hintExtraScale = LocalHintExtraScale.current
@@ -1861,6 +1880,8 @@ fun SwipeableKeyButtonLandscape(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
+    /** 是否按按键实际高度自适应放大字号（跨行键传 false），语义同 [SwipeableKeyButton]。 */
+    adaptiveContentScale: Boolean = true,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var dragOffsetY by remember { mutableStateOf(0f) }
@@ -2210,10 +2231,12 @@ fun SwipeableKeyButtonLandscape(
             .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor),
         contentAlignment = Alignment.TopStart
     ) {
-        val contentScale = adaptiveKeyContentScale(
-            keyHeightDp = maxHeight.value,
-            referenceHeightDp = 44f,
-        )
+        val contentScale = if (adaptiveContentScale) {
+            adaptiveKeyContentScale(
+                keyHeightDp = maxHeight.value,
+                referenceHeightDp = 44f,
+            )
+        } else 1f
         val hintScale = adaptiveHintScale(contentScale)
         val effectiveFontSize = (
             if (fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) fontSize.value else 14f

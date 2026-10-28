@@ -1255,7 +1255,11 @@ private fun EnterCell(env: QwertyRowEnv, modifier: Modifier, fontSize: TextUnit?
         shadowEnabled = env.shadowEnabled,
         shadowElevation = env.shadowElevation,
         shadowShapeRadius = env.shadowShapeRadius,
-        fontSize = fontSize ?: androidx.compose.ui.unit.TextUnit.Unspecified,
+        // 回车是跨行键（数字键盘右列跨 4 行、全键盘竖排跨 3 行）：关掉"按键越高字越大"，
+        // 否则键高直接顶到缩放上限，出现"一把键盘里 enter 特别大"。
+        // 未显式给字号时退回 16sp，与同屏数字键/功能键同一档。
+        adaptiveContentScale = false,
+        fontSize = fontSize ?: 16.sp,
     )
 }
 
