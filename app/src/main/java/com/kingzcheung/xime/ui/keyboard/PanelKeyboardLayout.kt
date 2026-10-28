@@ -384,14 +384,41 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
         ) {
             val pillarItems = layout.left.dropLast(1)
             val bottomKey = layout.left.lastOrNull()?.singleOrNull()
-            // 左侧符号栏：优先 keyboard.number.side_symbols（custom → builtIn → 默认值），
-            // 未配置时回退到 layout.left 键柱列表；≤4 均分固定高度，>4 固定单格高度（父高 25%）可上下滑动。
+            // 左侧键柱：**只有用户显式配置了 keyboard.number.side_symbols** 才启用我方符号栏
+            // （≤4 个固定高度均分、>4 个固定单格高度可滑动）；没配置时完全走官方原样，
+            // 即把 layout.left 的键柱按官方 OperatorPillarKey 呈现，行为与官方逐字节一致。
             val configVersion by KeysConfigHelper.configVersion.collectAsState()
-            val sideSymbols = remember(configVersion) {
-                KeysConfigHelper.getNumberSideSymbols().takeIf { it.isNotEmpty() } ?: pillarItems.flatten()
-            }
-            val pillarSymbols = sideSymbols
-            if (pillarSymbols.size <= 4) {
+            val sideSymbols = remember(configVersion) { KeysConfigHelper.getNumberSideSymbols() }
+            if (sideSymbols.isEmpty()) {
+                // ── 官方原样（未配置 side_symbols）──
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(3f)
+                        .padding(LocalKeyVisualPadding.current),
+                ) {
+                    pillarItems.forEachIndexed { itemIdx, item ->
+                        Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            item.forEachIndexed { keyIdx, keyId ->
+                                OperatorPillarKey(
+                                    text = keyId,
+                                    onClick = { env.onKeyPress(keyId) },
+                                    backgroundColor = env.keyBackgroundColor,
+                                    textColor = env.keyTextColor,
+                                    modifier = Modifier.weight(1f),
+                                    onPress = { env.onKeyPressDown?.invoke(keyId) },
+                                    isFirst = itemIdx == 0 && keyIdx == 0,
+                                    isLast = itemIdx == pillarItems.lastIndex && keyIdx == item.lastIndex,
+                                    fontSize = 18.sp,
+                                    shadowEnabled = env.shadowEnabled,
+                                    shadowElevation = env.shadowElevation,
+                                    shadowShapeRadius = env.shadowShapeRadius,
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (sideSymbols.size <= 4) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -403,7 +430,7 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
                         ),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    pillarSymbols.forEach { sym ->
+                    sideSymbols.forEach { sym ->
                         PanelSymbolKey(
                             text = sym,
                             onClick = { env.onKeyPress(sym) },
@@ -411,8 +438,8 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
                             textColor = env.keyTextColor,
                             modifier = Modifier.weight(1f),
                             onPress = { env.onKeyPressDown?.invoke(sym) },
-                            isFirst = sym == pillarSymbols.first(),
-                            isLast = sym == pillarSymbols.last(),
+                            isFirst = sym == sideSymbols.first(),
+                            isLast = sym == sideSymbols.last(),
                             fontSize = 18.sp,
                             shadowEnabled = env.shadowEnabled,
                             shadowElevation = env.shadowElevation,
@@ -432,7 +459,7 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
                         ),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    itemsIndexed(pillarSymbols) { _, sym ->
+                    itemsIndexed(sideSymbols) { _, sym ->
                         PanelSymbolKey(
                             text = sym,
                             onClick = { env.onKeyPress(sym) },
@@ -442,8 +469,8 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
                                 .fillMaxWidth()
                                 .fillParentMaxHeight(0.25f),
                             onPress = { env.onKeyPressDown?.invoke(sym) },
-                            isFirst = sym == pillarSymbols.first(),
-                            isLast = sym == pillarSymbols.last(),
+                            isFirst = sym == sideSymbols.first(),
+                            isLast = sym == sideSymbols.last(),
                             fontSize = 18.sp,
                             shadowEnabled = env.shadowEnabled,
                             shadowElevation = env.shadowElevation,

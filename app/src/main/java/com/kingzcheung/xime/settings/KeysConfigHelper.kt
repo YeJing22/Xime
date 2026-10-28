@@ -769,7 +769,9 @@ object KeysConfigHelper {
         return if (hasTablet) tabletSection else section
     }    /** 笔画键盘左侧符号列内置默认（与历史硬编码一致）。 */
     val DEFAULT_STROKE_SIDE_SYMBOLS: List<String> = listOf("。", "？", "！", "~")
-    val DEFAULT_NUMBER_SIDE_SYMBOLS: List<String> = listOf(":", "-", "·", "#")
+    // 数字键盘左侧符号栏**无内置默认**：为空表示"用户没配"，渲染层据此走官方原样的
+    // layout.left 键柱。只有 xime.custom.yaml 写了 keyboard.number.side_symbols 才启用我方符号栏。
+    val DEFAULT_NUMBER_SIDE_SYMBOLS: List<String> = emptyList()
     
     private val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
     
