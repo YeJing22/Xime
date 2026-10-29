@@ -350,7 +350,43 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
             var needsUIUpdate = false
             var pendingResult: com.kingzcheung.xime.rime.RimeProcessResult? = null
             var committedText: String? = null
-            
+
+            // 以词定字（万象 super_processor/select_character）：必须在通用分支之前，
+            // 否则【】会落进下面「非 ASCII 直接上屏」那条路。判定见 resolveSelectCharacterKey。
+            val selectCharKey = resolveSelectCharacterKey(
+                key = key,
+                schemaId = state.currentSchemaId,
+                composing = candState.isComposing,
+                asciiMode = state.isAsciiMode,
+            )
+            if (selectCharKey != null) {
+                val result = service.rimeEngine.processKeyAndGetResult(selectCharKey.code, 0)
+                if (result.processed) {
+                    if (result.committedText.isNotEmpty()) {
+                        withContext(Dispatchers.Main) { service.commitText(result.committedText) }
+                    }
+                    // 方案侧取字后 ctx:clear() 已结束组合态，但 T9 的数字/分段/高亮计数
+                    // 都还在 Kotlin 侧：不复位的话下一键会把旧编码重新建成 composition。
+                    if (isT9Schema(state.currentSchemaId)) {
+                        withContext(Dispatchers.Main) {
+                            service.t9PartialSegments.clear()
+                            service.editingCaretPos = -1
+                            service.editingCaretInput = ""
+                            service.uiState.value = service.uiState.value.copy(
+                                t9ResetSignal = service.uiState.value.t9ResetSignal + 1,
+                                t9RightCandidateSelectedCount = 0,
+                                t9SelectedCandidatePinyin = ""
+                            )
+                        }
+                    }
+                } else {
+                    // 方案没认这个键（没开以词定字 / 候选只有单字）：保持原语义，整字上屏
+                    withContext(Dispatchers.Main) { service.commitText(key) }
+                }
+                sendTransformedResult(result)
+                return@launch
+            }
+
             when (key) {
                 "clear_composition" -> {
                     // 只清输入态（预编辑/候选/联想/partial 累积/计算器/左栏），不动已上屏文本。
@@ -1804,6 +1840,67 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
             "SortCandidate: action=$action text='$text' index=$index global=$global " +
                 "key=${key ?: "(default)"} highlighted=$highlighted handled=$handled"
         )
+    }
+
+    /**
+     * 以词定字：把全角【】翻译成方案 `super_processor/select_character` 约定的按键。
+     *
+     * RIME 引擎只认 0x20–0x7E 的键码（Punctuator 与各处理器都按 keycode 匹配，
+     * 全角字符没有对应键码可送），所以自定义手势 send_rime 打【】原本必然落进
+     * 「非 ASCII 直接上屏」分支——即使处于组合态，也只是把【插进输入框，
+     * 方案侧的以词定字永远收不到这个键。
+     *
+     * 这里在「中文 + 组合态」下读方案配置（万象默认 `select_character: "[,]"`），
+     * 把【】换成首字/尾字键送引擎，由 lua 完成「取高亮候选首字/尾字上屏」。
+     * 方案未配置以词定字（缺省 / 空 / false）时返回 null，按键行为与改动前一致。
+     */
+    private fun resolveSelectCharacterKey(
+        key: String,
+        schemaId: String,
+        composing: Boolean,
+        asciiMode: Boolean,
+    ): Char? {
+        val slot = when (key) {
+            "【" -> 0
+            "】" -> 1
+            else -> return null
+        }
+        if (asciiMode || !composing) return null
+        val config = service.rimeEngine
+            .getSchemaString(schemaId, "super_processor/select_character")
+            ?.trim()
+            .orEmpty()
+        if (config.isEmpty() || config.equals("false", ignoreCase = true)) return null
+        val parts = config.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        val token = when {
+            parts.size >= 2 -> parts[slot]
+            // 兜底兼容旧的 "[]" 无逗号写法
+            config.length == 2 -> config[slot].toString()
+            else -> return null
+        }
+        return asciiKeyChar(token)
+    }
+
+    /** 解析方案里写的键名或字符（`[` / `bracketleft`）为可送引擎的单个 ASCII 键码字符。 */
+    private fun asciiKeyChar(token: String): Char? {
+        if (token.length == 1) {
+            val c = token[0]
+            return if (c.code in 0x21..0x7E) c else null
+        }
+        return when (token.lowercase()) {
+            "bracketleft" -> '['
+            "bracketright" -> ']'
+            "semicolon" -> ';'
+            "apostrophe", "quote" -> '\''
+            "comma" -> ','
+            "period" -> '.'
+            "slash" -> '/'
+            "backslash" -> '\\'
+            "grave" -> '`'
+            "minus" -> '-'
+            "equal" -> '='
+            else -> null
+        }
     }
 
     /**
