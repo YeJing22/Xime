@@ -52,16 +52,26 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                 
                 val userDataDir = File(service.filesDir, "rime")
                 
+                // 按 prefs 重新镜像 schema_list（并剥掉 default.custom.yaml 里的
+                // 覆盖块），否则第三方方案包自带的旧列表会让本次部署继续漏编方案。
+                SchemaManager.applyEnabledSchemasToDefaultYaml(service)
+
                 // 清空 build 目录，强制 Rime 全量重新编译
                 val buildDir = File(userDataDir, "build")
                 if (buildDir.exists()) {
                     buildDir.deleteRecursively()
                 }
                 
-                service.rimeEngine.deploy()
+                val deployed = service.rimeEngine.deploy()
                 // 部署后记录 hash 与完成标记，否则下次启动会因 hash 不一致再次全量编译
-                RimeConfigHelper.storeDeploymentHash(service)
-                SettingsPreferences.setDeploymentDone(service, true)
+                if (deployed) RimeConfigHelper.storeDeploymentHash(service)
+
+                // librime 的部署返回 true 只代表维护流程结束，不代表每个方案都编译成功；
+                // 必须按产物校验，否则「部署完成」会掩盖未编译方案（如 t9_pinyin）。
+                val missing = RimeConfigHelper.missingCompiledSchemaNames(service)
+                val complete = deployed && missing.isEmpty() &&
+                    RimeConfigHelper.isDeploymentComplete(service)
+                SettingsPreferences.setDeploymentDone(service, complete)
                 
                 // 部署完成后重新加载配置（Rime 可能在部署过程中改写文件）
                 KeysConfigHelper.loadConfig(service)
@@ -70,11 +80,16 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                 val availableSchemas = service.rimeEngine.getAvailableSchemas()
                 
                 val savedSchema = SettingsPreferences.getCurrentSchema(service)
+                // 部署刚结束，get_schema_list 就是本次部署的结果，直接按它判定。
                 if (savedSchema in availableSchemas) {
                     applyPageSizeSetting(savedSchema)
                     service.rimeEngine.switchSchema(savedSchema)
                 } else {
-                    FileLogger.w(XimeInputMethodService.TAG, "Schema $savedSchema not found in available schemas")
+                    FileLogger.w(
+                        XimeInputMethodService.TAG,
+                        "Schema $savedSchema not in deployed schema_list, " +
+                            "available=${availableSchemas.joinToString()}"
+                    )
                 }
                 
                 // 直接在 key-processing 线程同步读取 name，避免嵌套协程的时序问题
@@ -83,13 +98,24 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                     service, currentSchemaId
                 ) ?: currentSchemaId
 
+                // 部署会重建 build/，方案列表（含「已编译」过滤）必须重新查询，
+                // 否则菜单仍显示部署前的旧快照。
+                service.sessionController.updateSchemaName()
+
                 withContext(Dispatchers.Main) {
                     service.uiState.value = service.uiState.value.copy(
                         schemaName = schemaName,
                         currentSchemaId = currentSchemaId,
                     )
                     service.updateUI()
-                    android.widget.Toast.makeText(service, tr(R.string.s_fanganbushuwancheng), android.widget.Toast.LENGTH_SHORT).show()
+                    val message = when {
+                        !deployed -> tr(R.string.s_bushushibai)
+                        missing.isNotEmpty() ->
+                            tr(R.string.s_bushushibai_fanganweibianyi, missing.joinToString("、"))
+                        !complete -> tr(R.string.s_bushushibai)
+                        else -> tr(R.string.s_fanganbushuwancheng)
+                    }
+                    android.widget.Toast.makeText(service, message, android.widget.Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 FileLogger.e(XimeInputMethodService.TAG, "Failed to reload config", e)
@@ -329,10 +355,6 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                 service.notifyDeploymentStatus(false, "")
             }
         }
-    }
-    
-    private fun updateKeyboardHeightPreview(heightDp: Int) {
-        service.keyboardContainer.updateHeight(heightDp)
     }
     
     internal fun setKeyboardHeight(heightDp: Int) {

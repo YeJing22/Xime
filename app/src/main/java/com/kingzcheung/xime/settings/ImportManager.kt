@@ -32,8 +32,6 @@ object ImportManager {
         data class Content(
             val success: Boolean,
             val installedDirect: Boolean,
-            /** 与已安装方案同名不同内容的文件冲突；非空时导入被拒绝，用于向用户说明原因。 */
-            val conflicts: List<FileConflictInfo> = emptyList(),
         ) : ImportResult()
 
         /** 插件（.xipk）安装结果。 */
@@ -67,7 +65,7 @@ object ImportManager {
                 ImportResult.Failed(tr(R.string.s_wufaduquwenjian))
             } else {
                 val r = SchemaManager.saveImportedFile(context, name, stream)
-                ImportResult.Content(r.success, r.installedDirect, r.conflicts)
+                ImportResult.Content(r.success, r.installedDirect)
             }
         }
     }
@@ -93,7 +91,7 @@ object ImportManager {
             }
         } else {
             val r = SchemaManager.saveImportedFile(context, safe, file.inputStream(), autoEnable = autoEnable)
-            ImportResult.Content(r.success, r.installedDirect, r.conflicts)
+            ImportResult.Content(r.success, r.installedDirect)
         }
     }
 

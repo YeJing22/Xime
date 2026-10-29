@@ -164,6 +164,16 @@ object RimeExportManager {
                         file.inputStream().use { it.copyTo(zos) }
                         zos.closeEntry()
                     }
+                    // 用户给当前方案集单独导入的文件（.schema.yaml / .dict.yaml 等）
+                    val overlayDir = File(context.filesDir, "scheme-overlay")
+                    overlayDir.walkTopDown().forEach { file ->
+                        if (file.isDirectory) return@forEach
+                        val entryName = BackupManager.META_PREFIX + "scheme-overlay/" +
+                            file.relativeTo(overlayDir).path.replace('\\', '/')
+                        zos.putNextEntry(ZipEntry(entryName))
+                        file.inputStream().use { it.copyTo(zos) }
+                        zos.closeEntry()
+                    }
                 }
             }
 

@@ -834,11 +834,13 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 val deploymentDone = SettingsPreferences.isDeploymentDone(this@XimeInputMethodService)
                 val needsDeployment = !deploymentDone || !RimeConfigHelper.isDeploymentComplete(this@XimeInputMethodService)
 
+                var deploymentOk = true
                 if (needsDeployment) {
                     // 统一部署入口（进程内互斥，hash 一致时内部跳过）。
                     // 与 XimeApplication 预初始化共享，避免两者并发触发两次全量编译。
                     notifyDeploymentStatus(true, tr(R.string.s_zhengzaibianyiciku))
-                    if (RimeConfigHelper.ensureDeployment(this@XimeInputMethodService)) {
+                    deploymentOk = RimeConfigHelper.ensureDeployment(this@XimeInputMethodService)
+                    if (deploymentOk) {
                         rimeEngine.updateLastBuildTime()
                     } else {
                         FileLogger.e(TAG, "initRimeEngine: ensureDeployment failed, deployment may not have completed")
@@ -851,10 +853,18 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 val sessionReady = rimeEngine.ensureSession(180_000L)
                 if (sessionReady) {
                     Log.d(TAG, "initRimeEngine: Session ready")
-                    // 确保部署成功后才标记完成，避免首次部署超时后误标记
-                    if (needsDeployment) {
+                    // 以实际产物为准回写「已部署」：ensureDeployment 在增量维护返回后
+                    // 立刻核对产物，超时/半途失败会把 deployment_done 置 false；
+                    // 只有这里（维护已结束、session 已建立）才是可信的判定点。
+                    // 不做这一步的话标记会永久停在 false，切方案时被误判「方案未部署」。
+                    if (RimeConfigHelper.isDeploymentComplete(this@XimeInputMethodService)) {
                         SettingsPreferences.setDeploymentDone(this@XimeInputMethodService, true)
                         RimeConfigHelper.storeDeploymentHash(this@XimeInputMethodService)
+                    } else {
+                        FileLogger.w(
+                            TAG,
+                            "initRimeEngine: session ready but build artifacts incomplete"
+                        )
                     }
                 } else {
                     FileLogger.w(TAG, "initRimeEngine: Session not ready after 60s, continuing in background")
@@ -2904,12 +2914,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         }
         inputBoxComposingActive = false
     }
-
-    /**
-     * 当前输入框是否受限（密码/终端/NO_SUGGESTIONS，见 EditorInfoClassifier）：
-     * 英文联想等补全类功能应短路。
-     */
-    internal fun isEditorRestricted(): Boolean = editorRestricted
 
     internal fun isSecretEditor(): Boolean = editorSecret
 

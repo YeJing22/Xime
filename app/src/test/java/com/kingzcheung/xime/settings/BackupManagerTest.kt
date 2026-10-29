@@ -244,7 +244,8 @@ class BackupManagerTest {
     }
 
     @Test
-    fun `restore writes scheme registry and manifests`() {
+    fun `restore ignores legacy scheme registry and manifests`() {
+        // 旧格式备份带 .registry.json / .manifests：模型已废弃（状态在 prefs），恢复时忽略。
         val filesDir = tempDir.newFolder("files")
         val bytes = zipOfText(
             mapOf(
@@ -256,11 +257,8 @@ class BackupManagerTest {
         val result = restore(filesDir, bytes)
 
         assertTrue(result.isSuccess)
-        assertEquals("""{"version":1}""", File(filesDir, ".registry.json").readText())
-        assertEquals(
-            """{"id":"s"}""",
-            File(filesDir, ".manifests/stroke.schema.yaml.json").readText()
-        )
+        assertFalse(File(filesDir, ".registry.json").exists())
+        assertFalse(File(filesDir, ".manifests").exists())
     }
 
     @Test

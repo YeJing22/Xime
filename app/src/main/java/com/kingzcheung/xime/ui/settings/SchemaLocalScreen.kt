@@ -78,7 +78,7 @@ import com.kingzcheung.xime.viewmodel.SchemaSettingsViewModel
 @Composable
 fun SchemaLocalContent(
     onBack: () -> Unit,
-    title: String = tr(R.string.s_bendifangan),
+    title: String = tr(R.string.s_fanganbao),
 ) {
     val context = LocalContext.current
     val viewModel: SchemaLocalViewModel = viewModel()
@@ -297,26 +297,6 @@ fun SchemaLocalContent(
         )
     }
 
-    if (uiState.conflictPackageId != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelConflictInstall() },
-            title = { Text(tr(R.string.s_wenjianchongtu)) },
-            text = {
-                Text(tr(R.string.s_xiezai_chongtufangan, uiState.conflictingSchemeIds.joinToString("、")))
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.confirmInstallWithUninstall() }) {
-                    Text(tr(R.string.s_querenxiezaibinganzhuang))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelConflictInstall() }) {
-                    Text(tr(R.string.s_quxiao))
-                }
-            },
-        )
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
@@ -411,6 +391,14 @@ fun SchemaLocalContent(
                 ) {
                     item {
                         Spacer(Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.restoreBuiltin() },
+                            enabled = uiState.packages.any { it.installed },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(tr(R.string.s_huifuneizhifangan))
+                        }
+                        Spacer(Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,

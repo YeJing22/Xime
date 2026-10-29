@@ -5,10 +5,10 @@ import com.kingzcheung.xime.R
 import com.kingzcheung.xime.i18n.tr
 
 import android.content.Context
+import com.kingzcheung.xime.scheme.SchemeFiles
 import com.kingzcheung.xime.clipboard.ClipboardImageStore
 import com.kingzcheung.xime.clipboard.ClipboardManager
 import com.kingzcheung.xime.model.ModelManager
-import com.kingzcheung.xime.settings.SchemaManifestManager.BUILTIN_PACKAGE_ID
 import com.kingzcheung.xime.util.FileLogger
 import java.io.File
 import java.text.SimpleDateFormat
@@ -206,7 +206,7 @@ object StorageStats {
     private fun clearMarketPackages(context: Context): Boolean {
         var ok = true
         marketDir(context).listFiles()?.forEach { pkg ->
-            if (pkg.name == BUILTIN_PACKAGE_ID) return@forEach
+            if (pkg.name == SchemeFiles.BUILTIN_PACKAGE_ID) return@forEach
             if (!SchemaManager.deleteSchemeArchive(context, pkg.name)) ok = false
         }
         return ok

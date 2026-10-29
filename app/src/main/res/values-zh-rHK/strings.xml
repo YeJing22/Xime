@@ -119,6 +119,8 @@
     <string name="s_quanjianpan">全鍵盤</string>
     <string name="s_jiujianpinyin">九鍵拼音</string>
     <string name="s_yasuobaobucunzai">壓縮檔不存在</string>
+    <string name="s_yasuobaosunhuai">壓縮檔損壞</string>
+    <string name="s_anzhuang_kongjianbuzu">儲存空間不足，無法安裝</string>
     <string name="s_guidangzhongmeiyouwenjian">歸檔中沒有檔案</string>
     <string name="s_anzhuangshibai">安裝失敗</string>
     <string name="s_schema_yaml_jiexishibai">%1$s.schema.yaml 解析失敗</string>
@@ -128,6 +130,7 @@
     <string name="s_qingdanbucunzai_qingshiyongchu_f9baa">清單不存在，請使用傳統方式刪除</string>
     <string name="s_yishanchu_gewenjian">已刪除 %1$s 個檔案</string>
     <string name="s_xiezaishibai">解除安裝失敗: %1$s</string>
+    <string name="s_shiyongzhong_bunengshanchu_yasuobao">使用中的方案集不能刪除壓縮檔，請先切換到其他方案集</string>
     <string name="s_xitongneizhifangan">系統內建方案</string>
     <string name="s_lixianmoxing">離線模型</string>
     <string name="s_lianxiang_shouxie_yuyinshibiem_92b32">聯想 / 手寫 / 語音辨識模型，清除後需重新下載</string>
@@ -761,6 +764,9 @@
     <string name="s_weizhaodaopipeicitiao">未找到匹配詞條</string>
     <string name="s_fangancibiao">方案詞表</string>
     <string name="s_bendifangan">本地方案</string>
+    <string name="s_fanganbao">方案包</string>
+    <string name="s_dangqianfanganji">目前方案集</string>
+    <string name="s_huifuneizhifangan">恢復內建方案集</string>
     <string name="s_daorufanganxuzhi">匯入方案須知</string>
     <string name="s_shiyongdaorufangangongnengshi_b308e">使用匯入方案功能時，請先去了解 Rime 配置方案以及相關文檔（ime.ximei.me），並確保你知道自己正在做什麼。</string>
     <string name="s_ruguonibuzhidaozijizaizuoshenm_2fa73">如果你不知道自己在做什麼，請使用預設方案。</string>
@@ -966,7 +972,7 @@
     <string name="s_anzhuangshibai_weizhicuowu">安裝失敗：未知錯誤</string>
     <string name="s_yianzhuang_bingwanchengbushu">已安裝「%1$s」並完成部署</string>
     <string name="s_yianzhuang_qingdian_bushu_shen_cf341">已安裝「%1$s」，請點「部署」生效</string>
-    <string name="s_nyixiafanganjiexishibai">\\n以下方案解析失敗：</string>
+    <string name="s_nyixiafanganjiexishibai">\n以下方案解析失敗：</string>
     <string name="s_xiezaichongtufangan_shibai_anz_ab29f">解除安裝衝突方案「%1$s」失敗，安裝已取消</string>
     <string name="s_neizhifanganbukeshanchu">內建方案不可刪除</string>
     <string name="s_yishanchu_2">已刪除</string>

@@ -2,6 +2,7 @@ package com.kingzcheung.xime.settings
 
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
+import com.charleskorn.kaml.YamlMap
 
 /**
  * 纯函数层：YAML 文本 → 模型；repo 相对路径解析；版本选择；appVersion 兼容性判定。
@@ -13,6 +14,20 @@ object XimeIndexParser {
 
     fun parseIndex(text: String): MarketIndex =
         yaml.decodeFromString(MarketIndex.serializer(), text)
+
+    /**
+     * xime.custom.yaml 是覆盖层，所有字段可选：只要求是非空、可解析的 YAML 映射。
+     * 可以只有 xime_index/style/themes 等，缺失的 keyboard 由配置合并回退内置值。
+     */
+    fun isValidCustomConfigYaml(text: String): Boolean {
+        val trimmed = text.trimStart('\uFEFF').trim()
+        if (trimmed.isEmpty()) return false
+        return try {
+            yaml.parseToYamlNode(trimmed) is YamlMap
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     fun parseSubIndex(text: String): SchemesSubIndex =
         yaml.decodeFromString(SchemesSubIndex.serializer(), text)

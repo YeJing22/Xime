@@ -28,11 +28,9 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.twotone.Description
 import androidx.compose.material.icons.twotone.Storefront
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,13 +42,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -84,84 +80,6 @@ fun SchemaSettingsContent(
     // F6: 从方案市场/导入返回时自动重扫描，新装方案立即出现
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
     var showMenu by remember { mutableStateOf(false) }
-
-    if (uiState.showUninstallDialog) {
-        val packages = uiState.marketPackages
-        val selectedIds = remember { mutableStateListOf<String>() }
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissUninstallDialog() },
-            title = { Text(tr(R.string.s_xiezaifangan)) },
-            text = {
-                if (packages.isEmpty()) {
-                    Text(
-                        tr(R.string.s_meiyoukexiezaidefangan),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    Column {
-                        Text(
-                            tr(R.string.s_xuanzeyaoxiezaidefangan),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        packages.forEach { pkg ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        if (pkg.packageId in selectedIds) {
-                                            selectedIds.remove(pkg.packageId)
-                                        } else {
-                                            selectedIds.add(pkg.packageId)
-                                        }
-                                    }
-                                    .padding(vertical = 4.dp),
-                            ) {
-                                Checkbox(
-                                    checked = pkg.packageId in selectedIds,
-                                    onCheckedChange = { checked ->
-                                        if (checked) selectedIds.add(pkg.packageId)
-                                        else selectedIds.remove(pkg.packageId)
-                                    }
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Column {
-                                    Text(pkg.displayName, style = MaterialTheme.typography.bodyMedium)
-                                    Text(
-                                        tr(R.string.s_geshurufangan_gewenjian, pkg.schemaCount, pkg.fileCount) +
-                                            if (pkg.version.isNotEmpty()) " · v${pkg.version}" else "",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.outline,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        selectedIds.forEach { viewModel.uninstallPackage(it) }
-                    },
-                    enabled = selectedIds.isNotEmpty(),
-                ) {
-                    Text(
-                        tr(R.string.s_xiezai_2, selectedIds.size),
-                        color = if (selectedIds.isNotEmpty()) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissUninstallDialog() }) {
-                    Text(tr(R.string.s_quxiao))
-                }
-            }
-        )
-    }
 
     LaunchedEffect(uiState.toastMessage) {
         uiState.toastMessage?.let { message ->
@@ -257,7 +175,9 @@ fun SchemaSettingsContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    ImportedSchemesEntry(
+                    ActivePackageCard(
+                        name = uiState.activePackageName,
+                        version = uiState.activePackageVersion,
                         onClick = onNavigateToImported,
                         modifier = Modifier.padding(top = 12.dp),
                     )
@@ -348,10 +268,12 @@ fun SchemaSettingsContent(
 }
 
 /**
- * 「已导入」入口：作为独立列表项放在已启用方案上方，点击进入已导入方案页。
+ * 「当前方案集」卡片：显示正在使用的方案包，点击进入方案包页（切换/恢复内置）。
  */
 @Composable
-private fun ImportedSchemesEntry(
+private fun ActivePackageCard(
+    name: String,
+    version: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -377,15 +299,27 @@ private fun ImportedSchemesEntry(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = tr(R.string.s_yidaoru),
+                    text = tr(R.string.s_dangqianfanganji),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = if (name.isBlank()) tr(R.string.s_xitongneizhifangan) else name,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = tr(R.string.s_chakanyixiazaihuodaorudefanganbao),
+                    text = buildString {
+                        append(tr(R.string.s_chakanyixiazaihuodaorudefanganbao))
+                        if (version.isNotBlank()) append(" · v$version")
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Icon(

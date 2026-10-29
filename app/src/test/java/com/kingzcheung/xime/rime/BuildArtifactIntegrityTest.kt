@@ -1,5 +1,6 @@
 package com.kingzcheung.xime.rime
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -78,5 +79,39 @@ class BuildArtifactIntegrityTest {
         val dir = newDir()
         assertTrue(RimeConfigHelper.isBrokenBuildArtifact(File(dir, "missing.prism.bin")))
         dir.deleteRecursively()
+    }
+
+    // ---- missingCompiledSchemas：部署成功但方案未编译的如实校验 ----
+
+    @Test
+    fun `缺少产物的启用方案会被列出`() {
+        val rimeDir = newDir()
+        val buildDir = newDir()
+        write(buildDir, "pinyin_simp.schema.yaml", "x".toByteArray())
+        // t9_pinyin 只有源码、没有 build 产物（用户反馈的场景）
+        write(rimeDir, "t9_pinyin.schema.yaml", "schema:\n  schema_id: t9_pinyin\n".toByteArray())
+        assertEquals(
+            listOf("t9_pinyin"),
+            RimeConfigHelper.missingCompiledSchemas(
+                enabled = listOf("pinyin_simp", "t9_pinyin"),
+                buildDir = buildDir,
+            ),
+        )
+        rimeDir.deleteRecursively()
+        buildDir.deleteRecursively()
+    }
+
+    @Test
+    fun `prism 或 schema_yaml 任一产物存在即算已编译`() {
+        val buildDir = newDir()
+        write(buildDir, "pinyin_simp.prism.bin", "x".toByteArray())
+        write(buildDir, "t9_pinyin.schema.yaml", "x".toByteArray())
+        assertTrue(
+            RimeConfigHelper.missingCompiledSchemas(
+                enabled = listOf("pinyin_simp", "t9_pinyin"),
+                buildDir = buildDir,
+            ).isEmpty()
+        )
+        buildDir.deleteRecursively()
     }
 }

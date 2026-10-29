@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.kingzcheung.xime.plugin.core.api.BackupPlugin
+import com.kingzcheung.xime.scheme.SchemeStore
 import com.kingzcheung.xime.plugin.core.api.RemoteBackupEntry
 import java.io.File
 import java.util.zip.ZipEntry
@@ -202,6 +203,10 @@ object BackupManager {
         // 避免恢复时把旧版本基座一起盖回来。
         try {
             SchemaManager.migrateDefaultCustomSchemaList(context, force = true)
+            // 备份可能来自旧版本（没有 active_package_id）或另一台设备（活动包 id
+            // 对应的包不存在）：丢弃缓存，按恢复后的实际文件重新推断一次。
+            SchemeStore.invalidate()
+            SchemeStore.ensure(context)
             SchemaManager.applyEnabledSchemasToDefaultYaml(context)
         } catch (e: Exception) {
             Log.e(TAG, "Restore: 重新镜像 schema_list 失败", e)
@@ -276,7 +281,6 @@ object BackupManager {
             val rimeDir = File(filesDir, "rime")
             if (!rimeDir.exists()) rimeDir.mkdirs()
             val pluginsDir = File(filesDir, "plugins")
-            val manifestsDir = SchemaManifestManager.getManifestsDir(filesDir)
             var entryCount = 0
             var dictSnapshotCount = 0
             var skippedUserDbEntries = 0
@@ -299,18 +303,15 @@ object BackupManager {
                             rel == "plugins.xml" -> writeChecked(File(filesDir, "plugins.xml"), filesDir, data)
                             // v3 插件注册表（安装记录 + 启用状态）：与插件包同档（完整方案）
                             rel == "plugins.json" -> writeChecked(File(filesDir, "plugins.json"), filesDir, data)
-                            // 方案清单（文件所有权/校验）：完整方案档随方案本体一起恢复
-                            rel == SCHEME_REGISTRY_ENTRY -> writeChecked(
-                                SchemaManifestManager.getRegistryFile(filesDir), filesDir, data
-                            )
-                            rel.startsWith(SCHEME_MANIFESTS_ENTRY) && rel.endsWith(".json") -> {
-                                val schemeId = rel.removePrefix(SCHEME_MANIFESTS_ENTRY).removeSuffix(".json")
-                                if (isSafeId(schemeId)) {
-                                    writeChecked(File(manifestsDir, "$schemeId.json"), manifestsDir, data)
-                                }
-                            }
+                            // 旧版方案清单/注册表（文件所有权追踪）：模型已废弃，恢复时忽略
+                            rel == SCHEME_REGISTRY_ENTRY ||
+                                rel.startsWith(SCHEME_MANIFESTS_ENTRY) -> Unit
                             rel.startsWith("plugins/") -> writeChecked(
                                 File(pluginsDir, rel.removePrefix("plugins/")), pluginsDir, data
+                            )
+                            // 当前方案集的单文件导入（用户资产），与插件同档
+                            rel.startsWith("scheme-overlay/") -> writeChecked(
+                                File(filesDir, rel), filesDir, data
                             )
                             else -> { /* 未知元数据条目跳过（向前兼容） */ }
                         }
@@ -458,16 +459,6 @@ object BackupManager {
             entries += (META_PREFIX + PLUGINS_REGISTRY_ENTRY) to pluginsRegistry.readBytes()
         }
 
-        // 方案清单（文件所有权 + 校验）：与方案本体同档，供方案管理与卸载使用
-        val registry = SchemaManifestManager.getRegistryFile(context)
-        if (registry.exists()) {
-            entries += (META_PREFIX + SCHEME_REGISTRY_ENTRY) to registry.readBytes()
-        }
-        SchemaManifestManager.getManifestsDir(context).listFiles()
-            ?.filter { it.isFile && it.name.endsWith(".json") }
-            ?.forEach { manifest ->
-                entries += (META_PREFIX + SCHEME_MANIFESTS_ENTRY + manifest.name) to manifest.readBytes()
-            }
         return entries
     }
 }

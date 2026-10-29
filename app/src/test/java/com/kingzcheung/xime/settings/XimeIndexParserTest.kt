@@ -506,4 +506,42 @@ class XimeIndexParserTest {
         )
         assertTrue(present.schemeReady)
     }
+
+    // ── xime.custom.yaml 全字段可选：不要求 keyboard ──
+
+    @Test
+    fun `只有 xime_index 的配置也可作为布局配置`() {
+        val text = """
+            xime_index:
+              base_urls:
+                - https://example.com/
+        """.trimIndent()
+        assertTrue(XimeIndexParser.isValidCustomConfigYaml(text))
+    }
+
+    @Test
+    fun `只有 style 或 themes 的配置合法`() {
+        assertTrue(XimeIndexParser.isValidCustomConfigYaml("style:\n  color_scheme: material_violet\n"))
+        assertTrue(XimeIndexParser.isValidCustomConfigYaml("themes:\n  my_theme:\n    name: x\n"))
+    }
+
+    @Test
+    fun `空文件、注释、标量和坏 YAML 不合法`() {
+        assertFalse(XimeIndexParser.isValidCustomConfigYaml(""))
+        assertFalse(XimeIndexParser.isValidCustomConfigYaml("   \n# only comment\n"))
+        assertFalse(XimeIndexParser.isValidCustomConfigYaml("just a scalar"))
+        assertFalse(XimeIndexParser.isValidCustomConfigYaml("keyboard: [unclosed"))
+    }
+
+    @Test
+    fun `完整 keyboard 配置合法`() {
+        val text = """
+            keyboard:
+              qwerty:
+                layout:
+                  rows:
+                    - [q, w, e, r, t, y, u, i, o, p]
+        """.trimIndent()
+        assertTrue(XimeIndexParser.isValidCustomConfigYaml(text))
+    }
 }

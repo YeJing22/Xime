@@ -11,14 +11,14 @@ object SettingsPreferences {
     /** 双写标记：仅新版本双写后置 true，本地值才可信（旧版本只写 rime，本地是过时迁移值） */
     private const val KEY_CURRENT_SCHEMA_DUAL = "current_schema_dual"
     private const val KEY_DEPLOYMENT_DONE = "deployment_done"
-    private const val KEY_BUILTIN_SCHEMAS_MERGED = "builtin_schemas_merged"
     /** 启用方案列表（有序，逗号连接；schema id 为 [a-z0-9_] 无逗号），持久真相。 */
     private const val KEY_ENABLED_SCHEMAS = "enabled_schemas"
+    /** 当前活动方案包 id（单活动包模型）；null 表示用户主动卸载了所有包。 */
+    private const val KEY_ACTIVE_PACKAGE_ID = "active_package_id"
     /** default.custom.yaml 的 schema_list 是否已迁移进 prefs（一次性）。 */
     private const val KEY_DEFAULT_CUSTOM_MIGRATED = "default_custom_schema_list_migrated"
     private const val KEY_PENDING_DICT_MERGE = "pending_dict_merge"
     private const val KEY_DEPLOYMENT_HASH = "deployment_hash"
-    private const val KEY_RIME_ASSETS_VERSION = "rime_assets_version"
     private const val KEY_SETUP_COMPLETED = "setup_completed"
     private const val KEY_DARK_MODE = "dark_mode"
     private const val KEY_VERBOSE_LOGGING = "verbose_logging"
@@ -129,7 +129,6 @@ object SettingsPreferences {
 
     private const val KEY_SCHEMA_IMPORT_WARNING_DISMISSED = "schema_import_warning_dismissed"
 
-    private const val KEY_INSTALLED_MARKET_IDS = "installed_market_ids"
     private const val KEY_COMPACT_MODE = "compact_mode"
     private const val KEY_SHOW_CANDIDATE_COMMENTS = "show_candidate_comments"
     private const val KEY_INPUT_TEXT_LOCATION = "input_text_location"
@@ -227,23 +226,7 @@ object SettingsPreferences {
         getPrefs(context).edit().putBoolean(KEY_DEPLOYMENT_DONE, done).apply()
     }
 
-    /**
-     * 内置方案补齐已执行标记：新版本首次运行时把缺失的内置方案（如 t9_pinyin，
-     * 老版本升级用户列表里没有）补进 schema_list 一次；之后用户在方案管理里
-     * 移除内置方案是有效选择，getEnabledSchemas 不得再强行补回。
-     */
-    fun isBuiltinSchemasMerged(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_BUILTIN_SCHEMAS_MERGED, false)
-    }
-
-    fun setBuiltinSchemasMerged(context: Context, merged: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_BUILTIN_SCHEMAS_MERGED, merged).apply()
-    }
-
-    /**
-     * 启用方案列表持久层：null 表示从未写入（全新安装/迁移前），此时由
-     * SchemaManager 以内置方案集做种子；空列表是有效状态（用户删空了方案）。
-     */
+    /** 启用方案列表（有序，逗号连接；schema id 为 [a-z0-9_] 无逗号）。null = 从未写入。 */
     fun getEnabledSchemaList(context: Context): List<String>? {
         if (!getPrefs(context).contains(KEY_ENABLED_SCHEMAS)) return null
         return getPrefs(context).getString(KEY_ENABLED_SCHEMAS, "")
@@ -252,6 +235,17 @@ object SettingsPreferences {
 
     fun setEnabledSchemaList(context: Context, schemas: List<String>) {
         getPrefs(context).edit().putString(KEY_ENABLED_SCHEMAS, schemas.joinToString(",")).apply()
+    }
+
+    /** 当前活动方案包；null 表示没有活动包（用户主动卸载了所有包）。 */
+    fun getActivePackageId(context: Context): String? =
+        getPrefs(context).getString(KEY_ACTIVE_PACKAGE_ID, null)
+
+    fun setActivePackageId(context: Context, packageId: String?) {
+        getPrefs(context).edit().apply {
+            if (packageId == null) remove(KEY_ACTIVE_PACKAGE_ID)
+            else putString(KEY_ACTIVE_PACKAGE_ID, packageId)
+        }.apply()
     }
 
     fun isDefaultCustomMigrated(context: Context): Boolean {
@@ -280,15 +274,6 @@ object SettingsPreferences {
 
     fun setDeploymentHash(context: Context, hash: String) {
         getPrefs(context).edit().putString(KEY_DEPLOYMENT_HASH, hash).apply()
-    }
-
-    /** 上次完成 rime assets 同步的 versionCode（0 表示从未同步）。 */
-    fun getRimeAssetsVersion(context: Context): Int {
-        return getPrefs(context).getInt(KEY_RIME_ASSETS_VERSION, 0)
-    }
-
-    fun setRimeAssetsVersion(context: Context, version: Int) {
-        getPrefs(context).edit().putInt(KEY_RIME_ASSETS_VERSION, version).apply()
     }
 
     /** 调试 verbose 日志总开关（仅 Debug 构建生效，Release 恒关闭）。 */
@@ -688,6 +673,11 @@ object SettingsPreferences {
     fun setLayoutPreference(context: Context, schemaId: String, layout: String) {
         getPrefs(context).edit().putString("$KEY_LAYOUT_PREFIX$schemaId", layout).apply()
     }
+
+    /** 方案卸载时清除该方案的布局偏好，避免同名方案重装后继承旧布局。 */
+    fun removeLayoutPreference(context: Context, schemaId: String) {
+        getPrefs(context).edit().remove("$KEY_LAYOUT_PREFIX$schemaId").apply()
+    }
     
     fun getKeyboardHeightDp(context: Context): Int {
         return getKeyboardHeightDp(context, false)
@@ -881,26 +871,6 @@ object SettingsPreferences {
         getPrefs(context).edit()
             .putInt(KEY_CURSOR_DRAG_STEP_DP, dp.coerceIn(MIN_CURSOR_DRAG_STEP_DP, MAX_CURSOR_DRAG_STEP_DP))
             .apply()
-    }
-
-    // ── 方案市场「已安装」的持久记录 ──
-    // 记录用户通过市场主动安装过的方案 id；与本地文件存在性解耦（方案可能仅作为依赖落盘，
-    // 文件存在不代表用户装过它），且跨重启保持。
-    fun getInstalledMarketIds(context: Context): Set<String> =
-        getPrefs(context).getStringSet(KEY_INSTALLED_MARKET_IDS, emptySet())?.toSet() ?: emptySet()
-
-    fun addInstalledMarketId(context: Context, id: String) {
-        val cur = getInstalledMarketIds(context).toMutableSet()
-        if (cur.add(id)) {
-            getPrefs(context).edit().putStringSet(KEY_INSTALLED_MARKET_IDS, cur).apply()
-        }
-    }
-
-    fun removeInstalledMarketId(context: Context, id: String) {
-        val cur = getInstalledMarketIds(context).toMutableSet()
-        if (cur.remove(id)) {
-            getPrefs(context).edit().putStringSet(KEY_INSTALLED_MARKET_IDS, cur).apply()
-        }
     }
 
     const val KEY_CLIPBOARD_SYNC_ENABLED = "clipboard_sync_enabled"

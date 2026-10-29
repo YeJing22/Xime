@@ -253,9 +253,7 @@ class WirelessImportHelper(private val context: Context) {
                                         if (result.success) UploadResult(fileName = name, success = true)
                                         else UploadResult(
                                             fileName = name, success = false,
-                                            error = if (result.conflicts.isNotEmpty())
-                                                tr(R.string.s_yuyianzhuangneirongbutong_yiquxiao, result.conflicts.first().fileName)
-                                            else tr(R.string.s_baocunshibai)
+                                            error = tr(R.string.s_baocunshibai)
                                         )
                                     )
                                 }

@@ -68,7 +68,7 @@ fun SettingsScreen(
                 onNavigateToMarket = { navController.navigate(SettingsRoutes.Market) },
                 onNavigateToRimeFileBrowser = { navController.navigate(SettingsRoutes.RimeFileBrowser) },
                 onNavigateToSchemaDictBrowser = { navController.navigate(SettingsRoutes.SchemaDictBrowser) },
-                onNavigateToImported = { navController.navigate(SettingsRoutes.SchemaImported) },
+                onNavigateToImported = { navController.navigate(SettingsRoutes.SchemaLocal) },
             )
         }
         composable(SettingsRoutes.Market) {
@@ -93,12 +93,6 @@ fun SettingsScreen(
         composable(SettingsRoutes.SchemaLocal) {
             SchemaLocalContent(
                 onBack = { navController.popBackStack() },
-            )
-        }
-        composable(SettingsRoutes.SchemaImported) {
-            SchemaLocalContent(
-                onBack = { navController.popBackStack() },
-                title = tr(R.string.s_yidaoru),
             )
         }
         composable(SettingsRoutes.ModelLocal) {

@@ -255,36 +255,6 @@ private fun SchemesMarketTab(
     LaunchedEffect(uiState.isLoading) {
         if (!uiState.isLoading) isRefreshing = false
     }
-    if (uiState.conflictDetails.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = { viewModel.clearConflict() },
-            title = { Text(tr(R.string.s_wenjianchongtu)) },
-            text = {
-                Column {
-                    Text(tr(R.string.s_yuyianzhuangfangandeyixiawenji_2c980, uiState.conflictSchemeName))
-                    Spacer(Modifier.height(8.dp))
-                    uiState.conflictDetails.forEach { c ->
-                        Text(
-                            tr(R.string.s_liechu_wenjian_shiyong, c.fileName, c.claimedBy.joinToString("、")),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        tr(R.string.s_kedao_bendifangan_xiezaichongt_da44f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.clearConflict() }) {
-                    Text(tr(R.string.s_zhidaole))
-                }
-            },
-        )
-    }
-
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {

@@ -27,8 +27,6 @@ data class InstallResult(
     val failureReason: String? = null,
     /** null=未提供sha256, true=校验通过, false=校验不通过 */
     val sha256Status: Sha256Status = null,
-    /** 清单系统判定的文件冲突明细；非空时安装被阻止，供 UI 展示冲突详情。 */
-    val conflicts: List<FileConflictInfo> = emptyList(),
 )
 
 /** 方案列表拉取结果（含命中的来源主机名，供 UI 显示「从哪个端点拉的」）。 */
@@ -359,8 +357,8 @@ object XimeIndexSource {
             Log.e(TAG, "read raw layout failed", e)
             return null
         }
-        if (text.isBlank() || !text.contains("keyboard:")) {
-            Log.w(TAG, "raw layout missing keyboard section")
+        if (!XimeIndexParser.isValidCustomConfigYaml(text)) {
+            Log.w(TAG, "raw layout is not a valid yaml map")
             return null
         }
         val rimeDir = File(context.filesDir, "rime")
@@ -468,7 +466,8 @@ object XimeIndexSource {
         if (!rimeDir.exists()) rimeDir.mkdirs()
         val rimeCanonical = rimeDir.canonicalFile
         val written = mutableListOf<String>()
-        var hasCustom = false
+        // 包内 xime.custom.yaml 可选（主题/字体包可以只有资源）；有则必须是合法 YAML 映射。
+        if (!validateZipCustomConfig(zipFile)) return null
         java.util.zip.ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
@@ -491,10 +490,7 @@ object XimeIndexSource {
                                 target.outputStream().use { out -> zis.copyTo(out) }
                                 true
                             }
-                            if (writtenOk) {
-                                written.add(rel)
-                                if (rel == "xime.custom.yaml") hasCustom = true
-                            }
+                            if (writtenOk) written.add(rel)
                         } else {
                             Log.w(TAG, "skip zip-slip layout entry: $name")
                         }
@@ -504,7 +500,26 @@ object XimeIndexSource {
                 entry = zis.nextEntry
             }
         }
-        return if (hasCustom) written else null
+        return written.ifEmpty { null }
+    }
+
+    /** 包内 xime.custom.yaml 可选；存在时必须是非空、可解析的 YAML 映射。 */
+    private fun validateZipCustomConfig(zipFile: File): Boolean {
+        java.util.zip.ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory && !isAppleDoubleName(entry.name)) {
+                    val rel = entry.name.removePrefix("./").trimStart('/')
+                    if (rel == "xime.custom.yaml") {
+                        val text = zis.readBytes().toString(Charsets.UTF_8)
+                        return XimeIndexParser.isValidCustomConfigYaml(text)
+                    }
+                }
+                zis.closeEntry()
+                entry = zis.nextEntry
+            }
+        }
+        return true // 没有 xime.custom.yaml：纯主题/字体包，字段全部走内置默认
     }
 
     private fun isAppleDoubleName(name: String): Boolean =
@@ -597,14 +612,7 @@ object XimeIndexSource {
             switchEnabled = switchEnabled,
         )
         if (!result.success) {
-            val reason = result.failureReason ?: result.conflicts.joinToString("、") { c ->
-                tr(R.string.s_wenjian_chongtu_shiyong, c.fileName, c.claimedBy.joinToString("、"))
-            }
-            return@withContext InstallResult(
-                false,
-                failureReason = reason,
-                conflicts = result.conflicts,
-            )
+            return@withContext InstallResult(false, failureReason = result.failureReason)
         }
         InstallResult(success = true, unresolvedDeps = result.unresolvedDeps)
     }
