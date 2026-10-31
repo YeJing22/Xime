@@ -3,6 +3,8 @@ package com.kingzcheung.xime.rime
 import com.kingzcheung.xime.util.FileLogger
 import android.content.Context
 import android.util.Log
+import com.kingzcheung.xime.settings.BuiltinSchemaCleanup
+import com.kingzcheung.xime.settings.JapaneseSchemas
 import com.kingzcheung.xime.settings.PersonalDictManager
 import com.kingzcheung.xime.settings.SchemaConfigHelper
 import com.kingzcheung.xime.settings.MarketVersionStore
@@ -53,8 +55,16 @@ object RimeConfigHelper {
         }
         
         copyAssetsToRimeDir(context, rimeDir)
+        // 覆盖安装时用户目录里还留着已从内置基线移除的方案文件（copyAssets 只补不删），
+        // 一次性清掉，否则「输入方案」页会继续显示五笔/拼音并参与编译。
+        BuiltinSchemaCleanup.purgeOnce(context, rimeDir)
+        // 日语方案独立分发（assets/rime_japanese），必须在 SchemeStore.ensure 之前铺好，
+        // 否则「已安装方案」列表里看不到它，启用列表也会把它过滤掉。
+        JapaneseSchemas.installAssets(context, rimeDir)
         // 状态对齐（迁移一次 + 过滤失效项），再把启用列表镜像进 default.yaml。
         SchemeStore.ensure(context)
+        // 追加式启用日语方案：只在首次铺设时加，不动用户已有的启用列表
+        JapaneseSchemas.enableOnce(context)
         SchemaManager.applyEnabledSchemasToDefaultYaml(context)
         // 为所有启用方案打个人词库补丁
         PersonalDictManager.ensureSchemaPacks(context)
@@ -217,8 +227,16 @@ object RimeConfigHelper {
         }
         
         copyAssetsToRimeDir(context, rimeDir)
+        // 覆盖安装时用户目录里还留着已从内置基线移除的方案文件（copyAssets 只补不删），
+        // 一次性清掉，否则「输入方案」页会继续显示五笔/拼音并参与编译。
+        BuiltinSchemaCleanup.purgeOnce(context, rimeDir)
+        // 日语方案独立分发（assets/rime_japanese），必须在 SchemeStore.ensure 之前铺好，
+        // 否则「已安装方案」列表里看不到它，启用列表也会把它过滤掉。
+        JapaneseSchemas.installAssets(context, rimeDir)
         // 同步初始化路径同样先对齐状态，再镜像 schema_list
         SchemeStore.ensure(context)
+        // 追加式启用日语方案：只在首次铺设时加，不动用户已有的启用列表
+        JapaneseSchemas.enableOnce(context)
         SchemaManager.applyEnabledSchemasToDefaultYaml(context)
         runBlocking { PersonalDictManager.ensureSchemaPacks(context) }
         // build 是否重建统一由 ensureDeployment() 决定（缺失/半成品时强制 fullCheck）

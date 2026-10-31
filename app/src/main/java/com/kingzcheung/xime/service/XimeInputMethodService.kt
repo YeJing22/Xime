@@ -397,6 +397,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
      *  （Shift+字母清组合、选词、外部清空等），不一致即复位编辑态（失同步自愈）。 */
     @Volatile
     internal var editingCaretInput: String = ""
+    /**
+     * 日语片假名模式：true 时送入引擎的罗马音统一转大写，方案侧大小写即「平假名 / 片假名」。
+     * 由假名键盘的「カナ」键切换，切换时同时把当前已输入的罗马音整串反转大小写。
+     */
+    internal var japaneseKatakana: Boolean = false
     /** 键盘回调引用，用于在 RIME selectCandidate 前同步通知 T9 控制器 */
     internal var keyboardCallbacks: KeyboardCallbacks? = null
     /**
@@ -2197,7 +2202,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
 
     override fun moveCursor(direction: Int) {
         if (direction == 0) return
-        if (candidateState.value.isComposing && !isT9Schema(uiState.value.currentSchemaId)) {
+        if (candidateState.value.isComposing && !isT9Schema(uiState.value.currentSchemaId) &&
+            !JapaneseInput.isJapanese(uiState.value.currentSchemaId)) {
             // 组合态（仅全键盘）：移动编码编辑光标。光标由宿主维护、仅是插入/删除
             // 位置——librime caret 恒在编码末尾，候选始终针对整个编码转换；编辑操作
             // （退格/字母）由路由层按此位置拦截处理。上屏（空闲态）后走下方编辑器光标逻辑
@@ -3057,6 +3063,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
      * 正向映射同一套假设，最多差一个分隔符的宽度）。
      */
     internal fun setPreeditCaretFromDisplayIndex(displayIndex: Int) {
+        // 日语假名方案不支持「点编码定位光标再编辑」：一个假名对应 2~4 个罗马音字母，
+        // 显示位点到 raw 位置的换算在假名内部会落点错位，编辑后必然拼出意料之外的假名。
+        // 直接禁用（气泡点击无反应），避免把不确定行为暴露给用户。
+        if (JapaneseInput.isJapanese(uiState.value.currentSchemaId)) return
         val display = candidateState.value.preeditText
         if (display.isEmpty()) return
         val input = rimeEngine.getInput()

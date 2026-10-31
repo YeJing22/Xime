@@ -198,7 +198,9 @@ object SettingsPreferences {
         }
         val legacy = prefs.getString(KEY_CURRENT_SCHEMA, null)
         if (!legacy.isNullOrBlank()) return legacy
-        return "wubi86"
+        // 内置方案只剩日语九宫格，兜底值必须跟着改：写 "wubi86" 只会得到一个
+        // 不存在的方案 id，后续 ensure/pickCurrent 虽然会纠正，但首帧会空一次。
+        return "japanese_kana"
     }
 
     fun setCurrentSchema(context: Context, schemaId: String) {

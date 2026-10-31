@@ -10,6 +10,10 @@ import com.kingzcheung.xime.correction.CorrectionPriors
 import com.kingzcheung.xime.correction.KeyTapLogger
 import com.kingzcheung.xime.keyboard.OverlayRoute
 import com.kingzcheung.xime.rime.RimeCandidate
+import com.kingzcheung.xime.rime.deleteJapaneseRomaji
+import com.kingzcheung.xime.rime.smallKanaRomaji
+import com.kingzcheung.xime.rime.swapRomajiCase
+import com.kingzcheung.xime.rime.voicedKanaRomaji
 import com.kingzcheung.xime.rime.resolveRimeCandidateIndex
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.keyboard.CandidateSortAction
@@ -165,14 +169,75 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         setT9PhraseBuild(false)
     }
 
-    internal fun handleKeyPress(key: String, isShifted: Boolean) {
-        // 空键无任何按键语义，且下游 Rime 路由按 key[0] 取码（key.lowercase()[0]），
+    /**
+     * 日语假名变换键：小字 / 浊音 / 半浊音 / 平假名⇄片假名。
+     *
+     * 全部靠「改写罗马音输入串 + setInput 整串重建」实现，与假名级退格同一套口径：
+     * 不做字符级插入删除，避免半截罗马音残留成字母。没有可变换的假名时静默返回
+     * （键面无任何反馈＝无效，符合「不存在对应假名时无效果」的预期）。
+     *
+     * @return true 表示已消化该按键，调用方应直接返回。
+     */
+    private fun handleKanaFunctionKey(key: String): Boolean {
+        when (key) {
+            "kana_katakana" -> {
+                service.japaneseKatakana = !service.japaneseKatakana
+                val input = service.rimeEngine.getInput()
+                if (input.isEmpty()) {
+                    // 没有未上屏的输入：只切换后续输入的送键形式，刷新一下键面状态
+                    service.updateUI()
+                } else {
+                    service.rimeEngine.setInput(swapRomajiCase(input))
+                    val result = service.rimeEngine.getProcessResult(true)
+                    sendTransformedResult(result)
+                }
+                return true
+            }
+            "kana_small", "kana_voice", "kana_semi" -> {
+                val input = service.rimeEngine.getInput()
+                if (input.isEmpty()) return true
+                val next = when (key) {
+                    "kana_small" -> smallKanaRomaji(input)
+                    "kana_voice" -> voicedKanaRomaji(input, semi = false)
+                    else -> voicedKanaRomaji(input, semi = true)
+                } ?: return true
+                service.rimeEngine.setInput(next)
+                val result = service.rimeEngine.getProcessResult(true)
+                sendTransformedResult(result)
+                return true
+            }
+        }
+        return false
+    }
+
+    internal fun handleKeyPress(key: String, isShifted: Boolean) {        // 空键无任何按键语义，且下游 Rime 路由按 key[0] 取码（key.lowercase()[0]），
         // 空串会越界崩溃（2026-09-14 真机实证：滑动手势 commit 值为空时触发）。
         if (key.isEmpty()) return
         // 九键造词开关：九键没有实体反引号键，用户用手势 send_rime 打 `。
         // 这里把它解释成「切换造词模式」，不写进 rime 编码（原因见 t9PhraseBuild 注释）。
         if (key == "`" && isT9Schema(service.uiState.value.currentSchemaId)) {
             toggleT9PhraseBuild()
+            return
+        }
+        // ── 日语假名变换键（小字 / 浊音 / 半浊音 / カナ）──
+        // 这几个动作都是「改写罗马音输入串」，必须在这里截住：落到普通字母路径会被
+        // 当成字母送进引擎（kana_small 的首字母 k）。
+        if (key.startsWith("kana_") && JapaneseInput.isJapanese(service.uiState.value.currentSchemaId)) {
+            if (handleKanaFunctionKey(key)) return
+        }
+        // 片假名模式：假名键盘送的是小写罗马音，这里转成大写（方案侧大写 = 片假名）。
+        // 用 setInput 整串重建而不是 processKey 逐字符——processKey 对 keycode 大小写的
+        // 解释依赖 shift 状态，只有 setInput 能保证输入串就是我们想要的大写形式。
+        if (service.japaneseKatakana &&
+            key.length in 1..4 &&
+            key.all { it in 'a'..'z' || it in 'A'..'Z' } &&
+            JapaneseInput.isJapanese(service.uiState.value.currentSchemaId) &&
+            !service.rimeEngine.isAsciiMode()
+        ) {
+            service.rimeEngine.setInput(service.rimeEngine.getInput() + key.uppercase())
+            val kanaResult = service.rimeEngine.getProcessResult(true)
+            if (kanaResult.inputText.isEmpty()) service.rimeEngine.clearComposition()
+            sendTransformedResult(kanaResult)
             return
         }
         // 任何非删除键的新输入 = 英文待处理文本不再处于「删空」状态（复位权威标记，
@@ -703,10 +768,22 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                         }
                     } else {
                         val isChinese = !state.isAsciiMode
-                        val char = key
-                        val keyCode = key.lowercase()[0].code
                         val mask = if (isShifted) KeyEvent.META_SHIFT_ON else 0
-                        val isLetter = key.matches(Regex("[a-zA-Z]"))
+                        // 日语假名键送的是整段罗马音（te / ka / nn …）。Rime 每次只接受一个键码，
+                        // 原来直接取首字母 → "te" 只有 t 进引擎，屏幕上就变成字母。
+                        // 前 n-1 个字符先喂给引擎，最后一个仍走下面的常规路径，
+                        // 保证 UI 刷新用的是最终状态（不会出现半截罗马音的中间帧）。
+                        val effectiveKey = if (key.length > 1 && key.all { it in 'a'..'z' || it in 'A'..'Z' }) {
+                            key.dropLast(1).forEach { c ->
+                                service.rimeEngine.processKey(c.lowercaseChar().code, mask)
+                            }
+                            key.last().toString()
+                        } else {
+                            key
+                        }
+                        val char = effectiveKey
+                        val keyCode = effectiveKey.lowercase()[0].code
+                        val isLetter = effectiveKey.matches(Regex("[a-zA-Z]"))
                         val isShiftedChinese = isShifted && isChinese && isLetter
 
                         // 非 ASCII 可打印字符（全角符号/中文标点）：直接上屏，不进入 Rime 引擎。
@@ -745,7 +822,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                             if (!state.isAsciiMode && candState.isComposing && !isShifted &&
                                 editingCaret in 0..editingInput.length && editingInput.isNotEmpty()
                             ) {
-                                val ch = key.lowercase()[0]
+                                val ch = effectiveKey.lowercase()[0]
                                 val newInput = editingInput.substring(0, editingCaret) + ch +
                                     editingInput.substring(editingCaret)
                                 service.editingCaretPos = editingCaret + 1
@@ -1072,6 +1149,19 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                 service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
             }
         } else when {
+            // 0. 日语：按「假名」为单位退格（整串重建）。
+            //    Rime 默认只删一个罗马音字母，te 会残留成 t、屏幕上变字母，
+            //    接着再打 a 就拼成 ta —— 这是"退格后继续输入不对"的根因。
+            JapaneseInput.isJapanese(service.uiState.value.currentSchemaId) &&
+                service.rimeEngine.getInput().isNotEmpty() -> {
+                service.backspaceDeletedInput = true
+                val input = service.rimeEngine.getInput()
+                service.rimeEngine.setInput(deleteJapaneseRomaji(input))
+                val result = service.rimeEngine.getProcessResult(true)
+                if (result.inputText.isEmpty()) service.rimeEngine.clearComposition()
+                sendTransformedResult(result) { if (service.calculatorEngine.isActive()) updateCalculatorCandidates() }
+            }
+
             // 1. 英文待处理文本：逐个删除字符，重新加载联想
             candState.pendingEnglishText.isNotEmpty() -> {
                 // 英文待处理文本删空即停（权威判定）：pendingEnglishText 的 UI 快照经

@@ -79,6 +79,7 @@ fun KeyboardLayoutState.transition(
         KeyboardLayoutAction.SwitchToStroke -> KeyboardLayoutState.Stroke
         KeyboardLayoutAction.SwitchToFull -> when {
             isAsciiMode -> KeyboardLayoutState.English
+            isKanaSchema(schemaId) -> KeyboardLayoutState.T9Pinyin
             isT9Schema(schemaId) -> KeyboardLayoutState.T9Pinyin
             else -> KeyboardLayoutState.Chinese
         }
@@ -92,10 +93,12 @@ fun initialKeyboardLayoutState(
     isAsciiMode: Boolean,
     schemaId: String = "",
 ): KeyboardLayoutState = when {
+    isKanaSchema(schemaId) && !isAsciiMode -> KeyboardLayoutState.T9Pinyin
     isT9Schema(schemaId) && !isAsciiMode -> KeyboardLayoutState.T9Pinyin
     isStrokeSchema(schemaId) && !isAsciiMode -> KeyboardLayoutState.Stroke
     isAsciiMode -> KeyboardLayoutState.English
     isStrokeSchema(schemaId) -> KeyboardLayoutState.Stroke
+    isKanaSchema(schemaId) -> KeyboardLayoutState.T9Pinyin
     isT9Schema(schemaId) -> KeyboardLayoutState.T9Pinyin
     else -> KeyboardLayoutState.Chinese
 }
@@ -106,6 +109,14 @@ fun initialKeyboardLayoutState(
  */
 fun isT9Schema(schemaId: String): Boolean =
     KeysConfigHelper.schemaSectionKind(schemaId) == "t9"
+
+/**
+ * 判断是否为日语假名方案：用假名九宫格渲染，宿主状态复用 [KeyboardLayoutState.T9Pinyin]。
+ *
+ * 注意**不能**并进 [isT9Schema]：该函数还决定候选过滤/消费链路，
+ * 日语方案走的是普通 script_translator，混进九键链路会把候选吃错。
+ */
+fun isKanaSchema(schemaId: String): Boolean = schemaId == "japanese_kana"
 
 /**
  * 判断是否为笔画方案：认 keyboard.<section>.schemas 绑定声明（段 type 为 stroke 或段名为

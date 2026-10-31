@@ -275,7 +275,26 @@ fun KeyboardLayoutScreen(
             }
 
             is KeyboardLayoutState.T9Pinyin -> {
-                if (isHandwritingLookup) {
+                if (isKanaSchema(uiState.currentSchemaId)) {
+                    // 日语假名九宫格：同一个宿主状态（T9Pinyin），换一套键面与手势
+                    KanaKeyboardLayout(
+                        onKeyPress = onKeyPress,
+                        keyBackgroundColor = keyBgColor,
+                        keyTextColor = keyTextColor,
+                        specialKeyBackgroundColor = specialKeyBgColor,
+                        specialKeyTextColor = specialKeyTextColor,
+                        keyboardBackgroundColor = keyboardBgColor,
+                        modifier = modifier,
+                        onKeyPressDown = callbacks.onKeyPressDown,
+                        onCursorMove = callbacks.onCursorMove,
+                        shadowEnabled = kbShadow.enabled,
+                        shadowElevation = kbShadow.elevation.dp,
+                        shadowShapeRadius = maxOf(kbShadow.shapeRadius.dp, t9CornerRadius),
+                        keyCornerRadius = t9CornerRadius,
+                        keySpacingX = kbKey.spacingFor("t9").first?.dp ?: if (tablet) 4.dp else null,
+                        keySpacingY = kbKey.spacingFor("t9").second?.dp ?: if (tablet) 6.dp else null,
+                    )
+                } else if (isHandwritingLookup) {
                     HandwritingLookupKeyboard(
                         keyTextColor = keyTextColor,
                         specialKeyBgColor = specialKeyBgColor,

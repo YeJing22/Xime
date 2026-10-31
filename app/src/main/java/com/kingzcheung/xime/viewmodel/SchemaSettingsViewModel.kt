@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
 data class SchemaUiState(
     val allSchemas: List<SchemaMeta> = emptyList(),
     val enabledSchemas: List<String> = emptyList(),
-    val currentSchema: String = "wubi86",
+    val currentSchema: String = "japanese_kana",
     /** 当前方案集（活动包）的显示信息，标题卡用。 */
     val activePackageId: String = "",
     val activePackageName: String = "",

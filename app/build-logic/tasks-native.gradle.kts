@@ -173,12 +173,19 @@ val downloadOnnx by tasks.registering {
         )
         // 旧源码编译残留的 v1.28 头文件会与官方 v1.27 .so 不匹配（ORT_API_VERSION 不同），
         // 导致 GetApi(28) 失败。部署前清理 include 目录，确保头文件与 AAR 版本一致。
+        // 只在缓存缺失时补下载：网络抖动时不再把整套头文件删空重下
+        // （副本与主仓库共用 jni 目录，删空会连带破坏主仓库的 include）。
+        val wanted = headersToFetch.map { it.substringAfterLast("/") }.toSet()
         dstHeaders.listFiles()?.forEach { old ->
-            if (old.isFile) old.delete()
+            if (old.isFile && old.name !in wanted) old.delete()
         }
         for (rel in headersToFetch) {
             val target = java.io.File(dstHeaders, rel.substringAfterLast("/"))
             val url = "$onnxHeadersBase/$rel"
+            if (target.isFile && target.length() > 0) {
+                println("Header cached: ${target.name}")
+                continue
+            }
             if (downloadWithMirrors(githubUrls(url), target, buildDir, "onnxruntime header $rel")) {
                 println("Header ok: ${target.name}")
             } else {

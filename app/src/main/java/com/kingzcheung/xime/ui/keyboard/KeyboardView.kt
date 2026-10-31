@@ -265,7 +265,7 @@ fun KeyboardView(
         callbacks.onPreeditCodeTap = { displayCharIndex ->
             val text = candidateState.value.preeditText
             if (text.isNotEmpty()) {
-                if (keyboardState is KeyboardLayoutState.T9Pinyin) {
+                if (keyboardState is KeyboardLayoutState.T9Pinyin && !isKanaSchema(state.currentSchemaId)) {
                     val codeIndex = preeditCharIndexToCodeIndex(text, displayCharIndex)
                     t9Controller.beginCodeEdit(codeIndex)
                 } else {
@@ -847,7 +847,8 @@ fun KeyboardView(
                     measuredWidthDp > 0 -> measuredWidthDp
                     else -> screenW
                 }
-                val isT9Layout = keyboardState is KeyboardLayoutState.T9Pinyin
+                val isT9Layout = keyboardState is KeyboardLayoutState.T9Pinyin &&
+                    !isKanaSchema(state.currentSchemaId)
                 val hasT9LeftRail = isT9Layout && t9HasLeftRail(isLandscape, isTablet())
                 val t9RailWidthDp = if (hasT9LeftRail) {
                     t9LeftRailWidthDp(expandedPageWidthDp.toFloat(), isTablet())
@@ -1266,7 +1267,9 @@ fun KeyboardView(
                             is KeyboardLayoutState.Number -> numberOnKeyPress
                             is KeyboardLayoutState.CommonSymbol -> commonSymbolOnKeyPress
                             is KeyboardLayoutState.Stroke -> strokeOnKeyPress
-                            is KeyboardLayoutState.T9Pinyin -> t9OnKeyPress
+                            // 日语假名键盘送的是罗马音字母，走全键盘的分发（不进九键数字链路）
+                            is KeyboardLayoutState.T9Pinyin ->
+                                if (isKanaSchema(state.currentSchemaId)) fullScreenOnKeyPress else t9OnKeyPress
                             is KeyboardLayoutState.Symbol -> symbolOnKeyPress
                         }
                         CompositionLocalProvider(

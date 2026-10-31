@@ -2,6 +2,7 @@ package com.kingzcheung.xime.service
 
 import com.kingzcheung.xime.keyboard.HANDWRITING_SCHEMA_ID
 import com.kingzcheung.xime.rime.RimeEngine
+import com.kingzcheung.xime.rime.japanesePreedit
 import com.kingzcheung.xime.rime.T9InputController
 import com.kingzcheung.xime.rime.buildT9DisplayState
 import com.kingzcheung.xime.settings.SchemaManager
@@ -52,7 +53,7 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
         } else {
             filteredTexts to filteredComments
         }
-        val displayText: String
+        var displayText: String
         val displayCandidates: List<String>
         val displayComments: List<String>
         val isComposing: Boolean
@@ -114,6 +115,10 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
             // 不能混入回显字符。历史上曾整体用 input 规避自装双拼插件的展开编码显示，
             // 代价是全拼丢失分隔符；现仅显示层恢复 librime 标准回显。
             displayText = if (preeditText.isNotEmpty()) preeditText else inputText
+            // 日语：末尾未拼完的罗马音按按下的原字母显示（引擎会兜底成 っ / ん）
+            if (JapaneseInput.isJapanese(service.uiState.value.currentSchemaId)) {
+                displayText = japanesePreedit(inputText, displayText)
+            }
             displayCandidates = filteredTexts
             displayComments = filteredComments
             isComposing = inputText.isNotEmpty()
@@ -261,7 +266,7 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
         } else {
             filteredTexts to filteredComments
         }
-        val displayText: String
+        var displayText: String
         val displayCandidates: List<String>
         val displayComments: List<String>
         val isComposing: Boolean
@@ -284,6 +289,9 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
             // 非 T9 方案：preeditText 用引擎回显（带音节分隔符，如全拼 ni'hao），空则回退 input；
             // inputText 保留原始键入串供提交路径直接上屏（见 applyComposition 注释）。
             displayText = if (result.preeditText.isNotEmpty()) result.preeditText else result.inputText
+            if (JapaneseInput.isJapanese(service.uiState.value.currentSchemaId)) {
+                displayText = japanesePreedit(result.inputText, displayText)
+            }
             displayCandidates = filteredTexts
             displayComments = filteredComments
             isComposing = result.inputText.isNotEmpty()

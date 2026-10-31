@@ -275,6 +275,9 @@ internal object SchemeInstaller {
         restoreOverlay(context, packageId, rimeDir)
         // 包内可能缺共享预设（symbols/default 等）：缺失的用 app 基线补一份。
         RimeConfigHelper.ensureBuiltinBaseFiles(context)
+        // 日语方案不随包走：上面刚把 rime 目录整个清空重铺，这里必须补铺一次，
+        // 否则切到任何第三方方案包后日语键盘就消失了（要等下次重启 app 才回来）。
+        com.kingzcheung.xime.settings.JapaneseSchemas.installAssets(context, rimeDir)
         SchemaManager.ensureDefaultYamlForInstall(context)
         // 包声明的依赖：装到 rime 后与包一起编译（失败只记警告，不阻断安装）。
         val dep = if (dependencies.isEmpty()) null else runBlocking {
@@ -289,6 +292,9 @@ internal object SchemeInstaller {
 
         SchemeStore.invalidate()
         SchemeStore.ensure(context)
+        // 切包会把启用列表换成包内声明的方案，日语方案因此在列表里消失——
+        // 补回来（只追加），否则第二次部署时它不会被编译、输入法里也切不过去。
+        com.kingzcheung.xime.settings.JapaneseSchemas.ensureEnabled(context)
         // 状态归一后立刻镜像 default.yaml：即使下面跳过部署，也不能把包内/基线的
         // 旧 schema_list 留给下一次部署去编译。
         SchemaManager.applyEnabledSchemasToDefaultYaml(context)
