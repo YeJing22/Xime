@@ -276,6 +276,9 @@ private fun KanaFlickKey(
     // 假名键靠横向滑动选段，必须把父层的「横滑移光标」压住，
     // 否则滑动时输入串里的插入点会跟着动（与 26 键符号滑动同一机制）。
     val suppressCursorMove = LocalSuppressCursorMove.current
+    // 键面文字跟随「按键字体」设置。本键是自绘 Box，不像 KeyButton 内部已取过字体，
+    // 漏了这行则换字体时假名键保持系统默认、功能键却变，视觉割裂。
+    val keyFontFamily = AppFonts.keyFontFamily
 
     var pressed by remember { mutableStateOf(false) }
     var direction by remember { mutableStateOf(KanaDirection.TAP) }
@@ -349,25 +352,30 @@ private fun KanaFlickKey(
             text = pending.label,
             color = foreground,
             fontSize = centerSize,
+            fontFamily = keyFontFamily,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
         if (direction == KanaDirection.TAP) {
             key.choice(KanaDirection.LEFT)?.let {
                 Text(it.label, Modifier.align(Alignment.CenterStart).padding(start = 5.dp),
-                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize, maxLines = 1)
+                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize,
+                    fontFamily = keyFontFamily, maxLines = 1)
             }
             key.choice(KanaDirection.RIGHT)?.let {
                 Text(it.label, Modifier.align(Alignment.CenterEnd).padding(end = 5.dp),
-                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize, maxLines = 1)
+                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize,
+                    fontFamily = keyFontFamily, maxLines = 1)
             }
             key.choice(KanaDirection.UP)?.let {
                 Text(it.label, Modifier.align(Alignment.TopCenter).padding(top = 2.dp),
-                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize, maxLines = 1)
+                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize,
+                    fontFamily = keyFontFamily, maxLines = 1)
             }
             key.choice(KanaDirection.DOWN)?.let {
                 Text(it.label, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp),
-                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize, maxLines = 1)
+                    color = foreground.copy(alpha = hintAlpha), fontSize = hintSize,
+                    fontFamily = keyFontFamily, maxLines = 1)
             }
         }
     }
@@ -398,6 +406,8 @@ private fun KanaModifierKey(
     val shape = remember(cornerRadius) { RoundedCornerShape(cornerRadius) }
     val visualPadding = LocalKeyVisualPadding.current
     val suppressCursorMove = LocalSuppressCursorMove.current
+    // 同 KanaFlickKey：自绘键必须手动取按键字体
+    val keyFontFamily = AppFonts.keyFontFamily
 
     var pressed by remember { mutableStateOf(false) }
     var direction by remember { mutableStateOf(KanaDirection.TAP) }
@@ -476,14 +486,17 @@ private fun KanaModifierKey(
             text = label,
             color = foreground,
             fontSize = centerSize,
+            fontFamily = keyFontFamily,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
         if (direction == KanaDirection.TAP) {
             Text("゛", Modifier.align(Alignment.CenterStart).padding(start = 5.dp),
-                color = foreground.copy(alpha = 0.42f), fontSize = hintSize, maxLines = 1)
+                color = foreground.copy(alpha = 0.42f), fontSize = hintSize,
+                fontFamily = keyFontFamily, maxLines = 1)
             Text("゜", Modifier.align(Alignment.CenterEnd).padding(end = 5.dp),
-                color = foreground.copy(alpha = 0.42f), fontSize = hintSize, maxLines = 1)
+                color = foreground.copy(alpha = 0.42f), fontSize = hintSize,
+                fontFamily = keyFontFamily, maxLines = 1)
         }
     }
 }
