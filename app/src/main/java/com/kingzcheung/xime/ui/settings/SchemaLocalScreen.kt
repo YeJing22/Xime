@@ -452,15 +452,18 @@ private fun LocalPackageCard(
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.width(8.dp))
-                val tagColor = when {
-                    item.installed -> MaterialTheme.colorScheme.primary
-                    item.downloaded -> MaterialTheme.colorScheme.outline
-                    else -> MaterialTheme.colorScheme.error
+                val statusLabel = when {
+                    item.installed -> tr(R.string.s_yianzhuang)
+                    item.downloaded -> tr(R.string.s_yixiazai)
+                    else -> null
                 }
-                TagText(
-                    if (item.installed) tr(R.string.s_yianzhuang) else if (item.downloaded) tr(R.string.s_yixiazai) else tr(R.string.s_weizhi),
-                    tagColor,
-                )
+                if (statusLabel != null) {
+                    TagText(
+                        statusLabel,
+                        if (item.installed) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline,
+                    )
+                }
             }
             Spacer(Modifier.height(4.dp))
             Text(

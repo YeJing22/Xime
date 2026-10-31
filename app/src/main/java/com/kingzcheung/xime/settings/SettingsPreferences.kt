@@ -10,15 +10,14 @@ object SettingsPreferences {
     private const val KEY_CURRENT_SCHEMA = "current_schema"
     /** 双写标记：仅新版本双写后置 true，本地值才可信（旧版本只写 rime，本地是过时迁移值） */
     private const val KEY_CURRENT_SCHEMA_DUAL = "current_schema_dual"
-    private const val KEY_DEPLOYMENT_DONE = "deployment_done"
     /** 启用方案列表（有序，逗号连接；schema id 为 [a-z0-9_] 无逗号），持久真相。 */
     private const val KEY_ENABLED_SCHEMAS = "enabled_schemas"
     /** 当前活动方案包 id（单活动包模型）；null 表示用户主动卸载了所有包。 */
     private const val KEY_ACTIVE_PACKAGE_ID = "active_package_id"
     /** default.custom.yaml 的 schema_list 是否已迁移进 prefs（一次性）。 */
     private const val KEY_DEFAULT_CUSTOM_MIGRATED = "default_custom_schema_list_migrated"
+    private const val KEY_SCHEME_SELECTION_MIGRATED = "scheme_selection_v2_migrated"
     private const val KEY_PENDING_DICT_MERGE = "pending_dict_merge"
-    private const val KEY_DEPLOYMENT_HASH = "deployment_hash"
     private const val KEY_SETUP_COMPLETED = "setup_completed"
     private const val KEY_DARK_MODE = "dark_mode"
     private const val KEY_VERBOSE_LOGGING = "verbose_logging"
@@ -218,14 +217,6 @@ object SettingsPreferences {
         }
     }
     
-    fun isDeploymentDone(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_DEPLOYMENT_DONE, false)
-    }
-
-    fun setDeploymentDone(context: Context, done: Boolean) {
-        getPrefs(context).edit().putBoolean(KEY_DEPLOYMENT_DONE, done).apply()
-    }
-
     /** 启用方案列表（有序，逗号连接；schema id 为 [a-z0-9_] 无逗号）。null = 从未写入。 */
     fun getEnabledSchemaList(context: Context): List<String>? {
         if (!getPrefs(context).contains(KEY_ENABLED_SCHEMAS)) return null
@@ -256,6 +247,15 @@ object SettingsPreferences {
         getPrefs(context).edit().putBoolean(KEY_DEFAULT_CUSTOM_MIGRATED, migrated).apply()
     }
 
+    /** 旧版"无 schema_list 时猜第一个方案"的选择是否已作废（一次性迁移）。 */
+    fun isSchemeSelectionMigrated(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_SCHEME_SELECTION_MIGRATED, false)
+    }
+
+    fun setSchemeSelectionMigrated(context: Context, migrated: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_SCHEME_SELECTION_MIGRATED, migrated).apply()
+    }
+
     /**
      * 待合并的自造词快照标记：恢复备份时若引擎未就绪（冷启动直接进设置页），
      * 快照已落盘但无法调 `syncUserData()` 合并——由 IME 服务在引擎就绪后补做。
@@ -266,14 +266,6 @@ object SettingsPreferences {
 
     fun setPendingDictMerge(context: Context, pending: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_PENDING_DICT_MERGE, pending).apply()
-    }
-
-    fun getDeploymentHash(context: Context): String {
-        return getPrefs(context).getString(KEY_DEPLOYMENT_HASH, "") ?: ""
-    }
-
-    fun setDeploymentHash(context: Context, hash: String) {
-        getPrefs(context).edit().putString(KEY_DEPLOYMENT_HASH, hash).apply()
     }
 
     /** 调试 verbose 日志总开关（仅 Debug 构建生效，Release 恒关闭）。 */

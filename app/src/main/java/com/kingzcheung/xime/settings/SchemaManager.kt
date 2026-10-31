@@ -11,6 +11,7 @@ import android.util.Log
 import com.kingzcheung.xime.scheme.SchemeArchive
 import com.kingzcheung.xime.scheme.SchemeFiles
 import com.kingzcheung.xime.scheme.SchemeInstaller
+import com.kingzcheung.xime.scheme.SchemePackages
 import com.kingzcheung.xime.scheme.SchemeStore
 import com.kingzcheung.xime.util.FileLogger
 import com.kingzcheung.xime.rime.RimeConfigHelper
@@ -108,13 +109,17 @@ object SchemaManager {
         return dir.exists() && (dir.listFiles()?.any { it.isFile } == true)
     }
 
-    /** 删除 market 中指定方案的整个子目录（含压缩包），并清理本地版本记录。 */
+    /** 删除 market 中指定方案的整个子目录（含压缩包），并清理本地版本记录与包信息。 */
     fun deleteSchemeArchive(context: Context, schemeId: String): Boolean {
         val dir = getMarketDir(context, schemeId)
         val removed = if (!dir.exists()) false else dir.deleteRecursively()
         if (removed) {
             MarketVersionStore.removeSchemeVersion(context, schemeId)
         }
+        // 包信息（名称/版本）必须一起清：否则条目仍由 scheme_package_info 留在列表里，
+        // 既非已安装也非已下载，UI 只能显示「未知」。
+        SchemePackages.forget(context, schemeId)
+        SchemeStore.invalidate()
         return removed
     }
 
@@ -124,6 +129,8 @@ object SchemaManager {
         val unresolvedDeps: List<String> = emptyList(),
         val failureReason: String? = null,
         val parseFailures: List<String> = emptyList(),
+        /** 包没有声明 schema_list：装好后没有启用方案，需要用户手动选择并部署。 */
+        val needsSelection: Boolean = false,
     )
 
     /**
@@ -159,6 +166,7 @@ object SchemaManager {
             unresolvedDeps = outcome.unresolvedDeps,
             failureReason = installFailureMessage(outcome),
             parseFailures = outcome.parseFailures,
+            needsSelection = outcome.needsSelection,
         )
     }
 
@@ -270,13 +278,16 @@ object SchemaManager {
 
     // F1: 把启用方案直接写进 default.yaml 的 schema_list（纯函数，可单测）
     fun replaceSchemaListBlock(defaultYamlText: String, enabled: List<String>): String {
-        if (enabled.isEmpty()) return defaultYamlText
         // 保留原文件换行风格（CRLF/LF），避免把整文件换行符规范化
         val sep = if (defaultYamlText.contains("\r\n")) "\r\n" else "\n"
         val lines = defaultYamlText.lines()
-        val headerIdx = lines.indexOfFirst { it.trim() == "schema_list:" }
+        // 兼容 `schema_list:` 与 `schema_list: []`：后者是空启用时写入的，
+        // 只按完全相等匹配会导致下次写入认不出旧块，在文末再追加一份重复 key。
+        fun isHeader(line: String) = line.trimStart().startsWith("schema_list:")
+        val headers = lines.indices.filter { isHeader(lines[it]) }
 
-        if (headerIdx < 0) {
+        if (headers.isEmpty()) {
+            if (enabled.isEmpty()) return defaultYamlText
             // 没有 schema_list 块：在文末追加一个
             val sb = StringBuilder(defaultYamlText)
             if (!defaultYamlText.endsWith("\n")) sb.append(sep)
@@ -285,24 +296,47 @@ object SchemaManager {
             return sb.toString()
         }
 
-        // 吃掉紧跟其后的列表项行；保留缩进风格（默认两空格）
-        var j = headerIdx + 1
+        val firstHeader = headers.first()
+        // 列表项缩进沿用原文件风格（没有列表项时用两空格）
         var indent = "  "
-        var first = true
-        while (j < lines.size && lines[j].trimStart().startsWith("-")) {
-            if (first) {
-                indent = lines[j].takeWhile { it == ' ' || it == '\t' }.ifEmpty { "  " }
-                first = false
-            }
-            j++
+        val next = firstHeader + 1
+        if (next < lines.size && lines[next].trimStart().startsWith("-")) {
+            indent = lines[next].takeWhile { it == ' ' || it == '\t' }.ifEmpty { "  " }
         }
 
-        val rebuilt = buildList {
-            add(lines[headerIdx])                    // 保留原 header 行（含其缩进）
-            enabled.forEach { add("$indent- schema: $it") }
+        // 历史写入可能留下多个 schema_list 块（重复 key 会让 librime 只认其中一份，
+        // 新启用的方案永远不编译）：整块删掉，只在第一个位置写一份新的。
+        val drop = BooleanArray(lines.size)
+        for (h in headers) {
+            drop[h] = true
+            var k = h + 1
+            while (k < lines.size && lines[k].trimStart().startsWith("-")) {
+                drop[k] = true
+                k++
+            }
         }
-        return (lines.subList(0, headerIdx) + rebuilt + lines.subList(j, lines.size))
-            .joinToString(sep)
+
+        // 空列表写 `schema_list: []`：安装无声明方案包后必须先清空旧列表，
+        // 否则包内/基线 default.yaml 会带着上一个包的 schema_list 去编译。
+        val block = if (enabled.isEmpty()) {
+            listOf("schema_list: []")
+        } else {
+            buildList {
+                add("schema_list:")
+                enabled.forEach { add("$indent- schema: $it") }
+            }
+        }
+
+        val out = ArrayList<String>(lines.size)
+        for (i in lines.indices) {
+            if (i == firstHeader) {
+                out += block
+                continue
+            }
+            if (drop[i]) continue
+            out += lines[i]
+        }
+        return out.joinToString(sep)
     }
 
     /**
@@ -320,7 +354,6 @@ object SchemaManager {
         schemaIds: List<String> = getEnabledSchemas(context)
     ) {
         stripSchemaListFromDefaultCustom(context)
-        if (schemaIds.isEmpty()) return
         val rimeDir = getRimeDir(context)
         // 只镜像源文件还在的启用项：卸载方案包/冲突卸载可能留下已删方案的 id，
         // 写进 schema_list 会让 librime 报 missing input schema 并拖累整次部署。
@@ -334,13 +367,11 @@ object SchemaManager {
                 "Drop enabled schemas without source file: " +
                     (schemaIds - effective.toSet()).joinToString()
             )
-            if (effective.isNotEmpty()) {
-                com.kingzcheung.xime.scheme.SchemeStore.writeEnabled(context, effective)
-            }
+            com.kingzcheung.xime.scheme.SchemeStore.writeEnabled(context, effective)
         }
-        if (effective.isEmpty()) return
         // default.yaml 属共享预设，正常不会缺席；但目录被清空/异常删除时它可能不在，
         // 直接 return 会让启用列表静默写不进去（部署随后回落到内置旧列表）。
+        // 空启用列表也要写：安装无声明方案包后必须把旧 schema_list 清掉。
         val defaultYaml = ensureDefaultYaml(context, rimeDir) ?: return
         try {
             val text = defaultYaml.readText()
@@ -749,8 +780,8 @@ object SchemaManager {
             setEnabledSchemas(context, getEnabledSchemas(context) - schemaId)
             SettingsPreferences.removeLayoutPreference(context, schemaId)
             if (SettingsPreferences.getCurrentSchema(context) == schemaId) {
-                getEnabledSchemas(context).firstOrNull()
-                    ?.let { SchemeStore.setCurrent(context, it) }
+                // 移出后可能一个都不剩：当前方案同步清空，避免指向已禁用方案。
+                SchemeStore.setCurrent(context, getEnabledSchemas(context).firstOrNull().orEmpty())
             }
             FileLogger.i(TAG, "deleteSchemaFiles: '$schemaId' disabled instead of deleted")
             return@withContext true

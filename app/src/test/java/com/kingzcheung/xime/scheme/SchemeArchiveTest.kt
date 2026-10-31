@@ -73,9 +73,14 @@ class SchemeArchiveTest {
         probe!!
         assertEquals(listOf("rime_ice"), probe.schemaIds)
         assertEquals("rime-ice-master/", probe.baseDir)
-        assertEquals(3, probe.fileCount)
-        assertEquals(listOf("xime.custom.yaml"), probe.skippedEntries)
+        // 用户数据（xime.custom.yaml）不再算"被丢弃"，而是解到 overlay 后应用
+        assertEquals(4, probe.fileCount)
+        assertTrue(probe.skippedEntries.isEmpty())
         assertTrue(probe.unpackedBytes > 0)
+
+        val overlay = temp.newFolder("overlay")
+        assertEquals(1, SchemeArchive.extractUserData(archive, overlay, probe.baseDir))
+        assertTrue(File(overlay, "xime.custom.yaml").isFile)
     }
 
     @Test

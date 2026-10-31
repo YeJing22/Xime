@@ -77,6 +77,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -135,7 +136,9 @@ fun MarketHubContent(
     initialTab: Int = 0,
 ) {
     val context = LocalContext.current
-    var tabIndex by remember { mutableIntStateOf(initialTab) }
+    // NavHost 跳到详情再返回时组合会被销毁重建：用 rememberSaveable 记住当前 Tab，
+    // 否则会回落 initialTab（方案页）。
+    var tabIndex by rememberSaveable { mutableIntStateOf(initialTab) }
 
     // 逛商店期间可能安装/更新扩展：清除可更新计数的节流时间戳并触发一次刷新，
     // 返回设置主页时角标会绕过节流强制重算，不残留过期计数
@@ -2444,7 +2447,22 @@ private fun LayoutsMarketTab(
             onDismissRequest = { confirmApply = null },
             title = { Text(tr(R.string.s_yingyongbuju)) },
             text = {
-                Text(tr(R.string.s_jiangfugaidangqiande_xime_cust_d2f7d, target.layout.name.ifBlank { target.layout.id }))
+                Column {
+                    Text(
+                        tr(
+                            R.string.s_jiangfugaidangqiande_xime_cust_d2f7d,
+                            target.layout.name.ifBlank { target.layout.id },
+                        ),
+                    )
+                    if (target.layout.warning.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            target.layout.warning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = {

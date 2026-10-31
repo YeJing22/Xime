@@ -567,8 +567,10 @@ class RimeEngine {
             return false
         }
         locked {
-            if (!nativeHasSession()) {
-                FileLogger.w(TAG, "switchSchema($schemaId) failed: no rime session")
+            // 设置页可能在没有键盘会话的进程里切方案（如应用刚重启、只开了设置页），
+            // 引擎启动时并不建 session（见 initialize 注释），这里补建一次再切。
+            if (!nativeHasSession() && !nativeCreateSession()) {
+                FileLogger.w(TAG, "switchSchema($schemaId) failed: cannot create rime session")
                 return false
             }
             // 在切换方案前，确保 T9 方案的 schema 补丁已注入
@@ -585,50 +587,25 @@ class RimeEngine {
         }
     }
 
-    fun startMaintenance(full: Boolean): Boolean {
-        if (!isInitialized) return false
-        locked {
-            return nativeStartMaintenance(full)
-        }
-    }
-
-    fun deploy(): Boolean {
+    /**
+     * 部署/维护：销毁会话 → 跑 librime 维护 → 重建会话（在 native 侧一步完成）。
+     *
+     * 维护会卸载已加载的方案与词典，若沿用旧会话，之后所有查询都为空
+     * （症状：部署后打不出中文，必须重启 app），所以会话必须成对销毁/重建。
+     *
+     * @param fullCheck true（用户主动部署、安装替换）：跳过顶层 mtime 快速判断，
+     *   逐方案比对 `__build_info/timestamps` 里记录的所有引用文件（含 `__include`
+     *   的自定义 yaml）；文件没变仍不会重编，不是"全量重编译"。
+     *   false（冷启动自检）：先按数据目录顶层 yaml 的 mtime 快速判断，无改动直接返回。
+     */
+    fun deploy(fullCheck: Boolean = true): Boolean {
         if (!isInitialized) return false
         locked {
             // 部署前确保 T9 补丁（含个人词库 packs 确定性名）已写入，
             // 部署时 librime 才会编译对应的 user_<schemaId>.table.bin。
             // 幂等：补丁已就位时 native 侧直接 skip，开销极小。
             ensureT9SchemaPatchesForDeployedSchemas(userDataDir)
-            return nativeDeploy()
-        }
-    }
-
-    /**
-     * 增量维护部署：librime 根据文件时间戳只编译变更的 schema/dict，
-     * 避免配置小幅变化（如 custom.yaml 补丁）触发 60MB 词库全量重编译。
-     * 与 [deploy] 一样持 rimeLock 并等待维护完成，保证维护期间其他
-     * native 调用不会并发进入引擎。
-     */
-    fun deployIncremental(): Boolean {
-        if (!isInitialized) return false
-        locked {
-            ensureT9SchemaPatchesForDeployedSchemas(userDataDir)
-            if (!nativeStartMaintenance(false)) {
-                FileLogger.w(TAG, "deployIncremental: startMaintenance returned false, falling back to full deploy")
-                return false
-            }
-            var waited = 0L
-            while (nativeIsMaintaining() && waited < 180_000L) {
-                Thread.sleep(100)
-                waited += 100
-            }
-            if (nativeIsMaintaining()) {
-                FileLogger.w(TAG, "deployIncremental: maintenance timed out")
-                return false
-            }
-            // 维护完成后更新 last_build_time，避免下次启动增量检测误判需重编译
-            nativeUpdateLastBuildTime()
-            return true
+            return nativeDeploy(fullCheck)
         }
     }
 
@@ -893,14 +870,12 @@ class RimeEngine {
             }
         }
     }
-    private external fun nativeStartMaintenance(full: Boolean): Boolean
     private external fun nativeSyncUserData(): Boolean
     private external fun nativeReadUserDictText(dictName: String): String?
     private external fun nativeExportUserDict(dictName: String, textFilePath: String): Int
     private external fun nativeImportUserDict(dictName: String, textFilePath: String): Int
     private external fun nativeRestoreUserDict(snapshotPath: String): Boolean
-    private external fun nativeDeploy(): Boolean
-    private external fun nativeDeploySchema(schemaId: String): Boolean
+    private external fun nativeDeploy(fullCheck: Boolean): Boolean
     private external fun nativeLookupText(text: String): String
     private external fun nativeGetAvailableSchemas(): Array<String>?
     private external fun nativeGetSchemaList(schemaId: String, key: String): Array<String>?
@@ -910,7 +885,6 @@ class RimeEngine {
     private external fun nativeSetUserConfigString(key: String, value: String): Boolean
     private external fun nativeSetUserConfigBool(key: String, value: Boolean): Boolean
     private external fun nativeIsModuleRegistered(moduleName: String): Boolean
-    private external fun nativeUpdateLastBuildTime()
     private external fun nativeSetPageSize(schemaId: String, pageSize: Int)
     private external fun nativeDestroy()
     private external fun nativeT9SelectCandidate(pinyin: String, text: String?, textLength: Int): Boolean
@@ -1022,15 +996,5 @@ class RimeEngine {
         tryLocked(Unit) {
             nativeT9FlushRimeInput()
         }
-    }
-
-    fun deploySchema(schemaId: String): Boolean {
-        if (!isInitialized) return false
-        return nativeDeploySchema(schemaId)
-    }
-
-    fun updateLastBuildTime() {
-        if (!isInitialized) return
-        nativeUpdateLastBuildTime()
     }
 }

@@ -44,6 +44,15 @@ class KeyboardAsciiStateMachine {
         return if (target != engineAscii) target else null
     }
 
+    /**
+     * 返回主键盘时推导布局用的 ascii：优先主键盘记忆，记忆缺失时才跟随引擎。
+     *
+     * 与 [targetFor] 的区别在 fallback：主键盘布局不能沿用「记忆缺失默认中文」，
+     * 否则英文主键盘从数字面板返回时会先渲染中文/九宫布局，再被 ascii 同步纠正，
+     * 表现为闪一下九宫拼音界面。
+     */
+    fun mainAsciiForLayout(engineAscii: Boolean): Boolean = mainAsciiMode ?: engineAscii
+
     /** 新输入会话：清空全部记忆，从引擎当前状态重新开始 */
     fun reset() {
         mainAsciiMode = null

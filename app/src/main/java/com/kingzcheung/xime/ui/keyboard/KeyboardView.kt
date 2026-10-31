@@ -1168,16 +1168,7 @@ fun KeyboardView(
                                 "shift", "shift_single", "shift_caps" -> viewModel.consumeShiftKey(key)
                                 "abc" -> {
                                     callbacks.onKeyPress("abc", false)
-                                    if (page is KeyboardPage.Panel) {
-                                        viewModel.exitPanel()
-                                    } else {
-                                        val mainTarget = viewModel.asciiStateMachine.targetFor(
-                                            AsciiKeyboardContext.MAIN, state.isAsciiMode
-                                        ) ?: state.isAsciiMode
-                                        viewModel.setKeyboardState(
-                                            initialKeyboardLayoutState(mainTarget, state.currentSchemaId)
-                                        )
-                                    }
+                                    viewModel.returnToMain(state.isAsciiMode, state.currentSchemaId)
                                 }
                                 "symbol" -> {
                                     viewModel.showOverlay(OverlayRoute.Symbol)
@@ -1198,18 +1189,7 @@ fun KeyboardView(
                         }
                         val symbolOnKeyPress: (String) -> Unit = { key ->
                             when (key) {
-                                "abc" -> {
-                                    if (page is KeyboardPage.Panel) {
-                                        viewModel.exitPanel()
-                                    } else {
-                                        val mainTarget = viewModel.asciiStateMachine.targetFor(
-                                            AsciiKeyboardContext.MAIN, state.isAsciiMode
-                                        ) ?: state.isAsciiMode
-                                        viewModel.setKeyboardState(
-                                            initialKeyboardLayoutState(mainTarget, state.currentSchemaId)
-                                        )
-                                    }
-                                }
+                                "abc" -> viewModel.returnToMain(state.isAsciiMode, state.currentSchemaId)
                                 "?123" -> {
                                     callbacks.onCommitCandidateBeforeModeChange?.invoke()
                                     viewModel.setKeyboardState(keyboardState.transition(
@@ -1223,20 +1203,8 @@ fun KeyboardView(
                         val commonSymbolOnKeyPress: (String) -> Unit = { key ->
                             when (key) {
                                 "shift", "shift_single", "shift_caps" -> viewModel.consumeShiftKey(key)
-                                "abc" -> {
-                                    // 返回主键盘：面板内 ascii 模式不应影响主键盘布局，
-                                    // 用主键盘记忆（或恢复进入面板前状态），避免"先英文后切回中文"闪变。
-                                    if (page is KeyboardPage.Panel) {
-                                        viewModel.exitPanel()
-                                    } else {
-                                        val mainTarget = viewModel.asciiStateMachine.targetFor(
-                                            AsciiKeyboardContext.MAIN, state.isAsciiMode
-                                        ) ?: state.isAsciiMode
-                                        viewModel.setKeyboardState(
-                                            initialKeyboardLayoutState(mainTarget, state.currentSchemaId)
-                                        )
-                                    }
-                                }
+                                // 返回主键盘：符号/数字页不碰引擎中英态，布局跟随引擎当前状态
+                                "abc" -> viewModel.returnToMain(state.isAsciiMode, state.currentSchemaId)
                                 "number" -> {
                                     viewModel.setKeyboardState(keyboardState.transition(
                                         KeyboardLayoutAction.SwitchToNumber, state.isAsciiMode

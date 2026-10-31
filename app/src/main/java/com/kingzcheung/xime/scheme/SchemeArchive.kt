@@ -55,6 +55,12 @@ internal object SchemeArchive {
         for ((path, size, _) in entries) {
             val rel = path.removePrefix(baseDir)
             if (rel.isBlank()) continue
+            if (SchemeFiles.isUserData(rel)) {
+                // 用户数据层会解到 overlay 后应用，不按"被丢弃条目"警告
+                bytes += size.coerceAtLeast(0)
+                count++
+                continue
+            }
             if (isSkippedEntry(rel)) {
                 skipped += rel
                 continue
@@ -98,6 +104,31 @@ internal object SchemeArchive {
         if (!ok) return -1
         FileLogger.i(TAG, "extract ${archive.name}: $extracted files")
         return extracted
+    }
+
+    /**
+     * 把包内的用户数据层（xime.custom.yaml / themes / fonts / custom_phrase）解到
+     * [targetDir]（通常是 `market/<pkg>/overlay`）。安装流程会先恢复旧用户数据，
+     * 再通过 overlay 覆盖，从而既保留旧主题/字体，又让新包自带的布局生效。
+     *
+     * @return 解出文件数，-1 表示归档读失败。
+     */
+    fun extractUserData(archive: File, targetDir: File, baseDir: String): Int {
+        var extracted = 0
+        val ok = visit(archive) { path, _, time, write ->
+            val rel = path.removePrefix(baseDir)
+            if (rel.isBlank() || !SchemeFiles.isUserData(rel)) return@visit
+            val target = safeChild(targetDir, rel)
+            if (target == null) {
+                FileLogger.w(TAG, "skip unsafe user-data path: $rel")
+                return@visit
+            }
+            target.parentFile?.mkdirs()
+            write(target)
+            if (time > 0L) target.setLastModified(time)
+            extracted++
+        }
+        return if (ok) extracted else -1
     }
 
     /**

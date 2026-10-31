@@ -39,6 +39,8 @@ internal object SchemeInstaller {
         val missingSchemas: List<String> = emptyList(),
         val warnings: List<String> = emptyList(),
         val unresolvedDeps: List<String> = emptyList(),
+        /** 包没有声明 `schema_list`：内容已装好，但没有启用任何方案，等用户手动选择。 */
+        val needsSelection: Boolean = false,
     )
 
     @Volatile
@@ -109,15 +111,25 @@ internal object SchemeInstaller {
             resolveDepUrl = resolveDepUrl,
             writeContent = { rimeDir ->
                 var ok = true
+                // 包内 xime.custom.yaml / themes / fonts 先落到 overlay：安装流程会先恢复
+                // 旧用户数据，再由 restoreOverlay 覆盖，兼顾“保留旧资源”和“应用新包布局”。
+                val overlay = SchemeFiles.overlayDir(context, packageId)
+                overlay.deleteRecursively()
+                overlay.mkdirs()
                 for ((archive, probe) in probes) {
                     if (SchemeArchive.extract(archive, rimeDir, probe!!.baseDir) < 0) {
+                        ok = false
+                        break
+                    }
+                    if (SchemeArchive.extractUserData(archive, overlay, probe.baseDir) < 0) {
                         ok = false
                         break
                     }
                 }
                 if (ok) {
                     for (file in plain) {
-                        runCatching { file.copyTo(File(rimeDir, file.name), overwrite = true) }
+                        val targetDir = if (SchemeFiles.isUserData(file.name)) overlay else rimeDir
+                        runCatching { file.copyTo(File(targetDir, file.name), overwrite = true) }
                             .onFailure { ok = false }
                     }
                 }
@@ -277,17 +289,28 @@ internal object SchemeInstaller {
 
         SchemeStore.invalidate()
         SchemeStore.ensure(context)
+        // 状态归一后立刻镜像 default.yaml：即使下面跳过部署，也不能把包内/基线的
+        // 旧 schema_list 留给下一次部署去编译。
+        SchemaManager.applyEnabledSchemasToDefaultYaml(context)
         val installed = SchemeFiles.installedSchemaIds(rimeDir)
         val parseFailures = plannedSchemaIds.filter { it !in installed }
 
-        val deploy = SchemeDeployer.deploy(context, force = true)
+        // 没有声明 schema_list 的包不自动部署：等用户在「输入方案」里勾选启用后再部署，
+        // 否则会把包内/基线 default.yaml 里的旧列表当成启用方案去编译。
+        val needsSelection = SchemeStore.state(context).enabled.isEmpty()
+        val deploy = if (needsSelection) {
+            FileLogger.i(TAG, "skip deploy for $packageId: no schema_list declared, waiting for selection")
+            SchemeDeployer.Result(ok = true)
+        } else {
+            SchemeDeployer.deploy(context, force = true)
+        }
         if (!deploy.ok) SchemeStore.setInstallState(context, InstallState.DEPLOY_FAILED)
         SchemePackages.remember(context, packageId, name, version)
 
         FileLogger.i(
             TAG,
             "replace done: package=$packageId, installed=${installed.joinToString()}, " +
-                "deployed=${deploy.ok}, missing=${deploy.missingSchemas.joinToString()}"
+                "deployed=${deploy.ok}, needsSelection=$needsSelection, missing=${deploy.missingSchemas.joinToString()}"
         )
         return Outcome(
             success = true,
@@ -296,6 +319,7 @@ internal object SchemeInstaller {
             missingSchemas = deploy.missingSchemas,
             warnings = warnings,
             unresolvedDeps = ((dep?.unresolved ?: emptyList()) + (dep?.stillMissingFiles ?: emptyList())).distinct(),
+            needsSelection = needsSelection,
         )
     }
 

@@ -54,7 +54,15 @@ internal object SchemeStore {
         )
         val declared = declaredSchemas(context, active)
 
-        val storedEnabled = SettingsPreferences.getEnabledSchemaList(context)
+        // 一次性迁移：旧版本在没有 schema_list 声明的包里会自动猜第一个 schema，
+        // 猜出来的可能是依赖 schema（如反查用的 pinyin）。这里作废这类旧选择，
+        // 让用户重新在「输入方案」里启用。
+        val storedEnabled = if (dropLegacySelection(context, active, declared)) {
+            emptyList()
+        } else {
+            SettingsPreferences.getEnabledSchemaList(context)
+        }
+
         var enabled = SchemeLogic.filterEnabled(storedEnabled, installed)
         if (enabled.isEmpty()) enabled = SchemeLogic.initialEnabled(declared, installed)
         val storedCurrent = SettingsPreferences.getCurrentSchema(context)
@@ -95,6 +103,20 @@ internal object SchemeStore {
     /** 丢弃缓存，下次 [state] / [ensure] 重新推导（备份恢复、外部改 prefs 后调用）。 */
     fun invalidate() {
         synchronized(lock) { cached = null }
+    }
+
+    /**
+     * 一次性迁移（只跑一次）：活动包没有 `schema_list` 声明时，旧版本会猜"第一个
+     * schema"作为启用方案，这个猜测结果不可信（可能选到依赖 schema），直接作废。
+     *
+     * @return true 表示调用方应把已存启用列表当成空。
+     */
+    private fun dropLegacySelection(context: Context, active: String, declared: List<String>): Boolean {
+        if (SettingsPreferences.isSchemeSelectionMigrated(context)) return false
+        SettingsPreferences.setSchemeSelectionMigrated(context, true)
+        val drop = active != builtinId && declared.isEmpty()
+        if (drop) FileLogger.i(TAG, "migrate: drop legacy selection of '$active' (no schema_list)")
+        return drop
     }
 
     fun setActive(context: Context, packageId: String?) {

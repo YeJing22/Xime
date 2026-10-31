@@ -5,7 +5,6 @@ import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.settings.PersonalDictManager
 import com.kingzcheung.xime.settings.SchemaManager
-import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.util.FileLogger
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -14,7 +13,7 @@ import java.io.File
  * 部署的唯一入口。
  *
  * 顺序固定：补 `default.custom.yaml` 模板 → 把启用列表镜像进 `default.yaml`
- * → 个人词典补丁 → 指纹/产物判定后部署 → 逐方案校验产物。
+ * → 个人词典补丁 → 重启维护（销毁/重建会话）→ 按产物校验结果。
  *
  * librime 的 `deploy()` 失败只写日志、返回码仍为 true，所以"是否成功"必须由
  * 产物校验决定，不能只看返回值。
@@ -44,13 +43,13 @@ internal object SchemeDeployer {
 
         ensureEngine(context)
 
-        if (force) {
-            File(rimeDir, "build").deleteRecursively()
-            SettingsPreferences.setDeploymentHash(context, "")
-        }
-        val deployed = RimeConfigHelper.ensureDeployment(context)
+        // 内容整体替换（安装/更新方案包）时清一次产物，保证新包不带旧编译结果；
+        // 普通部署不清 build，靠维护按文件时间戳重编变更项。
+        if (force) File(rimeDir, "build").deleteRecursively()
+        // 用户主动部署/安装替换一律 fullCheck：跳过顶层 mtime 快速判断，
+        // 逐方案比对 __include 在内的所有引用文件（未变化的不重编）。
+        val deployed = RimeConfigHelper.ensureDeployment(context, fullCheck = true)
         val missing = RimeConfigHelper.missingCompiledSchemas(context)
-        SettingsPreferences.setDeploymentDone(context, deployed && missing.isEmpty())
         if (!deployed) FileLogger.e(TAG, "deploy returned false")
         if (missing.isNotEmpty()) {
             FileLogger.e(TAG, "schemas without build artifacts: ${missing.joinToString()}")

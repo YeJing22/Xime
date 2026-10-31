@@ -61,15 +61,15 @@ internal object SchemeLogic {
     }
 
     /**
-     * 启用列表为空时的初始集合：包声明的开箱方案，没有则取第一个可用方案。
+     * 启用列表为空时的初始集合：**只**用包声明的开箱方案。
      *
-     * 不启用全部：第三方包常带注音/仓颉等辅助方案，把包内所有 `*.schema.yaml`
-     * 都拉起来会因缺资源部署失败。
+     * 不猜"第一个可用方案"：没有 `schema_list` 声明的包一律视为未启用，
+     * 交给用户在「输入方案」页手动启用；否则包内排序靠前的依赖 schema
+     * （如反查用的 `pinyin`）会被误当成用户方案。
      */
     fun initialEnabled(declared: List<String>, installedSchemaIds: List<String>): List<String> {
         val installed = installedSchemaIds.toSet()
-        val fromDeclared = declared.filter { it in installed }.distinct()
-        return fromDeclared.ifEmpty { installedSchemaIds.take(1) }
+        return declared.filter { it in installed }.distinct()
     }
 
     /** 当前方案必须落在启用列表里，否则回落到第一个启用方案（可能为空串）。 */

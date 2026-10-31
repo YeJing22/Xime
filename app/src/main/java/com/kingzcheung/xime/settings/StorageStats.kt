@@ -225,15 +225,12 @@ object StorageStats {
     }
 
     /**
-     * 清除 rime 编译产物与日志。必须同时复位部署标记：ensureDeployment 在
-     * 部署 hash 命中时会直接跳过编译，build 缺失而 hash 残留会导致引擎无产物可用。
+     * 清除 rime 编译产物与日志。
+     * build 被清空后，下一次 ensureDeployment 会因产物缺失自动升级为 fullCheck 维护，
+     * 不需要额外的部署标记。
      */
-    private fun clearSchemaCache(context: Context): Boolean {
-        val ok = deleteContents(rimeBuildDir(context)) && deleteContents(rimeLogsDir(context))
-        SettingsPreferences.setDeploymentHash(context, "")
-        SettingsPreferences.setDeploymentDone(context, false)
-        return ok
-    }
+    private fun clearSchemaCache(context: Context): Boolean =
+        deleteContents(rimeBuildDir(context)) && deleteContents(rimeLogsDir(context))
 
     private fun clearLogs(context: Context): Boolean {
         // 当日活跃文件被 FileLogger 持有句柄，删除后空间不会释放且新日志丢失，保留

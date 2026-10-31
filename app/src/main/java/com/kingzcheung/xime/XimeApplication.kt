@@ -168,8 +168,9 @@ class XimeApplication : Application(), ImageLoaderFactory {
                 val engine = RimeEngine.getInstance()
                 engine.initialize(userDataDir, sharedDataDir)
 
-                // 首次安装/升级后静默编译词库。ensureDeployment 内部带互斥且 hash 一致时跳过，
-                // 统一负责 deploymentDone/hash 状态，避免与输入法服务的初始化重复触发全量编译。
+                // 冷启动自检：每进程一次，无改动时立即返回；首次安装/产物缺失时
+                // 内部自动升级为 fullCheck 维护。与输入法服务共享 deploymentLock，
+                // 不会重复触发编译。
                 RimeConfigHelper.ensureDeployment(this@XimeApplication)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to pre-initialize Rime engine", e)

@@ -972,6 +972,7 @@
     <string name="s_anzhuangshibai_weizhicuowu">安裝失敗：未知錯誤</string>
     <string name="s_yianzhuang_bingwanchengbushu">已安裝「%1$s」並完成部署</string>
     <string name="s_yianzhuang_qingdian_bushu_shen_cf341">已安裝「%1$s」，請點「部署」生效</string>
+    <string name="s_yianzhuang_qingxuanzefangan">已安裝「%1$s」，該方案包未宣告預設方案，請到「輸入方案」中啟用後再部署</string>
     <string name="s_nyixiafanganjiexishibai">\n以下方案解析失敗：</string>
     <string name="s_xiezaichongtufangan_shibai_anz_ab29f">解除安裝衝突方案「%1$s」失敗，安裝已取消</string>
     <string name="s_neizhifanganbukeshanchu">內建方案不可刪除</string>

@@ -41,6 +41,24 @@ class VoiceRecognitionHandler(
          * 最终结果，通常 1~2s；超时仍未收到则回退提交已收到的部分结果。
          */
         private const val FINISH_TIMEOUT_MS = 3000L
+
+        /** 汉字（基本区/扩展 A/兼容区）与日文假名：这些字符之间不使用空格。 */
+        private const val CJK_CHAR = "\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF"
+
+        private val MULTI_SPACE_REGEX = Regex("[\\s\\u00A0\\u3000]+")
+        private val CJK_SPACE_REGEX = Regex("(?<=[$CJK_CHAR])\\s+(?=[$CJK_CHAR])")
+        private val CJK_PUNCT_SPACE_REGEX = Regex("(?<=[，。！？；：、])\\s+(?=[$CJK_CHAR])")
+        private val SPACE_BEFORE_PUNCT_REGEX = Regex("\\s+([,.!?;:，。！？；：、])")
+        private val ASCII_PUNCT_FOLLOWED_LATIN_REGEX = Regex("([,;:!?])(?=[A-Za-z])")
+        private val PERIOD_FOLLOWED_UPPER_REGEX = Regex("(?<=[a-z])\\.(?=[A-Z])")
+        private val CJK_CHAR_REGEX = Regex("[$CJK_CHAR]")
+
+        private val LATIN_QUESTION_STARTERS = setOf(
+            "what", "why", "how", "who", "whom", "whose", "where", "when", "which",
+            "do", "does", "did", "is", "are", "was", "were", "am",
+            "can", "could", "will", "would", "shall", "should", "may", "might",
+            "have", "has", "had"
+        )
     }
 
     private lateinit var speechRecognitionManager: SpeechRecognitionManager
@@ -237,7 +255,7 @@ class VoiceRecognitionHandler(
         if (partial.isEmpty()) return
         // 对账用"上一次写入对应的引擎文本"，必须在清空 lastPartialText 之前做
         reconcileWithInputBox(ic)
-        val visibleText = visibleEngineText(partial.replace(" ", ""))
+        val visibleText = visibleEngineText(normalizeAsrText(partial))
         suppressDuplicateFinal = true
         if (visibleText.isEmpty()) {
             // 本会话内容已被应用取走（如发送后清空输入框），没有可提交的增量
@@ -315,7 +333,7 @@ class VoiceRecognitionHandler(
             return
         }
 
-        val cleanText = text.replace(" ", "")
+        val cleanText = normalizeAsrText(text)
         val ic = getInputConnection()
         if (ic != null && cleanText.isNotEmpty() && !cleanText.startsWith("错误:")) {
             // 收尾期间应用可能已把我们上屏的内容取走（发送/清空输入框）：先对账，再按可见增量提交
@@ -435,14 +453,46 @@ class VoiceRecognitionHandler(
         return visible.trimStart('，', '。', '、', ',', '.', '！', '？', '；', '：', ' ', '\n')
     }
     
+    /**
+     * 规整 ASR 文本：中日韩字符之间不使用空格；英文保留单词间空格，
+     * 并补齐标点后缺失的空格；连续空白折叠为一个。
+     */
+    internal fun normalizeAsrText(text: String): String {
+        if (text.isEmpty()) return ""
+        var result = MULTI_SPACE_REGEX.replace(text, " ").trim()
+        if (result.isEmpty()) return ""
+        result = CJK_SPACE_REGEX.replace(result, "")
+        result = CJK_PUNCT_SPACE_REGEX.replace(result, "")
+        result = SPACE_BEFORE_PUNCT_REGEX.replace(result, "\$1")
+        result = ASCII_PUNCT_FOLLOWED_LATIN_REGEX.replace(result, "\$1 ")
+        result = PERIOD_FOLLOWED_UPPER_REGEX.replace(result, ". ")
+        return result
+    }
+
     private fun addPunctuation(text: String): String {
-        val cleanText = text.trim().replace(" ", "")
+        val cleanText = normalizeAsrText(text)
         if (cleanText.isEmpty()) return text
 
-        // 若文本末尾已带句末标点（如 funasr/volc 等自带标点的后端），不再追加，避免"。。"
-        if (cleanText.last() in "。！？；：，、；：,.!?;:，") return cleanText
+        val last = cleanText.last()
+        if (CJK_CHAR_REGEX.containsMatchIn(cleanText)) {
+            // 中文/日文：沿用中文句读；末尾已有标点则不再追加，避免"。。"
+            if (last in "。！？；：，、,.!?;:") return cleanText
+            return "$cleanText${heuristicPunctuation(cleanText)}"
+        }
 
-        return "$cleanText${heuristicPunctuation(cleanText)}"
+        // 英文：模型若给出中文句末标点则转成半角；已有标点不重复追加
+        if (last in "。！？，；：") {
+            return cleanText.dropLast(1) + when (last) {
+                '。' -> "."
+                '！' -> "!"
+                '？' -> "?"
+                '，' -> ","
+                '；' -> ";"
+                else -> ":"
+            }
+        }
+        if (last in ",.!?;:") return cleanText
+        return cleanText + heuristicLatinPunctuation(cleanText)
     }
 
     private fun heuristicPunctuation(text: String): String {
@@ -453,19 +503,29 @@ class VoiceRecognitionHandler(
         }
     }
 
+    private fun heuristicLatinPunctuation(text: String): String {
+        val firstWord = text.trimStart()
+            .substringBefore(' ')
+            .trim('"', '\'', '(', '[')
+            .lowercase()
+        return if (firstWord in LATIN_QUESTION_STARTERS) "?" else "."
+    }
+
     private fun handlePartialResult(text: String) {
         if (sessionAbandoned || suppressDuplicateFinal) return
-        if (text == lastPartialText) return
+        // 先规整再判断重复：引擎只因空格变化重复回调时不必重写 composing
+        val normalized = normalizeAsrText(text)
+        if (normalized == lastPartialText) return
 
         val ic = getInputConnection()
         // 对账必须在更新 lastPartialText 之前：判定"已消费"要用上一次写入对应的引擎文本
         if (ic != null) reconcileWithInputBox(ic)
 
-        lastPartialText = text
+        lastPartialText = normalized
         Log.d(TAG, "Speech result (partial): $text")
-        
-        // 过滤掉空格，避免显示空白；已被外部消费的前缀（如已发送内容）不再回写
-        val cleanText = visibleEngineText(text.replace(" ", ""))
+
+        // 中文去掉字符间空格，英文保留词间空格；已被外部消费的前缀（如已发送内容）不再回写
+        val cleanText = visibleEngineText(normalized)
         if (cleanText.isEmpty()) return
         
         if (ic != null) {

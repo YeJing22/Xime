@@ -80,8 +80,12 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
             val snapshot = withContext(Dispatchers.IO) {
                 val activeId = SettingsPreferences.getActivePackageId(context).orEmpty()
                 val builtin = activeId.isEmpty() || activeId == SchemeFiles.BUILTIN_PACKAGE_ID
+                val installed = SchemeFiles.installedSchemaIds(SchemeFiles.rimeDir(context))
+                val installedSet = installed.toSet()
                 Snapshot(
-                    allSchemas = SchemaManager.discoverSchemas(context),
+                    // 方案列表 = 磁盘上真实存在的方案；启用与否由用户在列表里控制
+                    allSchemas = SchemaManager.discoverSchemas(context)
+                        .filter { it.schemaId in installedSet },
                     enabled = SchemaManager.getEnabledSchemas(context),
                     current = SettingsPreferences.getCurrentSchema(context),
                     activeId = activeId,
@@ -118,7 +122,12 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
             withContext(Dispatchers.IO) {
                 SchemaManager.setEnabledSchemas(context, enabled)
             }
-            _uiState.update { it.copy(enabledSchemas = enabled) }
+            // 以写入后的真实状态为准：过滤（磁盘上不存在的 id）和 current 回落
+            // 都由 SchemeStore 决定，UI 不能自己拼一份。
+            val (effective, current) = withContext(Dispatchers.IO) {
+                SchemaManager.getEnabledSchemas(context) to SettingsPreferences.getCurrentSchema(context)
+            }
+            _uiState.update { it.copy(enabledSchemas = effective, currentSchema = current) }
         }
     }
 

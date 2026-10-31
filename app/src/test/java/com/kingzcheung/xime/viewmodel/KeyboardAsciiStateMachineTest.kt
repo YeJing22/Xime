@@ -80,6 +80,23 @@ class KeyboardAsciiStateMachineTest {
         assertEquals(false, machine.targetFor(AsciiKeyboardContext.MAIN, engineAscii = true))
     }
 
+    // ── 返回主键盘布局推导 ─────────────────────────────
+
+    @Test
+    fun `mainAsciiForLayout prefers main memory over engine ascii`() {
+        machine.saveMemory(AsciiKeyboardContext.MAIN, engineAscii = true)
+        // 数字面板期间引擎被面板记忆改成中文：布局仍按主键盘记忆走英文，避免闪变
+        assertEquals(true, machine.mainAsciiForLayout(engineAscii = false))
+        assertEquals(true, machine.mainAsciiForLayout(engineAscii = true))
+    }
+
+    @Test
+    fun `mainAsciiForLayout follows engine ascii when memory missing`() {
+        // 记忆缺失（如从未进过数字面板）时跟随引擎，避免 #1197 的中英错位
+        assertEquals(true, machine.mainAsciiForLayout(engineAscii = true))
+        assertEquals(false, machine.mainAsciiForLayout(engineAscii = false))
+    }
+
     // ── 符号面板不参与 ascii 同步 ─────────────────────────
 
     @Test

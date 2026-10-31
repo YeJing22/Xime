@@ -33,6 +33,9 @@ object SchemePackages {
         val downloaded = SchemeFiles.downloadedPackageIds(context).toSet()
         val ids = (downloaded + infos.keys + listOfNotNull(active))
             .filter { it != SchemeFiles.BUILTIN_PACKAGE_ID }
+            // 压缩包已删、又非当前使用中的包不再列出：历史版本删除时可能遗留
+            // scheme_package_info，这类条目既不能安装也不能删除，只会变成「未知」僵尸卡片
+            .filter { it in downloaded || it == active }
             .sorted()
         val activeSchemaCount = SchemeFiles.installedSchemaIds(SchemeFiles.rimeDir(context)).size
         return ids.map { id ->

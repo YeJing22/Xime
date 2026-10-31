@@ -158,25 +158,9 @@ public:
         LOGI("Rime initialize completed");
         initialized_ = true;
 
-        // NOTE: start_maintenance 不再在 startup 中调用。
-        // 从 Kotlin 侧根据词库文件是否已存在，按需调用 startMaintenance()。
-        // 避免每次切换输入法时都触发 librime 的部署流程。
-    }
-
-    Bool startMaintenance(bool full)
-    {
-        if (!rime)
-        {
-            LOGE("startMaintenance: rime not available");
-            return false;
-        }
-        LOGI("Starting maintenance (full=%s)...", full ? "true" : "false");
-        Bool result = rime->start_maintenance(full);
-        if (!result)
-        {
-            LOGE("startMaintenance FAILED: rime->start_maintenance() returned false");
-        }
-        return result;
+        // NOTE: startup 内不触发维护。维护统一由 Kotlin 侧
+        // RimeConfigHelper.ensureDeployment() 决定（冷启动一次 / 用户部署每次），
+        // 避免每次切换输入法都跑 librime 的部署流程。
     }
 
     bool createSession()
@@ -920,7 +904,18 @@ public:
         return false;
     }
 
-    bool deploy()
+    /**
+     * 部署/维护：销毁会话 → 触发 librime 维护 → 等结束 → 重建会话。
+     *
+     * 维护（workspace_update）会卸载已加载的方案与词典，旧会话继续使用会查不到任何
+     * 词条（表现为部署后打不出中文、必须重启 app），所以部署前后必须成对销毁/重建会话。
+     *
+     * @param full false 时 librime 先按数据目录顶层 yaml 的 mtime 快速判断有无改动，
+     *   无改动直接返回；true 时跳过该判断，逐方案按 __build_info/timestamps 比对
+     *   所有引用文件（含 __include 的自定义 yaml），未变化的文件仍不会重编。
+     *   用户主动部署/安装替换用 true，冷启动自检用 false。
+     */
+    bool deploy(bool full)
     {
         if (!rime)
         {
@@ -928,7 +923,7 @@ public:
             return false;
         }
 
-        LOGI("Starting deployment...");
+        LOGI("Starting deployment (full_check=%s)...", full ? "true" : "false");
 
         // 先销毁旧session
         destroyBypassSession();
@@ -939,35 +934,25 @@ public:
             session_id_ = 0;
         }
 
-        // 删除 installation.yaml 以强制触发完整编译
-        // librime 的 RimeStartMaintenance 中 installation_update 任务在
-        // 检测到 installation.yaml 已存在且版本匹配时会返回 false，
-        // 导致不调度任何编译任务直接返回
-        std::string install_yaml(user_data_dir_ + "/installation.yaml");
-        if (access(install_yaml.c_str(), F_OK) == 0)
-        {
-            LOGI("Removing existing installation.yaml to force full deployment");
-            remove(install_yaml.c_str());
-        }
+        rime->start_maintenance(full);
 
-        rime->start_maintenance(true);
-
-        // 等待部署完成（不设超时，大词库编译可能很久）
+        // 等待部署完成。大词库编译可能很久，但必须有上限：维护线程异常卡死时，
+        // 部署调用不返回会长期占用 rimeLock，键盘所有查询降级为空（表现为没反应）。
+        constexpr int kDeployTimeoutSeconds = 600;
         int wait_count = 0;
         while (rime->is_maintenance_mode())
         {
+            if (wait_count >= kDeployTimeoutSeconds * 10)
+            {
+                LOGE("Deployment timed out after %d seconds", kDeployTimeoutSeconds);
+                return false;
+            }
             usleep(100000); // 100ms
             wait_count++;
             if (wait_count % 10 == 0)
             {
                 LOGI("Waiting for deployment... (%d seconds)", wait_count / 10);
             }
-        }
-
-        if (rime->is_maintenance_mode())
-        {
-            LOGE("Deployment timeout!");
-            return false;
         }
 
         // 重新创建session
@@ -1016,7 +1001,7 @@ public:
         // levers 模块注册的部署任务（installation_update/backup_config_files/
         // user_dict_sync）需先加载模块组：start_maintenance 路径内部会
         // LoadModules(kDeployerModules)，而 sync_user_data 不会——冷启动后
-        // 直接同步会报 unknown deployment task 并失败（与 deploySchema 同款先例）
+        // 直接同步会报 unknown deployment task 并失败。
         rime::LoadModules(rime::kDeployerModules);
 
         // T9 数字词库长期持有 <user_data_dir>/t9_digit.userdb 的 leveldb 锁，
@@ -1240,86 +1225,6 @@ public:
             bool ok = manager.Restore(rime::path(snapshot_file));
             LOGI("restoreUserDict: '%s' -> %s", snapshot_file.c_str(), ok ? "merged" : "failed");
             return ok; });
-    }
-
-    bool deploySchema(const char *schemaId)
-    {
-        if (!rime)
-        {
-            LOGE("deploySchema: rime not available");
-            return false;
-        }
-
-        // 确保部署模块已加载（schema_update 等任务注册在 levers 模块中）
-        rime::LoadModules(rime::kDeployerModules);
-
-        // 构造 .schema.yaml 文件名
-        std::string schemaFile(schemaId);
-        if (schemaFile.find(".schema.yaml") == std::string::npos)
-        {
-            schemaFile += ".schema.yaml";
-        }
-
-        // 在 user_data_dir 和 shared_data_dir 中查找 schema 文件
-        std::string schemaPath;
-        std::string userPath = user_data_dir_ + "/" + schemaFile;
-        std::string sharedPath = shared_data_dir_ + "/" + schemaFile;
-        if (access(userPath.c_str(), F_OK) == 0)
-        {
-            schemaPath = userPath;
-        }
-        else if (access(sharedPath.c_str(), F_OK) == 0)
-        {
-            schemaPath = sharedPath;
-        }
-        else
-        {
-            LOGE("deploySchema: schema file not found at %s or %s",
-                 userPath.c_str(), sharedPath.c_str());
-            return false;
-        }
-
-        LOGI("Deploying single schema: %s", schemaPath.c_str());
-
-        // 先销毁旧session
-        destroyBypassSession();
-        if (session_id_)
-        {
-            rime->destroy_session(session_id_);
-            session_id_ = 0;
-        }
-
-        Bool result = rime->deploy_schema(schemaPath.c_str());
-        if (!result)
-        {
-            LOGE("deploy_schema failed for: %s", schemaPath.c_str());
-            // 回退：启动完整维护等待完成
-            rime->start_maintenance(true);
-            while (rime->is_maintenance_mode())
-            {
-                usleep(100000);
-            }
-        }
-
-        // 重新创建session
-        session_id_ = rime->create_session();
-        reapplyPageSizeIfNeeded();
-        LOGI("Deploy schema completed: %s", schemaId);
-        return true;
-    }
-
-    void updateLastBuildTime()
-    {
-        if (!rime)
-            return;
-        RimeConfig config;
-        if (rime->config_open("user", &config))
-        {
-            int now = (int)(time(nullptr));
-            rime->config_set_int(&config, "var/last_build_time", now);
-            LOGI("Updated last_build_time to %d", now);
-            rime->config_close(&config);
-        }
     }
 
     // 把记住的每页候选数覆盖值注入引擎（值来自 app 设置页，非 cpp 写死）：
@@ -2701,25 +2606,15 @@ extern "C"
         Rime::Instance().destroy();
     }
 
-    // 部署
+    // 部署（full=true 时跳过顶层 mtime 快速判断，逐方案比对所有引用文件）
     JNIEXPORT jboolean JNICALL
     Java_com_kingzcheung_xime_rime_RimeEngine_nativeDeploy(
-        JNIEnv *env,
-        jobject thiz)
-    {
-        LOGI("Deploying Rime engine");
-        return Rime::Instance().deploy() ? JNI_TRUE : JNI_FALSE;
-    }
-
-    // 启动维护（词库编译/刷新），返回是否成功启动部署
-    JNIEXPORT jboolean JNICALL
-    Java_com_kingzcheung_xime_rime_RimeEngine_nativeStartMaintenance(
         JNIEnv *env,
         jobject thiz,
         jboolean full)
     {
-        Bool result = Rime::Instance().startMaintenance(full == JNI_TRUE);
-        return result ? JNI_TRUE : JNI_FALSE;
+        LOGI("Deploying Rime engine (full_check=%s)", full ? "true" : "false");
+        return Rime::Instance().deploy(full == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
     }
 
     // 用户词典同步：合并 sync 目录下已有快照 + 导出本机快照，阻塞至维护结束
@@ -2813,35 +2708,6 @@ extern "C"
         bool ok = Rime::Instance().restoreUserDict(file);
         env->ReleaseStringUTFChars(snapshot_file, file);
         return ok ? JNI_TRUE : JNI_FALSE;
-    }
-
-    // 更新 last_build_time 为当前时间，避免下次增量检测误判
-    JNIEXPORT void JNICALL
-    Java_com_kingzcheung_xime_rime_RimeEngine_nativeUpdateLastBuildTime(
-        JNIEnv *env,
-        jobject thiz)
-    {
-        Rime::Instance().updateLastBuildTime();
-    }
-
-    // 部署单个方案
-    JNIEXPORT jboolean JNICALL
-    Java_com_kingzcheung_xime_rime_RimeEngine_nativeDeploySchema(
-        JNIEnv *env,
-        jobject thiz,
-        jstring schema_id)
-    {
-        const char *schema_id_ptr = env->GetStringUTFChars(schema_id, nullptr);
-        if (!schema_id_ptr)
-            return JNI_FALSE;
-
-        LOGI("Deploying schema: %s", schema_id_ptr);
-
-        // 构建 schema 文件路径
-        Rime::Instance().deploySchema(schema_id_ptr);
-
-        env->ReleaseStringUTFChars(schema_id, schema_id_ptr);
-        return JNI_TRUE;
     }
 
     // 查询词汇编码

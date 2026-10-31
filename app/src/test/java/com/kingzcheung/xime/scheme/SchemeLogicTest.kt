@@ -93,9 +93,9 @@ class SchemeLogicTest {
     }
 
     @Test
-    fun `包没有声明时只启用第一个可用方案`() {
+    fun `包没有声明时一个都不启用，等用户手动选择`() {
         assertEquals(
-            listOf("pinyin_simp"),
+            emptyList<String>(),
             SchemeLogic.initialEnabled(emptyList(), builtinInstalled),
         )
     }
@@ -105,5 +105,13 @@ class SchemeLogicTest {
         assertEquals("b", SchemeLogic.pickCurrent("z", listOf("b", "c")))
         assertEquals("c", SchemeLogic.pickCurrent("c", listOf("b", "c")))
         assertEquals("", SchemeLogic.pickCurrent("x", emptyList()))
+    }
+
+    @Test
+    fun `包声明里混入不存在的方案时只取真实存在的`() {
+        assertEquals(
+            listOf("wubi86"),
+            SchemeLogic.initialEnabled(listOf("wubi86", "not_installed"), builtinInstalled),
+        )
     }
 }

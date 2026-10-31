@@ -31,6 +31,7 @@ import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.settings.SettingsPreferences
+import com.kingzcheung.xime.scheme.SchemeStore
 import com.kingzcheung.xime.ui.ContentMaxWidth
 import com.kingzcheung.xime.ui.TwoPaneMinWidth
 import kotlinx.coroutines.Dispatchers
@@ -125,8 +126,7 @@ fun SetupWizardScreen(
                     onNext = {
                         enabledSchemas.value = SchemaManager.getEnabledSchemas(context)
                         if (enabledSchemas.value.isNotEmpty()) {
-                            // isDeploymentComplete 内部计算部署 hash（读取大词库文件），
-                            // 移到 IO 线程避免主线程卡顿
+                            // 产物校验会扫 build 目录，移到 IO 线程避免主线程卡顿
                             scope.launch {
                                 val complete = withContext(Dispatchers.IO) {
                                     RimeConfigHelper.isDeploymentComplete(context)
@@ -151,11 +151,9 @@ fun SetupWizardScreen(
                         // 用户可能根本没启用 wubi86，导致键盘无法输入中文
                         val enabled = SchemaManager.getEnabledSchemas(context)
                         if (enabled.isNotEmpty()) {
-                            SettingsPreferences.setCurrentSchema(context, enabled.first())
+                            SchemeStore.setCurrent(context, enabled.first())
                         }
                         SettingsPreferences.setSetupCompleted(context, true)
-                        SettingsPreferences.setDeploymentDone(context, true)
-                        RimeConfigHelper.storeDeploymentHash(context)
                         onCompleted()
                     }
                 )
@@ -612,11 +610,9 @@ private suspend fun doCompile(
             val engine = RimeEngine.getInstance()
             engine.initialize(userDataDir, sharedDataDir)
 
-            // 2. 部署 = 编译词库 + 创建 session（一步完成）
+            // 2. 部署 = 重启维护（销毁/重建会话）+ 产物校验（一步完成）
             onProgress(tr(R.string.s_zhengzaibianyiciku))
-            engine.deploy()
-            RimeConfigHelper.storeDeploymentHash(context)
-            SettingsPreferences.setDeploymentDone(context, true)
+            RimeConfigHelper.ensureDeployment(context, fullCheck = true)
 
             onDone()
         } catch (e: Exception) {

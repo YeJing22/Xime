@@ -209,6 +209,42 @@ class VoiceRecognitionHandlerFinishTest {
     }
 
     @Test
+    fun `英文部分结果保留单词间空格`() {
+        onPartial.invoke("How are you")
+
+        verify(mockInputConnection).setComposingText(eq("How are you"), eq(1))
+        assertEquals("How are you", stateChanges.last().voiceRecognizedText)
+    }
+
+    @Test
+    fun `英文最终结果保留空格并使用半角句号`() {
+        onPartial.invoke("I am fine")
+        onResult.invoke("I am fine")
+
+        verify(mockInputConnection).finishComposingText()
+        // composing 已经是 "I am fine"，最终只补 "."
+        verify(mockInputConnection).commitText(eq("."), eq(1))
+    }
+
+    @Test
+    fun `英文疑问句补半角问号`() {
+        onPartial.invoke("How are you")
+        onResult.invoke("How are you")
+
+        verify(mockInputConnection).commitText(eq("?"), eq(1))
+    }
+
+    @Test
+    fun `英文标点后缺失的空格会补齐`() {
+        onPartial.invoke("Hello,how are you")
+
+        verify(mockInputConnection).setComposingText(eq("Hello, how are you"), eq(1))
+
+        onResult.invoke("Hello,how are you?")
+        verify(mockInputConnection).commitText(eq("?"), eq(1))
+    }
+
+    @Test
     fun `录音中收到流式最终结果则上屏该句但会话继续`() {
         onPartial.invoke("你好")
         // 用户尚未松手，流式插件按句回调 final：该句上屏，会话必须继续

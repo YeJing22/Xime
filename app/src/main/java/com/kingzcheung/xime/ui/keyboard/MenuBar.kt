@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -210,22 +214,24 @@ fun MenuBar(
         }
         // 内容区（菜单项）
         if (isLandscape) {
-            // 横屏：一行 8 列，左右留白跟顶栏按钮同一条线（8dp），
-            // 否则卡片比关闭按钮更靠里，菜单开合时左边线是参差的
-            Row(
+            // 横屏：方案开关多的配置（如万象）可能有 20+ 项，固定单行会把每格压到只剩一个字，
+            // 这里按可用宽度自适应列数并换行；项数超出可用高度时可滚动。
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 64.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
-                    .weight(1f),
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                contentPadding = PaddingValues(vertical = 8.dp),
             ) {
-                menuItems.forEach { item ->
+                items(menuItems) { item ->
                     MenuItemButton(
                         item = item,
                         bgColor = itemBgColor,
                         textColor = textColor,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         isLandscape = true
                     )
                 }

@@ -110,7 +110,11 @@ class SchemaLocalViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun installMessage(item: LocalPackageItem, result: InstallFromDirResult): String = buildString {
         if (result.success) {
-            append(tr(R.string.s_yianzhuang_bingwanchengbushu, item.displayName))
+            if (result.needsSelection) {
+                append(tr(R.string.s_yianzhuang_qingxuanzefangan, item.displayName))
+            } else {
+                append(tr(R.string.s_yianzhuang_bingwanchengbushu, item.displayName))
+            }
             if (result.parseFailures.isNotEmpty()) {
                 append(tr(R.string.s_nyixiafanganjiexishibai))
                 result.parseFailures.forEach { append("\n  · $it") }

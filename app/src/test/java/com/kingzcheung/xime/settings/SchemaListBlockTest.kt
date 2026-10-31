@@ -83,9 +83,36 @@ class SchemaListBlockTest {
     }
 
     @Test
-    fun `empty enabled list leaves text unchanged`() {
+    fun `empty enabled list clears schema_list`() {
         val result = SchemaManager.replaceSchemaListBlock(defaultYaml, emptyList())
-        assertEquals(defaultYaml, result)
+        assertEquals(emptyList<String>(), extractSchemaList(result))
+        assertTrue(result.contains("schema_list: []"))
+        assertTrue(result.contains("config_version"))
+    }
+
+    @Test
+    fun `empty then non-empty keeps a single schema_list block`() {
+        val cleared = SchemaManager.replaceSchemaListBlock(defaultYaml, emptyList())
+        val result = SchemaManager.replaceSchemaListBlock(cleared, listOf("wubi86"))
+        assertEquals(1, Regex("(?m)^schema_list:").findAll(result).count())
+        assertEquals(listOf("wubi86"), extractSchemaList(result))
+    }
+
+    @Test
+    fun `writing empty twice stays a single empty block`() {
+        val once = SchemaManager.replaceSchemaListBlock(defaultYaml, emptyList())
+        val twice = SchemaManager.replaceSchemaListBlock(once, emptyList())
+        assertEquals(1, Regex("(?m)^schema_list:").findAll(twice).count())
+        assertEquals(emptyList<String>(), extractSchemaList(twice))
+    }
+
+    @Test
+    fun `dedupes duplicate schema_list blocks from earlier writes`() {
+        val duplicated = defaultYaml + "\n\nschema_list:\n  - schema: quick5\n"
+        val result = SchemaManager.replaceSchemaListBlock(duplicated, listOf("wubi86"))
+        assertEquals(1, Regex("(?m)^schema_list:").findAll(result).count())
+        assertEquals(listOf("wubi86"), extractSchemaList(result))
+        assertTrue(result.contains("switcher:"))
     }
 
     @Test

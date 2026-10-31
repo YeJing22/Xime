@@ -581,6 +581,25 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * 数字/符号等辅助键盘的「返回主键盘」（abc 键）。
+     *
+     * 页面是 [KeyboardPage.Panel]（enterPanel 进入）时恢复进入前布局；直接挂在主页面上
+     * 的布局（?123 → setKeyboardState）只切布局、不切引擎，布局用主键盘的 ascii 记忆
+     * 推导：
+     * - 面板期间引擎中英态可能已被面板记忆改写（如数字面板记忆为中文），直接用引擎态
+     *   会先渲染九宫拼音/中文布局再被 ascii 同步纠正，表现为返回时闪一下错误布局；
+     * - 记忆缺失时仍跟随引擎当前态，避免 #1197 的「显示中文但引擎英文」错位。
+     */
+    fun returnToMain(isAsciiMode: Boolean, schemaId: String) {
+        if (_page.value is KeyboardPage.Panel) {
+            exitPanel()
+        } else {
+            val asciiForLayout = asciiStateMachine.mainAsciiForLayout(isAsciiMode)
+            setKeyboardState(initialKeyboardLayoutState(asciiForLayout, schemaId))
+        }
+    }
+
     /** Level 3: 打开覆盖页面，可从任意页面进入 */
     fun showOverlay(route: OverlayRoute, initialBackStack: List<OverlayRoute> = emptyList()) {
         val current = _page.value
