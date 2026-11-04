@@ -878,10 +878,16 @@ private fun T9KeyboardContent(
                 // 一个英文方案都没启用时它内部会退化成原中英模式切换（ime_switch），
                 // 所以不写配置的行为与「中英模式切换」一致，不会突然改变老用法。
                 val earthTap = KeysConfigHelper.getT9KeyGesture("earth")?.tap
+                // 与全键盘 EarthCell 同一层兼容：旧配置写的 toggle_ascii 一律按「中英方案互切」处理
+                // （该动作在没有英文方案时内部回落 ime_switch，等价原行为），否则老配置会把
+                // 地球键锁死在 ascii 直输上。
+                val legacyAsciiTap = earthTap?.action == GestureAction.TOGGLE_ASCII
                 IconKeyButton(
                     icon = rememberVectorPainter(Icons.Default.Language),
                     onClick = {
                         when {
+                            legacyAsciiTap && onGestureAction != null ->
+                                onGestureAction.invoke(GestureAction.TOGGLE_ENGLISH_SCHEMA, "")
                             earthTap != null ->
                                 invokeKeyAction(earthTap, onKeyPress, callbacks.onCommitText, onGestureAction)
                             onGestureAction != null ->

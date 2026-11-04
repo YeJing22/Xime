@@ -1525,12 +1525,14 @@ private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
     } else null
     val k4OnClick: () -> Unit = remember(k4TapAction, k4TapActionRaw, k4TapValue, isEarthDefaultTap, env.onKeyPress, env.onGestureAction) {
         {
-            // 只在按下时打一条：地球键到底解析出了什么动作，出问题一看就知道
-            FileLogger.i(
-                "XimeKeyboard",
-                "earth tap: section=${env.section}, raw=$k4TapActionRaw, effective=$k4TapAction, " +
-                    "ascii=${env.isAsciiMode}"
-            )
+            // 仅在「旧配置被映射」时留一条 verbose 日志（排查历史配置用，正常不产生噪音）
+            if (k4TapActionRaw == GestureAction.TOGGLE_ASCII && k4TapAction != k4TapActionRaw) {
+                FileLogger.d(
+                    "XimeKeyboard",
+                    "earth tap: legacy toggle_ascii in section=${env.section}, " +
+                        "treated as ${k4TapAction?.value}"
+                )
+            }
             when {
                 k4TapAction != null && k4TapAction != GestureAction.COMMIT && k4TapAction != GestureAction.SEND_RIME ->
                     env.onGestureAction?.invoke(k4TapAction, k4TapValue)

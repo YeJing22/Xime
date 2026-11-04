@@ -359,14 +359,14 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             val target = remembered?.takeIf { it in enabled && it != current && !isEnglish(it) }
                 ?: enabled.firstOrNull { it != current && !isEnglish(it) }
             if (target == null) {
-                FileLogger.i(
+                FileLogger.w(
                     XimeInputMethodService.TAG,
                     "toggleEnglishSchema skipped: no chinese anchor, current=$current, " +
                         "enabled=$enabled"
                 )
                 return
             }
-            FileLogger.i(XimeInputMethodService.TAG, "toggleEnglishSchema: $current -> $target (back)")
+            FileLogger.d(XimeInputMethodService.TAG, "toggleEnglishSchema: $current -> $target (back)")
             switchSchema(target)
             return
         }
@@ -376,14 +376,14 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
         val ascii = runCatching { service.rimeEngine.isAsciiMode() }
             .getOrElse { state.isAsciiMode }
         if (ascii) {
-            FileLogger.i(XimeInputMethodService.TAG, "toggleEnglishSchema: ascii on, exit ascii")
+            FileLogger.d(XimeInputMethodService.TAG, "toggleEnglishSchema: ascii on, exit ascii")
             service.dispatchKey("ime_switch")
             return
         }
 
         if (english == null) {
             // ③ 没有启用任何英文方案：保持原「中英模式」切换，行为与改动前一致
-            FileLogger.i(
+            FileLogger.d(
                 XimeInputMethodService.TAG,
                 "toggleEnglishSchema: no english schema enabled, fallback to ime_switch, " +
                     "current=$current, enabled=$enabled"
@@ -394,10 +394,7 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
 
         // ④ 中文 → 英文：记下中文锚点再切
         SettingsPreferences.setLastNonEnglishSchema(service, current)
-        FileLogger.i(
-            XimeInputMethodService.TAG,
-            "toggleEnglishSchema: $current -> $english (ui=${state.currentSchemaId}, enabled=$enabled)"
-        )
+        FileLogger.d(XimeInputMethodService.TAG, "toggleEnglishSchema: $current -> $english")
         switchSchema(english)
     }
 
