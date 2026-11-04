@@ -158,7 +158,12 @@ class XimeApplication : Application(), ImageLoaderFactory {
     }
     
     private fun preInitializeRimeEngine() {
-        if (RimeEngine.isInitialized()) {
+        // :inference / :asr 也会走 Application.onCreate。子进程若也开引擎，抢不到主进程持有的
+        // userdb LOCK，librime 的恢复任务会对主进程正在写的库执行 RepairDB，把当前会话的 log
+        // 归档进 lost/ —— 表现就是自造词与调频在每次进程重启后整段丢失（上游 issue #1242）。
+        // 这两个子进程只跑 onnx 推理，不碰 rime（InferenceService / AsrInferenceService 里
+        // 没有任何 RimeEngine 调用），主进程之外的进程直接跳过预初始化。
+        if (getProcessName() != packageName || RimeEngine.isInitialized()) {
             return
         }
         
