@@ -149,6 +149,8 @@ fun T9KeyboardLayout(
     specialKeyBackgroundColor: Color,
     bubbleBackgroundColor: Color = keyBackgroundColor,
     accentColor: Color = Color(0xFF1A73E8),
+    /** 左栏选中拼音胶囊背景色；Unspecified 时按 accentColor 20% 透明派生。 */
+    selectedCandidateBgColor: Color = Color.Unspecified,
     keyboardBackgroundColor: Color = Color.Transparent,
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
@@ -269,6 +271,7 @@ fun T9KeyboardLayout(
         specialKeyBackgroundColor = specialKeyBackgroundColor,
         bubbleBackgroundColor = bubbleBackgroundColor,
         accentColor = accentColor,
+        selectedCandidateBgColor = selectedCandidateBgColor,
         shadowEnabled = shadowEnabled,
         shadowElevation = shadowElevation,
         shadowShapeRadius = shadowShapeRadius,
@@ -326,6 +329,7 @@ private fun T9KeyboardSwipeOverlay(
     specialKeyBackgroundColor: Color,
     bubbleBackgroundColor: Color = keyBackgroundColor,
     accentColor: Color,
+    selectedCandidateBgColor: Color = Color.Unspecified,
     shadowEnabled: Boolean,
     shadowElevation: Dp,
     shadowShapeRadius: Dp,
@@ -417,6 +421,7 @@ private fun T9KeyboardSwipeOverlay(
                         keyTextColor = keyTextColor,
                         specialKeyBackgroundColor = specialKeyBackgroundColor,
                         accentColor = accentColor,
+                        selectedCandidateBgColor = selectedCandidateBgColor,
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
                         shadowShapeRadius = shadowShapeRadius,
@@ -452,6 +457,7 @@ private fun T9KeyboardSwipeOverlay(
                         keyTextColor = keyTextColor,
                         specialKeyBackgroundColor = specialKeyBackgroundColor,
                         accentColor = accentColor,
+                        selectedCandidateBgColor = selectedCandidateBgColor,
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
                         shadowShapeRadius = shadowShapeRadius,
@@ -483,6 +489,7 @@ private fun T9KeyboardContent(
     keyTextColor: Color,
     specialKeyBackgroundColor: Color,
     accentColor: Color,
+    selectedCandidateBgColor: Color = Color.Unspecified,
     shadowEnabled: Boolean,
     shadowElevation: Dp,
     shadowShapeRadius: Dp,
@@ -615,96 +622,90 @@ private fun T9KeyboardContent(
             // 空闲态符号列表来自 xime.yaml keyboard.t9.side_symbols（可自定义，>4 滚动）
             val configVersion by KeysConfigHelper.configVersion.collectAsState()
             val t9SideSymbols = remember(configVersion) { KeysConfigHelper.getT9SideSymbols() }
-            val displayItems: List<String> = if (showCandidates) {
-                currentFirstOptions.map { it.pinyin }
-            } else {
-                t9SideSymbols
+
+            @Composable
+            fun CandidateRow(option: T9InputController.SyllableOption, rowModifier: Modifier) {
+                val isSelected = controller.leftPanelState == T9InputController.LeftPanelState.SELECTION &&
+                        controller.selectedOption == option &&
+                        controller.isSelectedOptionInCurrentCandidates()
+                CandidateItem(
+                    text = option.pinyin,
+                    onClick = { controller.onChoiceSelected(option) },
+                    onPress = { onKeyPressDown?.invoke(option.pinyin) },
+                    textColor = keyTextColor,
+                    backgroundColor = keyBackgroundColor,
+                    accentColor = accentColor,
+                    selectedBackgroundColor = selectedCandidateBgColor,
+                    fontSize = candidateFontSize,
+                    isSelected = isSelected,
+                    modifier = rowModifier
+                )
             }
-            if (displayItems.size <= 4) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    displayItems.forEachIndexed { index, item ->
-                        if (showCandidates) {
-                            val option = currentFirstOptions[index]
-                            val isSelected = controller.leftPanelState == T9InputController.LeftPanelState.SELECTION &&
-                                    controller.selectedOption == option &&
-                                    controller.isSelectedOptionInCurrentCandidates()
-                            CandidateItem(
-                                text = option.pinyin,
-                                onClick = { controller.onChoiceSelected(option) },
-                                onPress = { onKeyPressDown?.invoke(option.pinyin) },
-                                textColor = keyTextColor,
-                                backgroundColor = keyBackgroundColor,
-                                accentColor = accentColor,
-                                fontSize = candidateFontSize,
-                                isSelected = isSelected,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                            )
-                        } else {
-                            CandidateItem(
-                                text = item,
-                                // 符号栏=用户自选符号，直接上屏（剪贴板通道），
-                                // 不经 Rime processKey——半角符号如 @ ! : 会被 rime punctuator
-                                // 拦截成标点候选列表（1 @ ! : 、…），无法直接上屏
-                                onClick = { callbacks.onCommitTextDirect?.invoke(item) ?: onKeyPress(item) },
-                                onPress = { onKeyPressDown?.invoke(item) },
-                                textColor = keyTextColor,
-                                backgroundColor = keyBackgroundColor,
-                                accentColor = accentColor,
-                                fontSize = candidateFontSize,
-                                isSelected = false,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
+
+            @Composable
+            fun SymbolRow(item: String, rowModifier: Modifier) {
+                CandidateItem(
+                    text = item,
+                    // 符号栏=用户自选符号，直接上屏（剪贴板通道），
+                    // 不经 Rime processKey——半角符号如 @ ! : 会被 rime punctuator
+                    // 拦截成标点候选列表（1 @ ! : 、…），无法直接上屏
+                    onClick = { callbacks.onCommitTextDirect?.invoke(item) ?: onKeyPress(item) },
+                    onPress = { onKeyPressDown?.invoke(item) },
+                    textColor = keyTextColor,
+                    backgroundColor = keyBackgroundColor,
+                    accentColor = accentColor,
+                    selectedBackgroundColor = selectedCandidateBgColor,
+                    fontSize = candidateFontSize,
+                    isSelected = false,
+                    modifier = rowModifier
+                )
+            }
+
+            if (showCandidates) {
+                if (currentFirstOptions.size <= 4) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        currentFirstOptions.forEach { option ->
+                            CandidateRow(option, Modifier.fillMaxWidth().weight(1f))
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        itemsIndexed(currentFirstOptions) { _, option ->
+                            CandidateRow(
+                                option,
+                                Modifier.fillMaxWidth().height(if (compactMode) 26.dp else 32.dp)
                             )
                         }
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    itemsIndexed(displayItems) { index, item ->
-                        if (showCandidates) {
-                            val option = currentFirstOptions[index]
-                            val isSelected = controller.leftPanelState == T9InputController.LeftPanelState.SELECTION &&
-                                    controller.selectedOption == option &&
-                                    controller.isSelectedOptionInCurrentCandidates()
-                            CandidateItem(
-                                text = option.pinyin,
-                                onClick = { controller.onChoiceSelected(option) },
-                                onPress = { onKeyPressDown?.invoke(option.pinyin) },
-                                textColor = keyTextColor,
-                                backgroundColor = keyBackgroundColor,
-                                accentColor = accentColor,
-                                fontSize = candidateFontSize,
-                                isSelected = isSelected,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillParentMaxHeight(0.25f)
-                            )
-                        } else {
-                            CandidateItem(
-                                text = item,
-                                // 符号栏=用户自选符号，直接上屏（剪贴板通道），
-                                // 不经 Rime processKey——半角符号如 @ ! : 会被 rime punctuator
-                                // 拦截成标点候选列表（1 @ ! : 、…），无法直接上屏
-                                onClick = { callbacks.onCommitTextDirect?.invoke(item) ?: onKeyPress(item) },
-                                onPress = { onKeyPressDown?.invoke(item) },
-                                textColor = keyTextColor,
-                                backgroundColor = keyBackgroundColor,
-                                accentColor = accentColor,
-                                fontSize = candidateFontSize,
-                                isSelected = false,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillParentMaxHeight(0.25f)
-                            )
+                // 符号栏固定 4 等分（与数字键盘左侧键柱观感一致），不随数量压缩；
+                // 超过 4 个时保持 4 等分高度上下滚动（issue #1131）。
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val slotHeight = maxHeight / 4
+                    if (t9SideSymbols.size <= 4) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                        ) {
+                            t9SideSymbols.forEach { item ->
+                                SymbolRow(item, Modifier.fillMaxWidth().height(slotHeight))
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                        ) {
+                            itemsIndexed(t9SideSymbols) { _, item ->
+                                SymbolRow(item, Modifier.fillMaxWidth().height(slotHeight))
+                            }
                         }
                     }
                 }
@@ -1128,6 +1129,7 @@ private fun CandidateItem(
     textColor: Color,
     backgroundColor: Color = Color.Transparent,
     accentColor: Color = Color(0xFF1A73E8),
+    selectedBackgroundColor: Color = Color.Unspecified,
     modifier: Modifier = Modifier,
     fontSize: androidx.compose.ui.unit.TextUnit = 13.sp,
     isSelected: Boolean = false,
@@ -1150,10 +1152,15 @@ private fun CandidateItem(
         contentAlignment = Alignment.Center
     ) {
         if (isSelected) {
+            val selectedBg = if (selectedBackgroundColor == Color.Unspecified) {
+                accentColor.copy(alpha = 0.2f)
+            } else {
+                selectedBackgroundColor
+            }
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(5.dp))
-                    .background(accentColor.copy(alpha = 0.2f))
+                    .background(selectedBg)
                     .padding(horizontal = 3.dp, vertical = 1.dp)
             ) {
                 Text(

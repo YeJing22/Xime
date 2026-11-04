@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.twotone.Straighten
+import androidx.compose.material.icons.twotone.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,7 +45,8 @@ import com.kingzcheung.xime.settings.SettingsPreferences
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LayoutDisplaySettingsContent(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToMarket: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -168,6 +170,13 @@ fun LayoutDisplaySettingsContent(
                         modifier = Modifier.padding(start = 16.dp),
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    SettingsItem(
+                        icon = Icons.TwoTone.Storefront,
+                        title = tr(R.string.s_bujushichang),
+                        subtitle = tr(R.string.s_qushangdiangengduobuju),
+                        onClick = onNavigateToMarket,
+                        showArrow = true,
                     )
 
                     // 我方：符号自动成对

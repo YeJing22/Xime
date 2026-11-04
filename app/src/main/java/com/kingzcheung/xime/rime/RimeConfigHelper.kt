@@ -7,6 +7,7 @@ import com.kingzcheung.xime.settings.BuiltinSchemaCleanup
 import com.kingzcheung.xime.settings.JapaneseSchemas
 import com.kingzcheung.xime.settings.PersonalDictManager
 import com.kingzcheung.xime.settings.SchemaConfigHelper
+import com.kingzcheung.xime.settings.FuzzyPinyinManager
 import com.kingzcheung.xime.settings.MarketVersionStore
 import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.scheme.SchemeFiles
@@ -24,6 +25,10 @@ import java.io.IOException
 object RimeConfigHelper {
     private const val TAG = "RimeConfigHelper"
     private const val ASSETS_RIME_DIR = "rime"
+    /** 内置 OpenCC 简繁转换数据：随内置方案集放在 assets/rime/opencc。 */
+    private const val ASSETS_OPENCC_DIR = "rime/opencc"
+    /** librime 查找 OpenCC 配置的目录名（相对 rime 数据目录）。 */
+    private const val RIME_OPENCC_DIR = "opencc"
     /** app 固定的 default.custom.yaml 模板（assets 根，与 xime.yaml 并列，不随 submodule 分发）。 */
     private const val ASSETS_DEFAULT_CUSTOM = "default.custom.yaml"
 
@@ -65,7 +70,12 @@ object RimeConfigHelper {
         SchemeStore.ensure(context)
         // 追加式启用日语方案：只在首次铺设时加，不动用户已有的启用列表
         JapaneseSchemas.enableOnce(context)
+        // 老内置安装升级：补新增的 english 方案文件（不覆盖用户方案集）。
+        // 只补 english 三件，不碰已被裁掉的中文内置方案。
+        ensureBuiltinSchemaFiles(context, rimeDir)
         SchemaManager.applyEnabledSchemasToDefaultYaml(context)
+        // 模糊拼音是用户级状态：每次重建 rime 目录后按 prefs 重放补丁。
+        FuzzyPinyinManager.reconcile(context)
         // 为所有启用方案打个人词库补丁
         PersonalDictManager.ensureSchemaPacks(context)
         // 不再在初始化阶段删 build：build 是否重建统一由 ensureDeployment()
@@ -102,6 +112,8 @@ object RimeConfigHelper {
             if (restored > 0) {
                 FileLogger.w(TAG, "Restored $restored builtin file(s), forcing full check")
             }
+            // 简繁转换数据不是编译输入，但会话重建后才懒加载：缺了要补（不强制重编）
+            ensureOpenccAssets(context, SchemeFiles.rimeDir(context))
 
             val engine = RimeEngine.getInstance()
             if (!RimeEngine.isInitialized()) {
@@ -237,7 +249,9 @@ object RimeConfigHelper {
         SchemeStore.ensure(context)
         // 追加式启用日语方案：只在首次铺设时加，不动用户已有的启用列表
         JapaneseSchemas.enableOnce(context)
+        ensureBuiltinSchemaFiles(context, rimeDir)
         SchemaManager.applyEnabledSchemasToDefaultYaml(context)
+        FuzzyPinyinManager.reconcile(context)
         runBlocking { PersonalDictManager.ensureSchemaPacks(context) }
         // build 是否重建统一由 ensureDeployment() 决定（缺失/半成品时强制 fullCheck）
 
@@ -323,6 +337,8 @@ object RimeConfigHelper {
      * 不能覆盖；没有内容（全新安装、被清空、安装失败回退）才铺。
      */
     private fun copyAssetsToRimeDir(context: Context, targetDir: File): Boolean {
+        // 简繁转换数据与方案集无关，每次初始化都补齐（旧版本升级/方案包替换后可能缺失）
+        ensureOpenccAssets(context, targetDir)
         if (SchemeFiles.installedSchemaIds(targetDir).isNotEmpty()) {
             // 已有方案集：只补用户模板与存量迁移，不碰方案文件
             seedAndMigrateDefaultCustom(context, targetDir)
@@ -342,6 +358,43 @@ object RimeConfigHelper {
         seedAndMigrateDefaultCustom(context, targetDir)
         FileLogger.i(TAG, "Seeded builtin schemas (rime was empty)")
         return true
+    }
+
+    /**
+     * 补齐内置 OpenCC 简繁转换数据（`assets/rime/opencc/` 下的 `.json` 与 `.ocd2`）。
+     *
+     * librime 的 simplifier 按 `<user_data_dir>/opencc/<config>` 查找转换配置，
+     * 缺目录时「简入繁出」不生效（日志：`opencc config not found: s2hk.json`）。
+     * 只补缺失文件，不覆盖用户自有数据（用户或方案包可能自带更新的 opencc 词典）；
+     * 返回本次补齐的文件数。
+     */
+    internal fun ensureOpenccAssets(context: Context, rimeDir: File): Int {
+        val names = try {
+            context.assets.list(ASSETS_OPENCC_DIR)
+        } catch (e: IOException) {
+            FileLogger.e(TAG, "Failed to list opencc assets", e)
+            null
+        } ?: return 0
+
+        val targetDir = File(rimeDir, RIME_OPENCC_DIR)
+        var copied = 0
+        for (name in names) {
+            // LICENSE 等随包说明不落到 rime 数据目录
+            if (!name.endsWith(".json") && !name.endsWith(".ocd2")) continue
+            val target = File(targetDir, name)
+            if (target.isFile && target.length() > 0L) continue
+            try {
+                target.parentFile?.mkdirs()
+                context.assets.open("$ASSETS_OPENCC_DIR/$name").use { input ->
+                    FileOutputStream(target).use { output -> input.copyTo(output) }
+                }
+                copied++
+            } catch (e: IOException) {
+                FileLogger.e(TAG, "Failed to copy opencc asset: $name", e)
+            }
+        }
+        if (copied > 0) FileLogger.i(TAG, "Restored $copied builtin opencc file(s)")
+        return copied
     }
 
     /**
@@ -403,6 +456,52 @@ object RimeConfigHelper {
                 restored++
                 FileLogger.w(TAG, "Restored missing builtin file: $name")
             }
+        }
+        return restored
+    }
+
+    /**
+     * 老内置安装升级时补齐新增的内置方案文件（当前是 english 方案及其空格 filter）。
+     *
+     * `copyAssetsToRimeDir` 只在 rime 目录为空时整包播种；已有方案内容不会被覆盖，
+     * 所以升级安装必须单独补这些新文件，否则英文方案只存在于 assets、用户永远看不到。
+     * 只对活动包为内置包时执行，避免往第三方方案集里塞内置方案。
+     */
+    fun ensureBuiltinSchemaFiles(context: Context, rimeDir: File): Int =
+        ensureBuiltinSchemaFiles(
+            context = context,
+            rimeDir = rimeDir,
+            activePackageId = SchemeStore.state(context).activePackageId,
+        )
+
+    internal fun ensureBuiltinSchemaFiles(
+        context: Context,
+        rimeDir: File,
+        activePackageId: String,
+    ): Int {
+        if (activePackageId != SchemeFiles.BUILTIN_PACKAGE_ID) {
+            return 0
+        }
+        var restored = 0
+        val englishSchema = File(rimeDir, "english.schema.yaml")
+        val needsEnglishSchema = !englishSchema.isFile || englishSchema.length() == 0L ||
+            !runCatching { englishSchema.readText(Charsets.UTF_8).contains("english_spacing") }
+                .getOrDefault(false)
+        if (needsEnglishSchema) {
+            copyAssetFile(context, "$ASSETS_RIME_DIR/english.schema.yaml", englishSchema)
+            if (englishSchema.isFile && englishSchema.length() > 0L) restored++
+        }
+        for (relative in listOf("english.dict.yaml", "lua/english_spacing.lua")) {
+            val target = File(rimeDir, relative)
+            if (target.isFile && target.length() > 0L) continue
+            copyAssetFile(context, "$ASSETS_RIME_DIR/$relative", target)
+            if (target.isFile && target.length() > 0L) {
+                restored++
+                FileLogger.w(TAG, "Restored upgraded builtin schema file: $relative")
+            }
+        }
+        if (restored > 0) {
+            FileLogger.i(TAG, "ensureBuiltinSchemaFiles: restored $restored english file(s)")
         }
         return restored
     }
