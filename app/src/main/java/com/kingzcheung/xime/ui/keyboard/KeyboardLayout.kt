@@ -1478,10 +1478,18 @@ private fun CommaCell(env: QwertyRowEnv, modifier: Modifier) {
 private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
     val k4KeyGesture = KeysConfigHelper.getGestureFor(env.section, "earth", env.isAsciiMode)
     val k4Gestures = functionKeyGestures(k4KeyGesture, env)
-    val k4TapAction = k4KeyGesture?.tap?.action
+    val k4TapActionRaw = k4KeyGesture?.tap?.action
+    // 兼容历史默认值：地球键的老写法就是 `action: toggle_ascii`（内置 xime.yaml 旧版、
+    // 以及用户 custom.yaml 里从旧文件复制过来的整段 keys）。它的语义「中文 ⇄ 英文」
+    // 现在由 toggle_english_schema 承担（无英文方案时该动作内部仍回落 ime_switch，
+    // 所以老行为不变）。不做这层映射，旧配置会把地球键锁死在 ascii 直输上。
+    val k4TapAction =
+        if (k4TapActionRaw == GestureAction.TOGGLE_ASCII) GestureAction.TOGGLE_ENGLISH_SCHEMA
+        else k4TapActionRaw
     val isEarthDefaultTap = k4KeyGesture?.tap == null
     val k4TapValue = k4KeyGesture?.tap?.value?.takeIf { it.isNotEmpty() } ?: "ime_switch"
     val k4TapLabel = k4KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() } ?: tr(R.string.s_zhong)
+    // 图标形态仍按「配置里的原始动作」判定，避免映射后已配成文字键的地球键变图标
     val k4Icon: Painter? = k4KeyGesture?.tap?.icon?.takeIf { it.isNotEmpty() }?.let { iconName ->
         val iv = when (iconName) {
             "language", "globe" -> Icons.Default.Language
@@ -1515,8 +1523,14 @@ private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
     val k4LongPressGestureMap = if (k4LongPressDisplay == DisplayMode.BUBBLE) {
         k4LongPressConfig?.let { KeysConfigHelper.longPressActionMap(it) }
     } else null
-    val k4OnClick: () -> Unit = remember(k4TapAction, k4TapValue, isEarthDefaultTap, env.onKeyPress, env.onGestureAction) {
+    val k4OnClick: () -> Unit = remember(k4TapAction, k4TapActionRaw, k4TapValue, isEarthDefaultTap, env.onKeyPress, env.onGestureAction) {
         {
+            // 只在按下时打一条：地球键到底解析出了什么动作，出问题一看就知道
+            FileLogger.i(
+                "XimeKeyboard",
+                "earth tap: section=${env.section}, raw=$k4TapActionRaw, effective=$k4TapAction, " +
+                    "ascii=${env.isAsciiMode}"
+            )
             when {
                 k4TapAction != null && k4TapAction != GestureAction.COMMIT && k4TapAction != GestureAction.SEND_RIME ->
                     env.onGestureAction?.invoke(k4TapAction, k4TapValue)
@@ -1554,7 +1568,7 @@ private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
                 selectedLabel, k4LongPressGestureMap, env.onKeyPress, env.onCommitText, env.onGestureAction)
         }
     }
-    if ((k4TapAction == GestureAction.TOGGLE_ASCII && k4Icon != null || isEarthDefaultTap) && k4LongPressLabels == null) {
+    if ((k4TapActionRaw == GestureAction.TOGGLE_ASCII && k4Icon != null || isEarthDefaultTap) && k4LongPressLabels == null) {
         // 图标形态：用可手势的图标键，避免「配了滑动但走 IconKeyButton 被丢弃」
         SwipeableIconKeyButton(
             icon = k4Icon ?: rememberVectorPainter(Icons.Default.Language),
