@@ -733,6 +733,11 @@ internal fun buildUiGestureHandler(
             viewModel.resetShift()
             callbacks.onKeyPress("ime_switch", uiState.isAsciiMode)
         }
+        // 地球键默认动作：中英方案互切（服务层决定具体方案，无英文方案时内部回落 ime_switch）
+        GestureAction.TOGGLE_ENGLISH_SCHEMA -> {
+            viewModel.resetShift()
+            callbacks.onGestureAction?.invoke(action, value) ?: Unit
+        }
         GestureAction.DELETE -> callbacks.onKeyPress("delete", false)
         GestureAction.TOGGLE_SYMBOLS -> callbacks.onKeyPress("mode_change", false)
         GestureAction.TOGGLE_SHIFT -> viewModel.toggleShift()

@@ -601,7 +601,7 @@ keyboard:
 
 
       # 中/英切换键，label 为按键显示文字
-      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
     
   # 英文键盘布局
   qwerty_en:
@@ -670,7 +670,7 @@ keyboard:
       #  逗号键，label 为中文显示，value 为英文显示+提交值
       comma: { tap: { label: ".", value: "." }, swipe_up: { label: ",", value: "," } }
       # 中/英切换键，label 为按键显示文字
-      earth: { tap: { label: "@language", action: "toggle_ascii" , bubble: false}, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_english_schema" , bubble: false}, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # ── 平板/大屏键盘布局（设备档变体）──
   # 平板（smallestWidth ≥ 600dp，不随横竖屏变化）上自动整段替换同名基础段
@@ -829,7 +829,7 @@ keyboard:
       bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
       m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
-      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 拼音 17 键：we/rt/yu/op、sd/fg/jk、xc/bn（对应方案 pinyin_17jian）
   qwerty_17:
@@ -862,7 +862,7 @@ keyboard:
       bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
       m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
-      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 拼音 18 键：we/rt/io、sd/fg/jk、xc/bn（对应方案 pinyin_18jian）
   qwerty_18:
@@ -896,7 +896,7 @@ keyboard:
       bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
       m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
-      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 九键（T9）键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；

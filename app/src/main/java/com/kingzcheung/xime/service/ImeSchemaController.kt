@@ -372,6 +372,9 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             service.dispatchKey("ime_switch")
             return
         }
+        // 记下这一侧的中文方案：英文方案里再按地球键就回到它。
+        // （switchSchema 只在切到非英文方案时记录，切出去的这一下必须在这里写）
+        SettingsPreferences.setLastNonEnglishSchema(service, current)
         switchSchema(english)
     }
 
