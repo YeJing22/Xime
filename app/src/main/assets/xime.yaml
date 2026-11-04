@@ -972,6 +972,10 @@ keyboard:
       # 空格上滑直接输入 0（不经九键组合，与数字键上滑同路径）；
       # 功能键也可按此方式配置手势（space/earth/delete/clear/enter 等）
       space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
+      # 地球键：不写配置 = 中英切换（ime_switch）。想让🌐按「方案列表顺序」轮换
+      # （如 九键 → 万象英文 → 日语），在 xime.custom.yaml 里覆盖成：
+      #   earth: { tap: { action: cycle_schema } }
+      # 这样就不依赖内置英文方案做中英切换，切过去的是独立的英文方案。
 
   # 笔画键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；

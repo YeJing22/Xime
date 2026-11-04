@@ -873,15 +873,28 @@ private fun T9KeyboardContent(
                         spaceSwipe?.label?.ifEmpty { spaceSwipe?.value } else null,
                 )
             }
-            "earth" -> IconKeyButton(
-                icon = rememberVectorPainter(Icons.Default.Language),
-                onClick = { onKeyPress("ime_switch") },
-                backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
-                modifier = modifier,
-                a11yDescription = tr(R.string.s_zhongyingqiehuan),
-                onPress = { onKeyPressDown?.invoke("ime_switch") },
-                shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-            )
+            "earth" -> {
+                // 地球键支持配置（keyboard.t9.keys.earth.tap.action），与全键盘 EarthCell 同一套
+                // 分发语义：内置默认仍是中英切换（ime_switch，不写配置时行为与改动前一致）；
+                // 想让🌐直接轮换输入方案，配 { tap: { action: cycle_schema } } 即可，那样就不必
+                // 依赖「内置英文方案」做中英切换，可以直接轮到方案列表里的万象英文/日语。
+                val earthTap = KeysConfigHelper.getT9KeyGesture("earth")?.tap
+                IconKeyButton(
+                    icon = rememberVectorPainter(Icons.Default.Language),
+                    onClick = {
+                        if (earthTap != null) {
+                            invokeKeyAction(earthTap, onKeyPress, callbacks.onCommitText, onGestureAction)
+                        } else {
+                            onKeyPress("ime_switch")
+                        }
+                    },
+                    backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
+                    modifier = modifier,
+                    a11yDescription = tr(R.string.s_zhongyingqiehuan),
+                    onPress = { onKeyPressDown?.invoke("ime_switch") },
+                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
+                )
+            }
             "delete" -> SwipeableIconKeyButton(
                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                 onClick = { onDelete(false) },
