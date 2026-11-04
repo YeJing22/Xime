@@ -127,6 +127,10 @@ fun Modifier.keyboardBackground(
             val bitmap = imageBitmap
             if (bitmap != null) {
                 val fit = background.fit ?: "cover"
+                // 【已过时，勿维护】图片背景的黑色遮罩（overlay_alpha / overlay_alpha_dark）
+                // 在 3.5.0-alpha.1 合并后于真机上失效；代码路径与配置解析都还在，
+                // 未定位到具体原因。用户已判定该功能不重要（2026-11-04），标记为过时、
+                // 不再排查也不再补，后续跟上游时不要为此花时间。保留实现以免误删。
                 val overlayAlpha = if (isDark) {
                     background.overlayAlphaDark ?: background.overlayAlpha
                 } else {

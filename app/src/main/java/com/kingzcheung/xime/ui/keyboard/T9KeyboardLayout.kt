@@ -15,7 +15,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -661,6 +660,13 @@ private fun T9KeyboardContent(
                 )
             }
 
+            // 左栏等分：候选与符号**共用同一套高度策略**，避免「符号格子齐整、
+            // 候选行忽高忽低」。
+            //  - ≤4 项：Column + weight(1f)，容器撑满，天然 1/4 等分；
+            //  - >4 项：LazyColumn + fillParentMaxHeight(0.25f)，每行恒为视口 1/4，
+            //    超出部分上下滚动（符号栏见 issue #1131）。
+            // 注意：这是我方有意取舍，不是漏合官方实现——官方 >4 项时用固定
+            // 26/32dp，候选一多高度就和符号栏不一致了。后续跟上游时这段不要被覆盖。
             if (showCandidates) {
                 if (currentFirstOptions.size <= 4) {
                     Column(
@@ -677,35 +683,27 @@ private fun T9KeyboardContent(
                         verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
                         itemsIndexed(currentFirstOptions) { _, option ->
-                            CandidateRow(
-                                option,
-                                Modifier.fillMaxWidth().height(if (compactMode) 26.dp else 32.dp)
-                            )
+                            CandidateRow(option, Modifier.fillMaxWidth().fillParentMaxHeight(0.25f))
                         }
                     }
                 }
             } else {
-                // 符号栏固定 4 等分（与数字键盘左侧键柱观感一致），不随数量压缩；
-                // 超过 4 个时保持 4 等分高度上下滚动（issue #1131）。
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    val slotHeight = maxHeight / 4
-                    if (t9SideSymbols.size <= 4) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(0.dp)
-                        ) {
-                            t9SideSymbols.forEach { item ->
-                                SymbolRow(item, Modifier.fillMaxWidth().height(slotHeight))
-                            }
+                if (t9SideSymbols.size <= 4) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        t9SideSymbols.forEach { item ->
+                            SymbolRow(item, Modifier.fillMaxWidth().weight(1f))
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(0.dp)
-                        ) {
-                            itemsIndexed(t9SideSymbols) { _, item ->
-                                SymbolRow(item, Modifier.fillMaxWidth().height(slotHeight))
-                            }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        itemsIndexed(t9SideSymbols) { _, item ->
+                            SymbolRow(item, Modifier.fillMaxWidth().fillParentMaxHeight(0.25f))
                         }
                     }
                 }
