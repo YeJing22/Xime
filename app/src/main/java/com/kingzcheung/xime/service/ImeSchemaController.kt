@@ -275,6 +275,11 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                 return
             }
             val ascii = service.asciiModeController.applySchemaDefault(schemaId)
+            // 记录「最近一个非英文方案」：地球键中英方案互切从英文方案回到这里，
+            // 只记切换成功的方案，避免记下一次失败的偏好。
+            if (!SchemaManager.isEnglishSchemaId(schemaId)) {
+                SettingsPreferences.setLastNonEnglishSchema(service, schemaId)
+            }
             // 标点默认值也由方案声明：ascii_punct reset:1 时不覆盖；
             // 未声明或 reset:0 的普通中文方案保持原有「非 ascii 时用中文标点」。
             if (!ascii && SchemaManager.schemaSwitchReset(service, schemaId, "ascii_punct") != 1) {
@@ -313,6 +318,61 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             return
         }
         switchSchema(target)
+    }
+
+    /**
+     * 中英方案互切：中文方案 ⇄ 英文方案，**不走方案轮换**（日语这类低频方案不参与）。
+     *
+     * 目标英文方案按「万象英文 → 其它英文方案 → 内置 english」优先；一个英文方案
+     * 都没启用时退化为原中英模式切换（ime_switch），因此可以作为地球键默认动作，
+     * 不改变没有英文方案时的老行为。回切目标是最近一个非英文方案
+     * （[SettingsPreferences.getLastNonEnglishSchema]），它被停用/删除时取启用列表里
+     * 第一个非英文方案。
+     */
+    internal fun toggleEnglishSchema() {
+        val state = service.uiState.value
+        val enabled = state.schemas.map { it.schemaId }
+        val current = state.currentSchemaId
+        if (current.isEmpty()) return
+
+        val currentIsEnglish = SchemaManager.isEnglishSchemaId(current)
+
+        // 中文方案 + 英文直输态（ascii 模式）：先退出直输，等价原来的中英模式切换。
+        // 不能在直输态直接跳到英文方案——那样按一下只「换了个英文」，想回中文得按两下。
+        if (!currentIsEnglish && service.uiState.value.isAsciiMode) {
+            service.dispatchKey("ime_switch")
+            return
+        }
+
+        if (currentIsEnglish) {
+            val remembered = SettingsPreferences.getLastNonEnglishSchema(service)
+            val target = remembered?.takeIf { it in enabled && !SchemaManager.isEnglishSchemaId(it) }
+                ?: enabled.firstOrNull { !SchemaManager.isEnglishSchemaId(it) }
+            if (target == null) {
+                FileLogger.i(
+                    XimeInputMethodService.TAG,
+                    "toggleEnglishSchema skipped: no non-english schema, current=$current"
+                )
+                return
+            }
+            switchSchema(target)
+            return
+        }
+
+        val english = enabled
+            .filter { SchemaManager.isEnglishSchemaId(it) }
+            .minByOrNull { SchemaManager.englishSchemaRank(it) }
+        if (english == null) {
+            // 没有启用任何英文方案：保持原「中英模式」切换，行为与改动前一致
+            FileLogger.i(
+                XimeInputMethodService.TAG,
+                "toggleEnglishSchema: no english schema enabled, fallback to ime_switch, " +
+                    "current=$current, enabled=$enabled"
+            )
+            service.dispatchKey("ime_switch")
+            return
+        }
+        switchSchema(english)
     }
 
     private fun downloadSchema(schemaId: String) {

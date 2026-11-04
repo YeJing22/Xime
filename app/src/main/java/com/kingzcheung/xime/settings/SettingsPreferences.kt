@@ -14,6 +14,8 @@ object SettingsPreferences {
     private const val KEY_ENABLED_SCHEMAS = "enabled_schemas"
     /** 当前活动方案包 id（单活动包模型）；null 表示用户主动卸载了所有包。 */
     private const val KEY_ACTIVE_PACKAGE_ID = "active_package_id"
+    /** 最近一个非英文方案（地球键中英方案互切的回切目标）。 */
+    private const val KEY_LAST_NON_ENGLISH_SCHEMA = "last_non_english_schema"
     /** default.custom.yaml 的 schema_list 是否已迁移进 prefs（一次性）。 */
     private const val KEY_DEFAULT_CUSTOM_MIGRATED = "default_custom_schema_list_migrated"
     private const val KEY_SCHEME_SELECTION_MIGRATED = "scheme_selection_v2_migrated"
@@ -231,6 +233,20 @@ object SettingsPreferences {
 
     fun setEnabledSchemaList(context: Context, schemas: List<String>) {
         getPrefs(context).edit().putString(KEY_ENABLED_SCHEMAS, schemas.joinToString(",")).apply()
+    }
+
+    /**
+     * 最近一个「非英文」方案（`toggle_english_schema` 从英文方案切回时的目标）。
+     *
+     * 只记状态，不参与启用列表与 current 的推导；方案被停用/删除时由
+     * ImeSchemaController 侧回落到启用列表里第一个非英文方案。
+     */
+    fun getLastNonEnglishSchema(context: Context): String? =
+        getPrefs(context).getString(KEY_LAST_NON_ENGLISH_SCHEMA, null)?.takeIf { it.isNotBlank() }
+
+    fun setLastNonEnglishSchema(context: Context, schemaId: String) {
+        if (schemaId.isBlank()) return
+        getPrefs(context).edit().putString(KEY_LAST_NON_ENGLISH_SCHEMA, schemaId).apply()
     }
 
     /** 当前活动方案包；null 表示没有活动包（用户主动卸载了所有包）。 */

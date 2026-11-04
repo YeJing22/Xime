@@ -443,6 +443,7 @@ color_schemes:
 #             功能键：delete, enter, newline（固定换行，无视编辑器回车动作）, space, repeat_space（value 为次数，默认 5），
 #                     clear_all, undo_clear, toggle_ascii, toggle_symbols, toggle_shift,
 #                     cycle_schema（轮换到下一个已启用输入方案，顺序同菜单栏方案列表，末尾回到首个）,
+#                     toggle_english_schema（中英方案互切：优先切到万象英文，再按回上次的中文方案，日语不参与）,
 #                     voice（进入语音输入）, switch_route（value: emoji|symbol|clipboard）
 #     command 可用命令（会走键盘按键路由，与"点击对应按键"等价）：
 #       clear_composition - 清空当前输入编码和候选词
@@ -972,10 +973,14 @@ keyboard:
       # 空格上滑直接输入 0（不经九键组合，与数字键上滑同路径）；
       # 功能键也可按此方式配置手势（space/earth/delete/clear/enter 等）
       space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
-      # 地球键：不写配置 = 中英切换（ime_switch）。想让🌐按「方案列表顺序」轮换
-      # （如 九键 → 万象英文 → 日语），在 xime.custom.yaml 里覆盖成：
+      # 地球键：不写配置 = 中英方案互切（toggle_english_schema）——
+      # 中文方案 → 英文方案（优先「万象英文」wanxiang_english，其次其它英文方案，
+      # 最后才是内置 english），再按一次回到最近的中文方案；日语等方案**不参与**。
+      # 一个英文方案都没启用时自动退化为原来的中英模式切换（ime_switch）。
+      # 想改成按方案列表整体轮换，在 xime.custom.yaml 里覆盖成：
       #   earth: { tap: { action: cycle_schema } }
-      # 这样就不依赖内置英文方案做中英切换，切过去的是独立的英文方案。
+      # 想固定回老的「中英模式」切换：
+      #   earth: { tap: { action: toggle_ascii } }
 
   # 笔画键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；

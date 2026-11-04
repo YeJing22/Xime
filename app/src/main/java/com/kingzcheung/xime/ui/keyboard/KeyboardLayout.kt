@@ -1510,12 +1510,17 @@ private fun EarthCell(env: QwertyRowEnv, modifier: Modifier) {
     val k4LongPressGestureMap = if (k4LongPressDisplay == DisplayMode.BUBBLE) {
         k4LongPressConfig?.let { KeysConfigHelper.longPressActionMap(it) }
     } else null
-    val k4OnClick: () -> Unit = remember(k4TapAction, k4TapValue, env.onKeyPress, env.onGestureAction) {
+    val k4OnClick: () -> Unit = remember(k4TapAction, k4TapValue, isEarthDefaultTap, env.onKeyPress, env.onGestureAction) {
         {
-            if (k4TapAction != null && k4TapAction != GestureAction.COMMIT && k4TapAction != GestureAction.SEND_RIME) {
-                env.onGestureAction?.invoke(k4TapAction, k4TapValue)
-            } else {
-                env.onKeyPress(k4TapValue)
+            when {
+                k4TapAction != null && k4TapAction != GestureAction.COMMIT && k4TapAction != GestureAction.SEND_RIME ->
+                    env.onGestureAction?.invoke(k4TapAction, k4TapValue)
+                // 未配置：地球键默认「中英方案互切」（中文方案 ⇄ 万象英文/内置英文）。
+                // 没启用任何英文方案时服务层会退回原中英模式切换（ime_switch），
+                // 因此与改动前的默认行为一致。
+                isEarthDefaultTap && env.onGestureAction != null ->
+                    env.onGestureAction.invoke(GestureAction.TOGGLE_ENGLISH_SCHEMA, "")
+                else -> env.onKeyPress(k4TapValue)
             }
         }
     }

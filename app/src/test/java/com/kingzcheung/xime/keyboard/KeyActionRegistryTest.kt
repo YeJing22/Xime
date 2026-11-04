@@ -107,5 +107,8 @@ class KeyActionRegistryTest {
         override fun cycleSchema() {
             schemaCycles++
         }
+        override fun toggleEnglishSchema() {
+            dispatched.add("toggle_english_schema")
+        }
     }
 }

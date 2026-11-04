@@ -624,6 +624,26 @@ object SchemaManager {
         schemaSwitchReset(context, schemaId, "ascii_mode") == 1
 
     /**
+     * 是否为「英文方案」（内置 english、万象英文 wanxiang_english、第三方 *english* 等）。
+     *
+     * 不用 `ascii_mode reset` 判定：万象英文 reset:0（整句带候选），内置 english
+     * reset:1（直输），语义完全不同但都是英文方案，只有 id 才是稳定判据。
+     */
+    fun isEnglishSchemaId(schemaId: String): Boolean =
+        schemaId.isNotEmpty() && schemaId.contains("english", ignoreCase = true)
+
+    /**
+     * 英文方案的优先级（越小越优先）：万象英文 → 其它第三方英文方案 → 内置 english。
+     *
+     * 用户要的是「有万象英文就用万象英文，没启用才退而用内置 english」。
+     */
+    fun englishSchemaRank(schemaId: String): Int = when {
+        schemaId == "wanxiang_english" -> 0
+        schemaId == "english" -> 2
+        else -> 1
+    }
+
+    /**
      * 读取方案某个 boolean switch 声明的 `reset`（未声明返回 null）。
      *
      * 让「进入方案用什么默认状态」由方案 yaml 决定，而不是在 Android 层按方案名硬编码：

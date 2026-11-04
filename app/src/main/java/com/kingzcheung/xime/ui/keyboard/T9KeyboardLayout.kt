@@ -873,17 +873,20 @@ private fun T9KeyboardContent(
             }
             "earth" -> {
                 // 地球键支持配置（keyboard.t9.keys.earth.tap.action），与全键盘 EarthCell 同一套
-                // 分发语义：内置默认仍是中英切换（ime_switch，不写配置时行为与改动前一致）；
-                // 想让🌐直接轮换输入方案，配 { tap: { action: cycle_schema } } 即可，那样就不必
-                // 依赖「内置英文方案」做中英切换，可以直接轮到方案列表里的万象英文/日语。
+                // 分发语义。内置默认是「中英方案互切」（toggle_english_schema）：中文方案 →
+                // 英文方案（优先万象英文，其次其它英文方案 → 内置 english），再按一次回原中文方案；
+                // 一个英文方案都没启用时它内部会退化成原中英模式切换（ime_switch），
+                // 所以不写配置的行为与「中英模式切换」一致，不会突然改变老用法。
                 val earthTap = KeysConfigHelper.getT9KeyGesture("earth")?.tap
                 IconKeyButton(
                     icon = rememberVectorPainter(Icons.Default.Language),
                     onClick = {
-                        if (earthTap != null) {
-                            invokeKeyAction(earthTap, onKeyPress, callbacks.onCommitText, onGestureAction)
-                        } else {
-                            onKeyPress("ime_switch")
+                        when {
+                            earthTap != null ->
+                                invokeKeyAction(earthTap, onKeyPress, callbacks.onCommitText, onGestureAction)
+                            onGestureAction != null ->
+                                onGestureAction.invoke(GestureAction.TOGGLE_ENGLISH_SCHEMA, "")
+                            else -> onKeyPress("ime_switch")
                         }
                     },
                     backgroundColor = keyBackgroundColor, iconColor = keyTextColor,

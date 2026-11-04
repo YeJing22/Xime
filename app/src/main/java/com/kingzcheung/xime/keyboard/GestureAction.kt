@@ -53,6 +53,12 @@ interface ActionExecutor {
 
     /** 轮换切换到下一个已启用输入方案（菜单栏方案列表顺序，末尾回到首个）。 */
     fun cycleSchema()
+
+    /**
+     * 中英方案互切：中文方案 → 英文方案（优先万象英文），再按一次回上一个中文方案。
+     * 没有任何英文方案启用时退化为中英模式切换。
+     */
+    fun toggleEnglishSchema()
 }
 
 /**
@@ -119,6 +125,15 @@ enum class GestureAction(val value: String) {
 
     /** 轮换切换到下一个已启用输入方案（与菜单栏方案列表顺序一致，末尾回到首个）。 */
     CYCLE_SCHEMA("cycle_schema"),
+
+    /**
+     * 中英方案互切：中文方案 ⇄ 英文方案（优先万象英文，其次其它英文方案，
+     * 最后才是内置 english），不参与日语等其它方案的轮换。
+     *
+     * 没有任何英文方案启用时退化为原「中英模式」切换（ime_switch），
+     * 因此可以作为地球键的默认动作而不改变老行为。
+     */
+    TOGGLE_ENGLISH_SCHEMA("toggle_english_schema"),
 
     /** 删除/退格。UI 分发层优先处理。 */
     DELETE("delete"),
