@@ -132,9 +132,6 @@ object KeyActionRegistry {
         register("cycle_schema", ActionDomain.SERVICE, GestureAction.CYCLE_SCHEMA) { c, _ ->
             c.service.cycleSchema()
         }
-        register("toggle_english_schema", ActionDomain.SERVICE, GestureAction.TOGGLE_ENGLISH_SCHEMA) { c, _ ->
-            c.service.toggleEnglishSchema()
-        }
         register("delete", ActionDomain.CROSS, GestureAction.DELETE) { c, _ -> c.service.dispatchKey("delete") }
 
         register("enter", ActionDomain.SERVICE, GestureAction.ENTER) { c, _ -> c.service.dispatchKey("enter") }

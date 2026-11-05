@@ -1057,21 +1057,6 @@ object KeysConfigHelper {
     fun fuzzyPinyinSchemas(context: Context): Set<String> =
         topLevelSchemas(context, "fuzzy_pinyin")
 
-    /**
-     * 「进入即英文直输」的方案 id 集合（xime.yaml 顶层 `ascii_direct.schemas`）。
-     *
-     * 方案可以在自己的 yaml 里用 `switches.ascii_mode.reset: 1` 声明默认英文（内置 english
-     * 就是这么写的）；但第三方英文方案常常声明 `reset: 0`（如万象英文 wanxiang_english
-     * 是「整句」模式，敲字母要选候选才上屏）。想让它像内置英文那样「字母直接上屏」，
-     * 改方案 yaml 会被重新导入方案包覆盖，所以在 App 侧留这份声明：列在这里的方案，
-     * 切入时自动进入 ascii 直输态。
-     *
-     * 注意：直输态下方案自己的词库/转换器不参与（由 ascii_composer 直接提交），
-     * 想要「整句候选」时在方案开关里切回整句即可（只对本会话生效）。
-     */
-    fun asciiDirectSchemas(context: Context): Set<String> =
-        topLevelSchemas(context, "ascii_direct")
-
     private fun topLevelSchemas(context: Context, section: String): Set<String> {
         val customFile = File(context.filesDir, "rime/$XIME_CUSTOM_CONFIG_FILE")
         val stamp = if (customFile.exists()) {

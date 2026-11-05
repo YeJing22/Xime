@@ -2274,10 +2274,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         schemaController.cycleSchema()
     }
 
-    override fun toggleEnglishSchema() {
-        schemaController.toggleEnglishSchema()
-    }
-
     // ── 原有方法 ──
 
     

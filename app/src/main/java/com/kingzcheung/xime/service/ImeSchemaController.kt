@@ -275,11 +275,6 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
                 return
             }
             val ascii = service.asciiModeController.applySchemaDefault(schemaId)
-            // 记录「最近一个中文锚点」：地球键中英方案互切从英文方案回到这里，
-            // 只记切换成功的方案，避免记下一次失败的偏好。
-            if (!SchemaManager.isEnglishSchema(service, schemaId)) {
-                SettingsPreferences.setLastNonEnglishSchema(service, schemaId)
-            }
             // 标点默认值也由方案声明：ascii_punct reset:1 时不覆盖；
             // 未声明或 reset:0 的普通中文方案保持原有「非 ascii 时用中文标点」。
             if (!ascii && SchemaManager.schemaSwitchReset(service, schemaId, "ascii_punct") != 1) {
@@ -318,84 +313,6 @@ internal class ImeSchemaController(private val service: XimeInputMethodService) 
             return
         }
         switchSchema(target)
-    }
-
-    /**
-     * 中英方案互切：中文方案 ⇄ 英文方案，**不走方案轮换**（日语这类低频方案不参与）。
-     *
-     * 两个锚点，任何时刻最多只有两态，不会在多个「看起来像英文」的方案之间打转：
-     * - 英文锚点：启用列表里 [SchemaManager.isEnglishSchema] 为真的方案，优先级
-     *   万象英文 → 其它英文方案 → 内置 english；
-     * - 中文锚点：上一次从中文切出去的那个方案（[SettingsPreferences.setLastNonEnglishSchema]），
-     *   它失效或被判定为英文方案时，取启用列表里第一个非英文方案。
-     *
-     * 判定必须同时看 id 与显示名：万象的 `wanxiang_mixedcode`（「万象：英文与混合编码」）
-     * id 里没有 english，只看 id 会被当成中文方案，于是从万象英文切回来落到它身上、
-     * 再按又回万象英文——真机上看到的「在两个英文方案之间循环」就是它。
-     *
-     * 一个英文方案都没启用时退化为原中英模式切换（ime_switch），因此可以作为地球键
-     * 默认动作，不改变没有英文方案时的老行为。
-     */
-    internal fun toggleEnglishSchema() {
-        val state = service.uiState.value
-        val enabled = state.schemas.map { it.schemaId }
-        // 方案名以**引擎**为准：uiState.currentSchemaId 是异步快照，切完方案后可能还停在
-        // 上一个值，按它判断会把「已经在万象英文」当成「还在九键」，于是又切一次万象英文
-        // （看起来像跳到了另一个英文键盘），来回按就一直在两个英文态之间打转。
-        val engineCurrent = runCatching { service.rimeEngine.getCurrentSchema() }.getOrDefault("")
-        val current = engineCurrent.takeIf { it.isNotEmpty() } ?: state.currentSchemaId
-        if (current.isEmpty() || enabled.isEmpty()) return
-
-        fun isEnglish(id: String) = SchemaManager.isEnglishSchema(service, id)
-
-        val english = enabled
-            .filter { isEnglish(it) }
-            .minByOrNull { SchemaManager.englishSchemaRank(it) }
-        val currentIsEnglish = isEnglish(current)
-
-        // ① 当前在英文方案里（不论是不是上面选中的那个）：回中文锚点。
-        if (currentIsEnglish) {
-            val remembered = SettingsPreferences.getLastNonEnglishSchema(service)
-            val target = remembered?.takeIf { it in enabled && it != current && !isEnglish(it) }
-                ?: enabled.firstOrNull { it != current && !isEnglish(it) }
-            if (target == null) {
-                FileLogger.w(
-                    XimeInputMethodService.TAG,
-                    "toggleEnglishSchema skipped: no chinese anchor, current=$current, " +
-                        "enabled=$enabled"
-                )
-                return
-            }
-            FileLogger.d(XimeInputMethodService.TAG, "toggleEnglishSchema: $current -> $target (back)")
-            switchSchema(target)
-            return
-        }
-
-        // ② 中文方案 + 英文直输态（ascii 模式）：先退出直输，等价原来的中英模式切换。
-        //    不能在直输态直接跳到英文方案——那样按一下只「换了个英文」，回中文得按两下。
-        val ascii = runCatching { service.rimeEngine.isAsciiMode() }
-            .getOrElse { state.isAsciiMode }
-        if (ascii) {
-            FileLogger.d(XimeInputMethodService.TAG, "toggleEnglishSchema: ascii on, exit ascii")
-            service.dispatchKey("ime_switch")
-            return
-        }
-
-        if (english == null) {
-            // ③ 没有启用任何英文方案：保持原「中英模式」切换，行为与改动前一致
-            FileLogger.d(
-                XimeInputMethodService.TAG,
-                "toggleEnglishSchema: no english schema enabled, fallback to ime_switch, " +
-                    "current=$current, enabled=$enabled"
-            )
-            service.dispatchKey("ime_switch")
-            return
-        }
-
-        // ④ 中文 → 英文：记下中文锚点再切
-        SettingsPreferences.setLastNonEnglishSchema(service, current)
-        FileLogger.d(XimeInputMethodService.TAG, "toggleEnglishSchema: $current -> $english")
-        switchSchema(english)
     }
 
     private fun downloadSchema(schemaId: String) {

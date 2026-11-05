@@ -56,18 +56,6 @@ correction:
 fuzzy_pinyin:
   schemas: [pinyin_simp, rime_ice, rime_frost]
 
-# ── 英文直输方案 ──
-# 列在这里的方案，切入时自动进入英文直输（等价方案 yaml 里 switches.ascii_mode
-# reset: 1）：敲字母直接上屏，不经过候选栏。
-# 用途：第三方英文方案常把 ascii_mode 声明成 0（如万象英文 wanxiang_english 是
-# 「整句」模式，要选候选才上屏）。改方案自己的 yaml 会被重新导入方案包覆盖，
-# 所以在 App 侧声明。想临时用整句，在「方案开关」里切到整句即可（仅本会话生效，
-# 下次进入该方案仍按这里）。第三方方案在 xime.custom.yaml 同路径追加，取并集：
-#   ascii_direct:
-#     schemas: [wanxiang_english]
-ascii_direct:
-  schemas: [wanxiang_english]
-
 # 配色方案可配置背景类型（纯色/渐变/图片），默认均为纯色。
 # 如需渐变/图片背景，在 xime.custom.yaml 的对应主题下覆盖 keyboard_background 即可：
 #
@@ -455,7 +443,6 @@ color_schemes:
 #             功能键：delete, enter, newline（固定换行，无视编辑器回车动作）, space, repeat_space（value 为次数，默认 5），
 #                     clear_all, undo_clear, toggle_ascii, toggle_symbols, toggle_shift,
 #                     cycle_schema（轮换到下一个已启用输入方案，顺序同菜单栏方案列表，末尾回到首个）,
-#                     toggle_english_schema（中英方案互切：优先切到万象英文，再按回上次的中文方案，日语不参与）,
 #                     voice（进入语音输入）, switch_route（value: emoji|symbol|clipboard）
 #     command 可用命令（会走键盘按键路由，与"点击对应按键"等价）：
 #       clear_composition - 清空当前输入编码和候选词
@@ -613,7 +600,7 @@ keyboard:
 
 
       # 中/英切换键，label 为按键显示文字
-      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
     
   # 英文键盘布局
   qwerty_en:
@@ -682,7 +669,7 @@ keyboard:
       #  逗号键，label 为中文显示，value 为英文显示+提交值
       comma: { tap: { label: ".", value: "." }, swipe_up: { label: ",", value: "," } }
       # 中/英切换键，label 为按键显示文字
-      earth: { tap: { label: "@language", action: "toggle_english_schema" , bubble: false}, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" , bubble: false}, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # ── 平板/大屏键盘布局（设备档变体）──
   # 平板（smallestWidth ≥ 600dp，不随横竖屏变化）上自动整段替换同名基础段
@@ -841,7 +828,7 @@ keyboard:
       bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
       m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
-      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 拼音 17 键：we/rt/yu/op、sd/fg/jk、xc/bn（对应方案 pinyin_17jian）
   qwerty_17:
@@ -874,7 +861,7 @@ keyboard:
       bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
       m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
-      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 拼音 18 键：we/rt/io、sd/fg/jk、xc/bn（对应方案 pinyin_18jian）
   qwerty_18:
@@ -908,7 +895,7 @@ keyboard:
       bn: { tap: { label: "bn", value: "b" }, swipe_up: "!", long_press: { display: "bubble", values: [{ action: commit, value: "b" }, { action: commit, value: "n" }, { action: commit, value: "B" }, { action: commit, value: "N" }] } }
       m:  { tap: { label: "m", value: "m" }, swipe_up: "#", long_press: { display: "bubble", values: [{ action: commit, value: "m" }, { action: commit, value: "M" }] } }
       comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [{ action: commit, value: "," }, { action: commit, value: "." }] }}
-      earth: { tap: { label: "@language", action: "toggle_english_schema" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
 
   # 九键（T9）键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；
@@ -985,14 +972,6 @@ keyboard:
       # 空格上滑直接输入 0（不经九键组合，与数字键上滑同路径）；
       # 功能键也可按此方式配置手势（space/earth/delete/clear/enter 等）
       space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
-      # 地球键：不写配置 = 中英方案互切（toggle_english_schema）——
-      # 中文方案 → 英文方案（优先「万象英文」wanxiang_english，其次其它英文方案，
-      # 最后才是内置 english），再按一次回到最近的中文方案；日语等方案**不参与**。
-      # 一个英文方案都没启用时自动退化为原来的中英模式切换（ime_switch）。
-      # 想改成按方案列表整体轮换，在 xime.custom.yaml 里覆盖成：
-      #   earth: { tap: { action: cycle_schema } }
-      # 想固定回老的「中英模式」切换：
-      #   earth: { tap: { action: toggle_ascii } }
 
   # 笔画键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；

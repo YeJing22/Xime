@@ -871,37 +871,15 @@ private fun T9KeyboardContent(
                         spaceSwipe?.label?.ifEmpty { spaceSwipe?.value } else null,
                 )
             }
-            "earth" -> {
-                // 地球键支持配置（keyboard.t9.keys.earth.tap.action），与全键盘 EarthCell 同一套
-                // 分发语义。内置默认是「中英方案互切」（toggle_english_schema）：中文方案 →
-                // 英文方案（优先万象英文，其次其它英文方案 → 内置 english），再按一次回原中文方案；
-                // 一个英文方案都没启用时它内部会退化成原中英模式切换（ime_switch），
-                // 所以不写配置的行为与「中英模式切换」一致，不会突然改变老用法。
-                val earthTap = KeysConfigHelper.getT9KeyGesture("earth")?.tap
-                // 与全键盘 EarthCell 同一层兼容：旧配置写的 toggle_ascii 一律按「中英方案互切」处理
-                // （该动作在没有英文方案时内部回落 ime_switch，等价原行为），否则老配置会把
-                // 地球键锁死在 ascii 直输上。
-                val legacyAsciiTap = earthTap?.action == GestureAction.TOGGLE_ASCII
-                IconKeyButton(
-                    icon = rememberVectorPainter(Icons.Default.Language),
-                    onClick = {
-                        when {
-                            legacyAsciiTap && onGestureAction != null ->
-                                onGestureAction.invoke(GestureAction.TOGGLE_ENGLISH_SCHEMA, "")
-                            earthTap != null ->
-                                invokeKeyAction(earthTap, onKeyPress, callbacks.onCommitText, onGestureAction)
-                            onGestureAction != null ->
-                                onGestureAction.invoke(GestureAction.TOGGLE_ENGLISH_SCHEMA, "")
-                            else -> onKeyPress("ime_switch")
-                        }
-                    },
-                    backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
-                    modifier = modifier,
-                    a11yDescription = tr(R.string.s_zhongyingqiehuan),
-                    onPress = { onKeyPressDown?.invoke("ime_switch") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                )
-            }
+            "earth" -> IconKeyButton(
+                icon = rememberVectorPainter(Icons.Default.Language),
+                onClick = { onKeyPress("ime_switch") },
+                backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
+                modifier = modifier,
+                a11yDescription = tr(R.string.s_zhongyingqiehuan),
+                onPress = { onKeyPressDown?.invoke("ime_switch") },
+                shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
+            )
             "delete" -> SwipeableIconKeyButton(
                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                 onClick = { onDelete(false) },

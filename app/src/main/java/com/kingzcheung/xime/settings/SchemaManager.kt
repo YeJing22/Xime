@@ -624,36 +624,6 @@ object SchemaManager {
         schemaSwitchReset(context, schemaId, "ascii_mode") == 1
 
     /**
-     * 是否为「英文/混合编码」方案：地球键中英互切用它划分两类，判错就会在两个英文方案之间打转。
-     *
-     * 判据（任一命中）：
-     * 1. schema id 含 `english`（内置 english、万象英文 wanxiang_english）；
-     * 2. 方案显示名含 `英文` / `English`（万象的 `wanxiang_mixedcode` 叫「万象：英文与混合编码」，
-     *    id 里没有 english，只看 id 会把它当成中文方案——这是真机上「万象英文 ⇄ 另一个英文
-     *    外观方案」来回切的根因）。
-     *
-     * 不用 `ascii_mode reset` 判定：万象英文 reset:0（整句带候选），内置 english reset:1（直输），
-     * 语义相反但都是英文方案。
-     */
-    fun isEnglishSchema(context: Context, schemaId: String): Boolean {
-        if (schemaId.isEmpty()) return false
-        if (schemaId.contains("english", ignoreCase = true)) return true
-        val name = getSchemaDisplayName(context, schemaId) ?: return false
-        return name.contains("英文") || name.contains("english", ignoreCase = true)
-    }
-
-    /**
-     * 英文方案的优先级（越小越优先）：万象英文 → 其它英文方案 → 内置 english。
-     *
-     * 用户要的是「有万象英文就用万象英文，没启用才退而用内置 english」。
-     */
-    fun englishSchemaRank(schemaId: String): Int = when {
-        schemaId == "wanxiang_english" -> 0
-        schemaId == "english" -> 2
-        else -> 1
-    }
-
-    /**
      * 读取方案某个 boolean switch 声明的 `reset`（未声明返回 null）。
      *
      * 让「进入方案用什么默认状态」由方案 yaml 决定，而不是在 Android 层按方案名硬编码：
