@@ -56,6 +56,18 @@ correction:
 fuzzy_pinyin:
   schemas: [pinyin_simp, rime_ice, rime_frost]
 
+# ── 英文直输方案 ──
+# 列在这里的方案，切入时自动进入英文直输（等价方案 yaml 里 switches.ascii_mode
+# reset: 1）：敲字母直接上屏，不经过候选栏。
+# 用途：第三方英文方案常把 ascii_mode 声明成 0（如万象英文 wanxiang_english 是
+# 「整句」模式，要选候选才上屏）。改方案自己的 yaml 会被重新导入方案包覆盖，
+# 所以在 App 侧声明。想临时用整句，在「方案开关」里切到整句即可（仅本会话生效，
+# 下次进入该方案仍按这里）。第三方方案在 xime.custom.yaml 同路径追加，取并集：
+#   ascii_direct:
+#     schemas: [wanxiang_english]
+ascii_direct:
+  schemas: [wanxiang_english]
+
 # 配色方案可配置背景类型（纯色/渐变/图片），默认均为纯色。
 # 如需渐变/图片背景，在 xime.custom.yaml 的对应主题下覆盖 keyboard_background 即可：
 #

@@ -6,6 +6,7 @@ import com.kingzcheung.xime.i18n.tr
 
 import android.view.inputmethod.EditorInfo
 import com.kingzcheung.xime.rime.RimeEngine
+import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.util.FileLogger
 import kotlinx.coroutines.Dispatchers
@@ -101,12 +102,26 @@ internal class AsciiModeController(private val service: XimeInputMethodService) 
     }
 
     /**
-     * 当前方案是否声明默认英文（`ascii_mode reset: 1`，如内置纯英文方案）。
+     * 当前方案是否声明默认英文（`ascii_mode reset: 1`，如内置纯英文方案），
+     * 或在 xime.yaml 的 `ascii_direct.schemas` 里被显式声明为「英文直输方案」。
      * 这类方案在会话开始/结束时都必须保持英文，不能套用「默认中文」策略。
      */
     private fun schemaDefaultsToAscii(): Boolean {
         val schemaId = service.rimeEngine.getCurrentSchema()
-        return schemaId.isNotEmpty() && SchemaManager.isAsciiDefaultSchema(service, schemaId)
+        return asciiDefaultFor(schemaId)
+    }
+
+    /**
+     * 进入该方案时是否应处于英文直输态。
+     *
+     * 两个来源：方案自己声明的 `switches.ascii_mode.reset: 1`，以及 xime.yaml 的
+     * `ascii_direct.schemas`（App 侧声明，用来把「整句带候选」的第三方英文方案
+     * 改成直输，且不会被重新导入方案包覆盖）。
+     */
+    private fun asciiDefaultFor(schemaId: String): Boolean {
+        if (schemaId.isEmpty()) return false
+        if (SchemaManager.isAsciiDefaultSchema(service, schemaId)) return true
+        return schemaId in KeysConfigHelper.asciiDirectSchemas(service)
     }
 
     /**
@@ -117,8 +132,7 @@ internal class AsciiModeController(private val service: XimeInputMethodService) 
      */
     internal fun applySchemaDefault(schemaId: String): Boolean {
         if (!RimeEngine.isInitialized()) return service.uiState.value.isAsciiMode
-        val target = schemaId.isNotEmpty() &&
-            SchemaManager.isAsciiDefaultSchema(service, schemaId)
+        val target = asciiDefaultFor(schemaId)
         if (service.rimeEngine.isAsciiMode() != target) {
             service.rimeEngine.setOption("ascii_mode", target)
             FileLogger.i(
