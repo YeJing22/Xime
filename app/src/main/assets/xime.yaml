@@ -429,15 +429,15 @@ color_schemes:
 #
 # 每个手势的值格式：
 #   - 字符串 "a" → 按槽位默认动作（tap 为 send_rime：走按键路由进 rime，与手敲
-#     该键一致；swipe/长按为 commit：输出 value 直接上屏），显示也是它。
-#     本文件已显式写出 action: commit 的是真·直接上屏的手势：长按气泡候选、
-#     九键/笔画键上滑输数字；全键盘字母区的上滑保持简写——槽位默认 commit，
-#     但执行时沿用按键路由（与手敲该键一致，非绕过引擎直出）
+#     该键一致；swipe/长按为 commit），显示也是它。
+#     注意区分两种 commit：显式写 action: commit 的手势一律直接上屏（不经过引擎）；
+#     字符串简写 / 只写 value 的「槽位默认 commit」（含九键/笔画上滑输数字）仍走按键
+#     路由（与手敲该键一致，保留组合态/候选/全半角/简繁语义）
 #   - { label, action, value }
 #     （对象形式省略 action 时取槽位默认）
 #     label:  按键上显示的文字
 #     action: send_rime（走按键路由进 rime 组合，tap 的默认，与手敲该键同一路由）,
-#             commit（输出 value 直接上屏，swipe/长按的默认）,
+#             commit（输出 value 直接上屏；显式写出时字母区 tap/上滑也不经过引擎）,
 #             command（内置命令，value 为命令名）,
 #             select_all, copy, cut, paste, line_start, line_end, undo, none, repeat,
 #             功能键：delete, enter, newline（固定换行，无视编辑器回车动作）, space, repeat_space（value 为次数，默认 5），
@@ -960,18 +960,18 @@ keyboard:
       # 滑动选择后上屏所选文本）直接写在下方，可按需修改；"1" 无长按为历史行为。
       # 注意 keys 覆盖是键级整体替换：在 xime.custom.yaml 覆盖某个数字键时，
       # 键面/长按/手势要一并写上，漏写的字段回退代码内置兜底。
-      "1": { tap: { label: "分词" }, swipe_up: { action: commit, value: "1", display: "key", bubble: false } }
-      "2": { tap: { label: "ABC" }, long_press: { display: "bubble", values: [{ action: commit, value: "A" }, { action: commit, value: "B" }, { action: commit, value: "C" }] }, swipe_up: { action: commit, value: "2", display: "key", bubble: false } }
-      "3": { tap: { label: "DEF" }, long_press: { display: "bubble", values: [{ action: commit, value: "D" }, { action: commit, value: "E" }, { action: commit, value: "F" }] }, swipe_up: { action: commit, value: "3", display: "key", bubble: false } }
-      "4": { tap: { label: "GHI" }, long_press: { display: "bubble", values: [{ action: commit, value: "G" }, { action: commit, value: "H" }, { action: commit, value: "I" }] }, swipe_up: { action: commit, value: "4", display: "key", bubble: false } }
-      "5": { tap: { label: "JKL" }, long_press: { display: "bubble", values: [{ action: commit, value: "J" }, { action: commit, value: "K" }, { action: commit, value: "L" }] }, swipe_up: { action: commit, value: "5", display: "key", bubble: false } }
-      "6": { tap: { label: "MNO" }, long_press: { display: "bubble", values: [{ action: commit, value: "M" }, { action: commit, value: "N" }, { action: commit, value: "O" }] }, swipe_up: { action: commit, value: "6", display: "key", bubble: false } }
-      "7": { tap: { label: "PQRS" }, long_press: { display: "bubble", values: [{ action: commit, value: "P" }, { action: commit, value: "Q" }, { action: commit, value: "R" }, { action: commit, value: "S" }] }, swipe_up: { action: commit, value: "7", display: "key", bubble: false } }
-      "8": { tap: { label: "TUV" }, long_press: { display: "bubble", values: [{ action: commit, value: "T" }, { action: commit, value: "U" }, { action: commit, value: "V" }] }, swipe_up: { action: commit, value: "8", display: "key", bubble: false } }
-      "9": { tap: { label: "WXYZ" }, long_press: { display: "bubble", values: [{ action: commit, value: "W" }, { action: commit, value: "X" }, { action: commit, value: "Y" }, { action: commit, value: "Z" }] }, swipe_up: { action: commit, value: "9", display: "key", bubble: false } }
+      "1": { tap: { label: "分词" }, swipe_up: { value: "1", display: "key", bubble: false } }
+      "2": { tap: { label: "ABC" }, long_press: { display: "bubble", values: [{ action: commit, value: "A" }, { action: commit, value: "B" }, { action: commit, value: "C" }] }, swipe_up: { value: "2", display: "key", bubble: false } }
+      "3": { tap: { label: "DEF" }, long_press: { display: "bubble", values: [{ action: commit, value: "D" }, { action: commit, value: "E" }, { action: commit, value: "F" }] }, swipe_up: { value: "3", display: "key", bubble: false } }
+      "4": { tap: { label: "GHI" }, long_press: { display: "bubble", values: [{ action: commit, value: "G" }, { action: commit, value: "H" }, { action: commit, value: "I" }] }, swipe_up: { value: "4", display: "key", bubble: false } }
+      "5": { tap: { label: "JKL" }, long_press: { display: "bubble", values: [{ action: commit, value: "J" }, { action: commit, value: "K" }, { action: commit, value: "L" }] }, swipe_up: { value: "5", display: "key", bubble: false } }
+      "6": { tap: { label: "MNO" }, long_press: { display: "bubble", values: [{ action: commit, value: "M" }, { action: commit, value: "N" }, { action: commit, value: "O" }] }, swipe_up: { value: "6", display: "key", bubble: false } }
+      "7": { tap: { label: "PQRS" }, long_press: { display: "bubble", values: [{ action: commit, value: "P" }, { action: commit, value: "Q" }, { action: commit, value: "R" }, { action: commit, value: "S" }] }, swipe_up: { value: "7", display: "key", bubble: false } }
+      "8": { tap: { label: "TUV" }, long_press: { display: "bubble", values: [{ action: commit, value: "T" }, { action: commit, value: "U" }, { action: commit, value: "V" }] }, swipe_up: { value: "8", display: "key", bubble: false } }
+      "9": { tap: { label: "WXYZ" }, long_press: { display: "bubble", values: [{ action: commit, value: "W" }, { action: commit, value: "X" }, { action: commit, value: "Y" }, { action: commit, value: "Z" }] }, swipe_up: { value: "9", display: "key", bubble: false } }
       # 空格上滑直接输入 0（不经九键组合，与数字键上滑同路径）；
       # 功能键也可按此方式配置手势（space/earth/delete/clear/enter 等）
-      space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
+      space: { swipe_up: { value: "0", display: "key", bubble: false } }
 
   # 笔画键盘配置
   # 注意：本键盘不支持 button_layout（按键布局模式），固定 standard 键面布局；
@@ -996,17 +996,17 @@ keyboard:
     # 数字提示由键面角标承担）；tap 内置 bubble: false（按压不弹预览气泡，与九键拼音
     # 键盘的无气泡交互对齐）。手势功能与提示相互独立。
     keys:
-      "一": { tap: { bubble: false }, swipe_up: { action: commit, value: "1", display: "key", bubble: false } }
-      "丨": { tap: { bubble: false }, swipe_up: { action: commit, value: "2", display: "key", bubble: false } }
-      "丿": { tap: { bubble: false }, swipe_up: { action: commit, value: "3", display: "key", bubble: false } }
-      "丶": { tap: { bubble: false }, swipe_up: { action: commit, value: "4", display: "key", bubble: false } }
-      "乛": { tap: { bubble: false }, swipe_up: { action: commit, value: "5", display: "key", bubble: false } }
-      "*": { tap: { bubble: false }, swipe_up: { action: commit, value: "6", display: "key", bubble: false } }
-      "分词": { tap: { bubble: false }, swipe_up: { action: commit, value: "7", display: "key", bubble: false } }
-      "，": { tap: { bubble: false }, swipe_up: { action: commit, value: "8", display: "key", bubble: false } }
-      "英": { tap: { bubble: false }, swipe_up: { action: commit, value: "9", display: "key", bubble: false } }
+      "一": { tap: { bubble: false }, swipe_up: { value: "1", display: "key", bubble: false } }
+      "丨": { tap: { bubble: false }, swipe_up: { value: "2", display: "key", bubble: false } }
+      "丿": { tap: { bubble: false }, swipe_up: { value: "3", display: "key", bubble: false } }
+      "丶": { tap: { bubble: false }, swipe_up: { value: "4", display: "key", bubble: false } }
+      "乛": { tap: { bubble: false }, swipe_up: { value: "5", display: "key", bubble: false } }
+      "*": { tap: { bubble: false }, swipe_up: { value: "6", display: "key", bubble: false } }
+      "分词": { tap: { bubble: false }, swipe_up: { value: "7", display: "key", bubble: false } }
+      "，": { tap: { bubble: false }, swipe_up: { value: "8", display: "key", bubble: false } }
+      "英": { tap: { bubble: false }, swipe_up: { value: "9", display: "key", bubble: false } }
       # 空格上滑直接输入 0（与笔画键上滑同路径，直接上屏）
-      space: { swipe_up: { action: commit, value: "0", display: "key", bubble: false } }
+      space: { swipe_up: { value: "0", display: "key", bubble: false } }
 
   # 手写键盘配置
   # schemas 声明使用手写布局的方案：手写不经过 rime 引擎（由 HandwritingEngine
