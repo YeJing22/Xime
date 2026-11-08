@@ -89,10 +89,18 @@ class KeyActionRegistryTest {
         val commands = mutableListOf<String>()
         val dispatched = mutableListOf<String>()
         val cursorMoves = mutableListOf<Int>()
+        val selections = mutableListOf<String>()
         var schemaCycles = 0
 
         override fun commitText(text: String) = Unit
         override fun performEditorMenuAction(actionId: Int) = Unit
+        override fun selectBeforeCursor() {
+            selections.add("before")
+        }
+
+        override fun selectAfterCursor() {
+            selections.add("after")
+        }
         override fun sendKeyEvent(keyCode: Int) = Unit
         override fun moveCursor(direction: Int) {
             cursorMoves.add(direction)

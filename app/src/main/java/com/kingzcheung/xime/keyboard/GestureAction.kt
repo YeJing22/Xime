@@ -24,6 +24,18 @@ interface ActionExecutor {
     fun performEditorMenuAction(actionId: Int)
 
     /**
+     * 选中光标之前的全部文字（文首 → 光标）。
+     * 用于 `action: select_before`：上滑/长按一键把已上屏的前文整段选中。
+     */
+    fun selectBeforeCursor()
+
+    /**
+     * 选中光标之后的全部文字（光标 → 文末）。
+     * 用于 `action: select_after`。
+     */
+    fun selectAfterCursor()
+
+    /**
      * 发送按键事件（用于光标移动等操作）。
      * @param keyCode 按键码，如 [KeyEvent.KEYCODE_MOVE_HOME]、[KeyEvent.KEYCODE_MOVE_END]
      */
@@ -77,6 +89,12 @@ enum class GestureAction(val value: String) {
 
     /** 全选。 */
     SELECT_ALL("select_all"),
+
+    /** 选中光标之前的全部文字（文首 → 光标），选区锚点在光标处。 */
+    SELECT_BEFORE("select_before"),
+
+    /** 选中光标之后的全部文字（光标 → 文末），选区锚点在光标处。 */
+    SELECT_AFTER("select_after"),
 
     /** 复制。 */
     COPY("copy"),

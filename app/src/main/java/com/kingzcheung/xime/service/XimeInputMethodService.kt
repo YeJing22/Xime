@@ -2107,6 +2107,36 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         }
     }
 
+    override fun selectBeforeCursor() = selectToEdge(toStart = true)
+
+    override fun selectAfterCursor() = selectToEdge(toStart = false)
+
+    /**
+     * 选中光标之前（文首 → 光标）/ 之后（光标 → 文末）的全部文字。
+     *
+     * 只动编辑器选区，不碰引擎编码：选区终点用 `getTextBeforeCursor/AfterCursor` 的
+     * 长度算出（SAFE_TEXT_LIMIT = 262144，够覆盖常规输入框；超长文本只覆盖该长度），
+     * 锚点留在光标处（`setSelection(cursor, 0/total)`），这样后续 Shift+方向键能继续扩展。
+     * 编辑器收到 setSelection 会自行结束自己的 composing 区，因此不额外调用
+     * finishComposingText（否则组合中的拼音会被定稿成普通文本，与引擎编码重复）。
+     */
+    private fun selectToEdge(toStart: Boolean) {
+        val ic = currentInputConnection ?: return
+        try {
+            val before = ic.getTextBeforeCursor(SAFE_TEXT_LIMIT, 0)?.length ?: return
+            val after = ic.getTextAfterCursor(SAFE_TEXT_LIMIT, 0)?.length ?: return
+            val total = before + after
+            if (total <= 0) return
+            val focus = if (toStart) 0 else total
+            if (focus == before) return
+            ic.beginBatchEdit()
+            ic.setSelection(before, focus)
+            ic.endBatchEdit()
+        } catch (e: Exception) {
+            FileLogger.w(TAG, "selectToEdge failed", e)
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val e = event ?: return super.onKeyDown(keyCode, event)
         // 物理 Shift 单击切中英文的组合检测：Shift 按下重置标记，期间任何其他键按下即视为组合

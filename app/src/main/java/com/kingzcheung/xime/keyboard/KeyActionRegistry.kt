@@ -91,6 +91,12 @@ object KeyActionRegistry {
         register("select_all", ActionDomain.SERVICE, GestureAction.SELECT_ALL) { c, _ ->
             c.service.performEditorMenuAction(android.R.id.selectAll)
         }
+        register("select_before", ActionDomain.SERVICE, GestureAction.SELECT_BEFORE) { c, _ ->
+            c.service.selectBeforeCursor()
+        }
+        register("select_after", ActionDomain.SERVICE, GestureAction.SELECT_AFTER) { c, _ ->
+            c.service.selectAfterCursor()
+        }
         register("copy", ActionDomain.SERVICE, GestureAction.COPY) { c, _ ->
             c.service.performEditorMenuAction(android.R.id.copy)
         }
