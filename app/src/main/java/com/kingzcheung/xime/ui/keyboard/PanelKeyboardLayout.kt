@@ -164,6 +164,7 @@ fun PanelKeyboardLayout(
         fontSize = valueFontSize,
         ctrlFontSize = if (section == "number") null else 14.sp,
         section = section,
+        isDarkTheme = uiState.isDarkTheme,
     )
 
     val themeScheme = KeyboardThemes.getThemeById(uiState.themeId)
@@ -311,18 +312,23 @@ private fun PanelKeyCell(id: String, env: QwertyRowEnv, modifier: Modifier = Mod
     val binding = KeysConfigHelper.getGestureFor(env.section, id, env.isAsciiMode)
     val tap = binding?.tap
     val commit = tap?.value?.takeIf { it.isNotEmpty() } ?: id
-    KeyButton(
-        text = commit,
-        onClick = { dispatchKeyActionOrPress(tap, commit, env.onKeyPress, env.onCommitText, env.onGestureAction) },
-        backgroundColor = env.keyBackgroundColor,
-        textColor = env.keyTextColor,
-        modifier = modifier,
-        fontSize = env.fontSize,
-        onPress = { env.onKeyPressDown?.invoke(commit) },
-        shadowEnabled = env.shadowEnabled,
-        shadowElevation = env.shadowElevation,
-        shadowShapeRadius = env.shadowShapeRadius,
-    )
+    // 按键级外观覆盖：数字/运算符等面板值键同样支持 keys.<id> 的圆角与背景
+    val style = keyStyleOverride(env.section, id, env.isAsciiMode, env.isDarkTheme)
+    val radius = style.cornerRadius ?: LocalKeyCornerRadius.current
+    CompositionLocalProvider(LocalKeyCornerRadius provides radius) {
+        KeyButton(
+            text = commit,
+            onClick = { dispatchKeyActionOrPress(tap, commit, env.onKeyPress, env.onCommitText, env.onGestureAction) },
+            backgroundColor = style.background ?: env.keyBackgroundColor,
+            textColor = style.textColor ?: env.keyTextColor,
+            modifier = modifier,
+            fontSize = env.fontSize,
+            onPress = { env.onKeyPressDown?.invoke(commit) },
+            shadowEnabled = env.shadowEnabled,
+            shadowElevation = env.shadowElevation,
+            shadowShapeRadius = style.cornerRadius ?: env.shadowShapeRadius,
+        )
+    }
 }
 
 /** rows 模式横屏分体：与主键盘分体同构（左右两半 0.42 + 中间 0.16，行内容拆半）。 */
@@ -386,7 +392,7 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
             val bottomKey = layout.left.lastOrNull()?.singleOrNull()
             // 左侧键柱：**只有用户显式配置了 keyboard.number.side_symbols** 才启用我方符号栏
             // （≤4 个固定高度均分、>4 个固定单格高度可滑动）；没配置时完全走官方原样，
-            // 即把 layout.left 的键柱按官方 OperatorPillarKey 呈现，行为与官方逐字节一致。
+            // 即把 layout.left 的键柱按官方 OperatorPillarKey 呈现（含按键级外观覆盖）。
             val configVersion by KeysConfigHelper.configVersion.collectAsState()
             val sideSymbols = remember(configVersion) { KeysConfigHelper.getNumberSideSymbols() }
             if (sideSymbols.isEmpty()) {
@@ -400,20 +406,25 @@ private fun ColumnsPanelContent(layout: PanelLayoutConfig, env: QwertyRowEnv, mo
                     pillarItems.forEachIndexed { itemIdx, item ->
                         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
                             item.forEachIndexed { keyIdx, keyId ->
-                                OperatorPillarKey(
-                                    text = keyId,
-                                    onClick = { env.onKeyPress(keyId) },
-                                    backgroundColor = env.keyBackgroundColor,
-                                    textColor = env.keyTextColor,
-                                    modifier = Modifier.weight(1f),
-                                    onPress = { env.onKeyPressDown?.invoke(keyId) },
-                                    isFirst = itemIdx == 0 && keyIdx == 0,
-                                    isLast = itemIdx == pillarItems.lastIndex && keyIdx == item.lastIndex,
-                                    fontSize = 18.sp,
-                                    shadowEnabled = env.shadowEnabled,
-                                    shadowElevation = env.shadowElevation,
-                                    shadowShapeRadius = env.shadowShapeRadius,
-                                )
+                                // 按键级外观覆盖：数字/运算符等面板值键同样支持 keys.<id> 的圆角与背景
+                                val style = keyStyleOverride(env.section, keyId, env.isAsciiMode, env.isDarkTheme)
+                                val radius = style.cornerRadius ?: LocalKeyCornerRadius.current
+                                CompositionLocalProvider(LocalKeyCornerRadius provides radius) {
+                                    OperatorPillarKey(
+                                        text = keyId,
+                                        onClick = { env.onKeyPress(keyId) },
+                                        backgroundColor = style.background ?: env.keyBackgroundColor,
+                                        textColor = style.textColor ?: env.keyTextColor,
+                                        modifier = Modifier.weight(1f),
+                                        onPress = { env.onKeyPressDown?.invoke(keyId) },
+                                        isFirst = itemIdx == 0 && keyIdx == 0,
+                                        isLast = itemIdx == pillarItems.lastIndex && keyIdx == item.lastIndex,
+                                        fontSize = 18.sp,
+                                        shadowEnabled = env.shadowEnabled,
+                                        shadowElevation = env.shadowElevation,
+                                        shadowShapeRadius = style.cornerRadius ?: env.shadowShapeRadius,
+                                    )
+                                }
                             }
                         }
                     }

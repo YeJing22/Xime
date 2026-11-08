@@ -83,6 +83,15 @@ fun KeyboardLayoutScreen(
     val accentColor = KeyboardThemes.getAccentColor(uiState.themeId, uiState.isDarkTheme)
     val candidateSelectedBgColor =
         KeyboardThemes.getCandidateSelectedBgColor(uiState.themeId, uiState.isDarkTheme)
+    // 按键级背景使用的主题色 token（accent/primary/special/key/keyboard）统一在这里解析一次
+    val keyStyleColors = remember(accentColor, specialKeyBgColor, keyBgColor, keyboardBgColor) {
+        KeyStyleColors(
+            accent = accentColor,
+            special = specialKeyBgColor,
+            key = keyBgColor,
+            keyboard = keyboardBgColor,
+        )
+    }
 
     // 代码布局（九键 / 笔画 / 手写）的键面圆角与阴影圆角同样走「yaml 按键盘覆盖 → 设备档」，
     // 与 26 键 / 面板共用同一条解析：平板统一 14dp（此前这三处漏了设备档，仍是全局 8dp/硬编码 6dp）。
@@ -129,7 +138,12 @@ fun KeyboardLayoutScreen(
     }
     key(keyboardState) {
         key(uiState.swipeCancelEpoch) {
-            CompositionLocalProvider(LocalKeyBorder provides screenKeyBorder) {
+            // 我方：主题描边（自绘键必须手动补 LocalKeyBorder）
+            // 官方：按键级外观的主题色 token（keys.<id> 的 background: accent 等）
+            CompositionLocalProvider(
+                LocalKeyBorder provides screenKeyBorder,
+                LocalKeyStyleColors provides keyStyleColors,
+            ) {
             when (keyboardState) {
             is KeyboardLayoutState.Chinese -> {
                 if (isHandwritingLookup) {

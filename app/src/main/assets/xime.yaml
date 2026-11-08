@@ -422,6 +422,18 @@ color_schemes:
 #   swipe_right: 右滑
 #   long_press:  长按（数组，弹出气泡后左右滑动选择）
 #
+# 每个按键还可单独覆盖外观（不写则沿用键盘级/主题默认，默认样式不变）：
+#   corner_radius:   该键圆角（dp），如 enter: { corner_radius: 14 }
+#   background:      该键背景色。可写固定色 0xRRGGBB / 0xAARRGGBB，
+#                    也可写主题色记号，随用户切换主题自动变化：
+#                      accent / primary  主题强调色
+#                      special           特殊键底色
+#                      key               普通键底色
+#                      keyboard          键盘背景色
+#   background_dark: 暗色背景；不写时主题色记号会自动取暗色主题对应色
+#   例：enter: { corner_radius: 14, background: accent }
+#   背景改色后键面文字会按背景亮度自动取深/浅色。
+#
 # 左右滑与整片键盘滑动移动光标的关系：
 #   在键盘区域横向滑动默认用于移动光标；若某键配置了 swipe_left / swipe_right，
 #   该键上的横向滑动即由按键接管（执行配置动作），不再移动光标；未配置左右滑的键
@@ -492,6 +504,8 @@ keyboard:
   # （handwriting 手写键盘的键面尺寸写在代码里，圆角同样认 handwriting 这个名字）；
   # 平板设备档另可写 <键盘名>_tablet（平板上覆盖同名基础覆盖，见下方示例）。
   # 例如：t9: { corner_radius: 8, spacing_x: 1, spacing_y: 2 }
+  # 单个按键也可在对应键盘的 keys.<id> 下写 corner_radius / background / background_dark
+  # 覆盖外观（见下方「26 键全键盘手势配置」说明），未写则沿用这里的全局值。
   key:
     corner_radius: 8
     spacing_x: 2
@@ -1041,8 +1055,9 @@ keyboard:
       enter: { tap: { action: send_rime, value: enter, label: "确定" } }
 
   # ── 常用符号键盘（rows 行布局；中英共用一套，不再分中/英两段、没有 En 键）──
-  # 符号默认用**中文形态**（＠＃＄… 、＊“”！？），只有 `,` 与 `.` 保留半角 ASCII
-  #（写代码/英文时更顺手）。符号键是值键（点按直接上屏）；功能键 back / number(切数字面板) /
+  # 符号默认用**中文形态**（＃＄…、＊“”！？）；`@`、`,`、`.` 保留半角 ASCII
+  #（@ 需半角才能触发聊天工具的 @ 提醒；写代码/英文时 , . 更顺手）。
+  # 符号键是值键（点按直接上屏）；功能键 back / number(切数字面板) /
   # open_symbols / space_key(空格) / delete / enter 行为内置，keys.<id> 只用来覆盖宽度与键面文字。
   # 键间距沿用 keyboard.key.symbol（面板旧名，与段名不同，保持老配置兼容）。
   common_symbols:
@@ -1050,7 +1065,7 @@ keyboard:
     layout:
       rows:
         - [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-        - ["＠", "＃", "＄", "＆", "＿", "－", "＋", "（", "）", "／"]
+        - ["@", "＃", "＄", "＆", "＿", "－", "＋", "（", "）", "／"]
         # 引号成对：左双引号 + 右双引号（旧配置误用了 左双 + 右单）
         - [open_symbols, "＊", "“", "”", "！", "？", ",", ".", delete]
         - [back, number, space_key, enter]
@@ -1103,13 +1118,13 @@ keyboard:
       # 其余（符号 / 运算符 / 功能列 delete·enter·space_key / 光标键 / back_right）都是标准键宽 = 1
 
   # 常用符号键盘（平板）：12 列 × 4 行，中英共用一套（与手机同一套字形：
-  # 符号默认中文形态，`,/` 与 `.` 保留半角）
+  # 符号默认中文形态，`@`、`,` 与 `.` 保留半角）
   common_symbols_tablet:
     type: full
     layout:
       rows:
         - [tab, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, delete]
-        - [caps, "＠", "＃", "＄", "＿", "＆", "－", "＋", "（", "）", enter]
+        - [caps, "@", "＃", "＄", "＿", "＆", "－", "＋", "（", "）", enter]
         # 与手机同序：符号（含平板多出的 ：；／），行尾固定 "， , ."（, 与 . 保留半角）
         - [open_symbols, "＊", "“", "”", "：", "；", "！", "？", "／", ",", "."]
         - [back, number, space_key, cursor_left, cursor_right, back_right]
