@@ -2447,10 +2447,6 @@ object KeysConfigHelper {
     fun getT9KeyLabel(id: String): String? =
         _t9GestureConfigs[id]?.tap?.label?.takeIf { it.isNotEmpty() }
 
-    /** 九键长按候选显示文本（keyboard.t9.keys.<id>.long_press.values 的 label，缺省 value；未配置返回 null）。 */
-    fun getT9KeyLongPressLabels(id: String): List<String>? =
-        longPressDisplayItems(_t9GestureConfigs[id]?.longPress)
-
     /**
      * 长按气泡的显示项文本：`label` 为空时回退 `value`；两者皆空的项无法展示，丢弃。
      *

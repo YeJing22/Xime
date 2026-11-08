@@ -971,20 +971,22 @@ keyboard:
     # 想要拖动气泡自行改为 bubble: true。手势功能与提示相互独立。
     keys:
       # 内置默认键面（tap.label 键面字母组）直接写在下方，可按需修改；"1" 无长按为历史行为。
-      # 九键数字键的长按**默认关闭**：long_press.values 为空即「不要长按」，既不弹气泡
-      # 也不上屏任何东西，且不会回退到内置字母表。想恢复长按输字母，把它写回：
-      #   long_press: { display: "bubble", values: [{ action: commit, value: "A" }, …] }
+      # 九键数字键长按**默认关闭**：不写 long_press 就没有长按（既不弹气泡、也不上屏任何东西）。
+      # 旧版内置字母表（2→A/B/C … 9→W/X/Y/Z）已移除，代码不再兜底回退。想恢复长按输字母，
+      # 在对应键显式写上：
+      #   long_press: { values: [{ action: commit, value: "A" }, …] }
       # 注意 keys 覆盖的合并规则：只写 corner_radius / background 的外观覆盖会保留原手势；
-      # 一旦写了任一手势或长按字段，就是**整键替换**，需把 tap / 键面 / 上滑一并写上。
+      # 一旦写了任一手势字段（含 long_press），就是**整键替换**，需把 tap / 键面 / 上滑一并写上
+      # —— 否则这一键的键面字母和上滑数字会跟着一起丢（长按则不会再冒出来）。
       "1": { tap: { label: "分词" }, swipe_up: { value: "1", display: "key", bubble: false } }
-      "2": { tap: { label: "ABC" }, long_press: { values: [] }, swipe_up: { value: "2", display: "key", bubble: false } }
-      "3": { tap: { label: "DEF" }, long_press: { values: [] }, swipe_up: { value: "3", display: "key", bubble: false } }
-      "4": { tap: { label: "GHI" }, long_press: { values: [] }, swipe_up: { value: "4", display: "key", bubble: false } }
-      "5": { tap: { label: "JKL" }, long_press: { values: [] }, swipe_up: { value: "5", display: "key", bubble: false } }
-      "6": { tap: { label: "MNO" }, long_press: { values: [] }, swipe_up: { value: "6", display: "key", bubble: false } }
-      "7": { tap: { label: "PQRS" }, long_press: { values: [] }, swipe_up: { value: "7", display: "key", bubble: false } }
-      "8": { tap: { label: "TUV" }, long_press: { values: [] }, swipe_up: { value: "8", display: "key", bubble: false } }
-      "9": { tap: { label: "WXYZ" }, long_press: { values: [] }, swipe_up: { value: "9", display: "key", bubble: false } }
+      "2": { tap: { label: "ABC" }, swipe_up: { value: "2", display: "key", bubble: false } }
+      "3": { tap: { label: "DEF" }, swipe_up: { value: "3", display: "key", bubble: false } }
+      "4": { tap: { label: "GHI" }, swipe_up: { value: "4", display: "key", bubble: false } }
+      "5": { tap: { label: "JKL" }, swipe_up: { value: "5", display: "key", bubble: false } }
+      "6": { tap: { label: "MNO" }, swipe_up: { value: "6", display: "key", bubble: false } }
+      "7": { tap: { label: "PQRS" }, swipe_up: { value: "7", display: "key", bubble: false } }
+      "8": { tap: { label: "TUV" }, swipe_up: { value: "8", display: "key", bubble: false } }
+      "9": { tap: { label: "WXYZ" }, swipe_up: { value: "9", display: "key", bubble: false } }
       # 空格上滑直接输入 0（不经九键组合，与数字键上滑同路径）；
       # 功能键也可按此方式配置手势（space/earth/delete/clear/enter 等）
       space: { swipe_up: { value: "0", display: "key", bubble: false } }

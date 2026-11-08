@@ -517,7 +517,17 @@ private fun T9KeyboardContent(
         { text -> callbacks.onCommitText?.invoke(text) ?: onKeyPress(text) }
 
     fun swipesFor(id: String): T9KeySwipes {
-        val gesture = KeysConfigHelper.getT9KeyGesture(id) ?: return T9KeySwipes()
+        // 数字键的内置默认「上滑直接输入本键数字」下沉到代码兜底（xime.yaml 内置默认同义）：
+        // custom 在数字键上写任一其它手势会触发「整键替换」，配置里的 swipe_up 会被一起抹掉，
+        // 表现为「配了手势后上滑就不出数字了」。想改上滑动作照旧写 swipe_up 覆盖。
+        val isDigit = id.length == 1 && id[0] in '0'..'9'
+        val gesture = KeysConfigHelper.getT9KeyGesture(id)
+        if (gesture == null) {
+            return if (!isDigit) T9KeySwipes() else T9KeySwipes(
+                onSwipeUp = { commitDirect(id) },
+                swipeUpKeyLabel = if (hintsActive) id else null,
+            )
+        }
         val upHint = gesture.swipeUp?.let { it.label.ifEmpty { it.value } }
         val downHint = gesture.swipeDown?.let { it.label.ifEmpty { it.value } }
         val leftHint = gesture.swipeLeft?.let { it.label.ifEmpty { it.value } }
@@ -528,7 +538,7 @@ private fun T9KeyboardContent(
             !hintsActive -> null
             gesture.swipeUp?.display == DisplayMode.BUBBLE -> ""
             else -> upHint
-        }
+        } ?: if (isDigit && hintsActive) id else null
         val swipeDownKeyLabel = when {
             !hintsActive -> null
             gesture.swipeDown?.display == DisplayMode.BUBBLE -> ""
@@ -545,7 +555,8 @@ private fun T9KeyboardContent(
             else -> rightHint
         }
         return T9KeySwipes(
-            onSwipeUp = swipeHandlerFor(gesture.swipeUp, commitDirect, onGestureAction),
+            onSwipeUp = swipeHandlerFor(gesture.swipeUp, commitDirect, onGestureAction)
+                ?: if (isDigit) ({ commitDirect(id) }) else null,
             onSwipeDown = swipeHandlerFor(gesture.swipeDown, commitDirect, onGestureAction),
             onSwipeLeft = swipeHandlerFor(gesture.swipeLeft, commitDirect, onGestureAction),
             onSwipeRight = swipeHandlerFor(gesture.swipeRight, commitDirect, onGestureAction),
@@ -595,10 +606,6 @@ private fun T9KeyboardContent(
     /** 数字键键面字母：keys.<id>.tap.label 可覆盖，未配置回退内置默认（无默认时显示数字本身）。 */
     fun digitLetters(id: String): String =
         KeysConfigHelper.getT9KeyLabel(id) ?: defaultT9DigitLetters()[id] ?: id
-
-    /** 数字键长按候选：keys.<id>.long_press 可覆盖（显示 label 缺省 value），未配置回退内置默认。 */
-    fun digitLongPress(id: String): List<String>? =
-        KeysConfigHelper.getT9KeyLongPressLabels(id) ?: DEFAULT_T9_DIGIT_LONG_PRESS[id]
 
     /** 左侧拼音候选面板（candidates 占位）：候选态显示音节选择，空闲态显示 side_symbols。 */
     @Composable
@@ -731,14 +738,11 @@ private fun T9KeyboardContent(
         }
         val longPressConfig = binding?.longPress
         val longPressActionMap = longPressConfig?.let { KeysConfigHelper.longPressActionMap(it) }
-        // 显式配了 long_press 就完全以它为准：values 为空（或单项 bubble: false，即「不弹气泡」）
-        // 一律视为「不要长按」，不再回退内置字母表——否则用户没法用配置关掉长按气泡。
-        // 只有完全没配 long_press 时才用内置默认（2→ABC … 9→WXYZ）。
-        val longPress = if (longPressConfig != null) {
-            KeysConfigHelper.longPressDisplayItems(longPressConfig).orEmpty()
-        } else {
-            digitLongPress(digit)
-        }
+        // 长按候选**只认显式配置**：values 为空（或单项 bubble: false）即「不要长按」，
+        // 完全没配 long_press 也视为不要长按，不再回退内置字母表（2→A/B/C … 9→W/X/Y/Z）。
+        // 想恢复长按输字母：在 keyboard.t9.keys.<id> 写
+        //   long_press: { values: [{ action: commit, value: "A" }, …] }
+        val longPress = KeysConfigHelper.longPressDisplayItems(longPressConfig).orEmpty()
         if (longPress.isNullOrEmpty()) {
             // 无长按候选（默认 "1" 分词键）：无长按弹出、按下态不进滑动气泡层（历史路径）
             NineKeyButton(
@@ -1031,17 +1035,7 @@ private fun defaultT9DigitLetters(): Map<String, String> = mapOf(
     "7" to "PQRS", "8" to "TUV", "9" to "WXYZ",
 )
 
-/** 九键数字键内置长按候选字母（keys.<id>.long_press 可覆盖；"1" 无长按为历史行为）。 */
-private val DEFAULT_T9_DIGIT_LONG_PRESS: Map<String, List<String>> = mapOf(
-    "2" to listOf("A", "B", "C"),
-    "3" to listOf("D", "E", "F"),
-    "4" to listOf("G", "H", "I"),
-    "5" to listOf("J", "K", "L"),
-    "6" to listOf("M", "N", "O"),
-    "7" to listOf("P", "Q", "R", "S"),
-    "8" to listOf("T", "U", "V"),
-    "9" to listOf("W", "X", "Y", "Z"),
-)
+/** 九键数字键内置长按候选字母已移除：长按只认 keys.<id>.long_press 显式配置（默认无长按）。 */
 
 // ─── 九键数字键（可长按） ──────────────────────────────────────────────
 
