@@ -731,8 +731,14 @@ private fun T9KeyboardContent(
         }
         val longPressConfig = binding?.longPress
         val longPressActionMap = longPressConfig?.let { KeysConfigHelper.longPressActionMap(it) }
-        val longPress = longPressConfig?.let { KeysConfigHelper.longPressDisplayItems(it) }
-            ?: digitLongPress(digit)
+        // 显式配了 long_press 就完全以它为准：values 为空（或单项 bubble: false，即「不弹气泡」）
+        // 一律视为「不要长按」，不再回退内置字母表——否则用户没法用配置关掉长按气泡。
+        // 只有完全没配 long_press 时才用内置默认（2→ABC … 9→WXYZ）。
+        val longPress = if (longPressConfig != null) {
+            KeysConfigHelper.longPressDisplayItems(longPressConfig).orEmpty()
+        } else {
+            digitLongPress(digit)
+        }
         if (longPress.isNullOrEmpty()) {
             // 无长按候选（默认 "1" 分词键）：无长按弹出、按下态不进滑动气泡层（历史路径）
             NineKeyButton(
