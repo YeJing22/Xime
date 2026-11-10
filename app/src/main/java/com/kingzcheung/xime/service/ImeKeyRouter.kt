@@ -15,6 +15,7 @@ import com.kingzcheung.xime.rime.smallKanaRomaji
 import com.kingzcheung.xime.rime.swapRomajiCase
 import com.kingzcheung.xime.rime.voicedKanaRomaji
 import com.kingzcheung.xime.rime.resolveRimeCandidateIndex
+import com.kingzcheung.xime.settings.PairWrap
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.keyboard.CandidateSortAction
 import com.kingzcheung.xime.ui.keyboard.KeyboardLayoutState
@@ -81,6 +82,76 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         t9PhraseBuild = on
         service.mainHandler.post {
             service.uiState.value = service.uiState.value.copy(t9PhraseBuildOn = on)
+        }
+    }
+
+    /**
+     * 成对符号包裹模式（九键组合态）。
+     *
+     * 非 null = 正在待选符号，值就是「待包裹的目标」——进入时快照的首选候选。
+     *
+     * 触发：手势 `send_rime` 送出 `pair_wrap.trigger`（默认 `\`），在 [handleKeyPress]
+     * 入口截住，不进引擎（与九键造词同一套路）。候选栏随即换成符号对，点选后
+     * 上屏 `左 + 目标 + 右`；没有候选时退化为「上屏一对、光标居中」。
+     * 任何其它按键都会退出该模式。
+     */
+    @Volatile
+    private var pairWrapTarget: String? = null
+
+    /** 包裹待选中（供 [ImeSessionController] 判断候选栏要不要显示符号对）。 */
+    internal val isPairWrapActive: Boolean get() = pairWrapTarget != null
+
+    /** 包裹触发符（xime.yaml `pair_wrap.trigger`）。 */
+    private fun pairWrapTrigger(): String = PairWrap.config(service).trigger
+
+    /** 触发符语义：模式内再按一次 = 退出；否则快照首选候选进入（无候选则直接上屏一对）。 */
+    private fun togglePairWrap() {
+        if (pairWrapTarget != null) {
+            exitPairWrap()
+            return
+        }
+        val cfg = PairWrap.config(service)
+        val target = service.candidateState.value.candidates.firstOrNull()
+        if (target.isNullOrEmpty()) {
+            val symbol = PairWrap.sortedSymbols(service, cfg).firstOrNull() ?: return
+            PairWrap.bumpCount(service, symbol)
+            postRimeJob {
+                service.rimeEngine.clearComposition()
+                withContext(Dispatchers.Main) { service.commitPairCentered(symbol) }
+            }
+            return
+        }
+        pairWrapTarget = target
+        service.mainHandler.post {
+            service.sessionController.applyPairWrapDisplay(PairWrap.sortedSymbols(service, cfg))
+        }
+    }
+
+    /** 退出包裹模式：丢弃目标，恢复引擎候选栏。 */
+    internal fun exitPairWrap() {
+        if (pairWrapTarget == null) return
+        pairWrapTarget = null
+        service.mainHandler.post { service.updateUI() }
+    }
+
+    /** 包裹模式点选符号对：上屏 `左+目标+右` 并清掉引擎编码。 */
+    private fun selectPairWrap(index: Int) {
+        val cfg = PairWrap.config(service)
+        val symbol = PairWrap.sortedSymbols(service, cfg).getOrNull(index)
+        val target = pairWrapTarget
+        if (symbol == null || target == null) {
+            exitPairWrap()
+            return
+        }
+        pairWrapTarget = null
+        PairWrap.bumpCount(service, symbol)
+        val wrapped = symbol.left + target + symbol.right
+        postRimeJob {
+            service.rimeEngine.clearComposition()
+            withContext(Dispatchers.Main) {
+                service.commitText(wrapped)
+                service.updateUI()
+            }
         }
     }
 
@@ -213,6 +284,13 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     internal fun handleKeyPress(key: String, isShifted: Boolean) {        // 空键无任何按键语义，且下游 Rime 路由按 key[0] 取码（key.lowercase()[0]），
         // 空串会越界崩溃（2026-09-14 真机实证：滑动手势 commit 值为空时触发）。
         if (key.isEmpty()) return
+        // 成对符号包裹：触发符进入/退出（九键组合态）；模式内按其它任何键即放弃，回到普通输入。
+        val wrapTrigger = pairWrapTrigger()
+        if (isPairWrapActive && key != wrapTrigger) exitPairWrap()
+        if (key == wrapTrigger && isT9Schema(service.uiState.value.currentSchemaId)) {
+            togglePairWrap()
+            return
+        }
         // 九键造词开关：九键没有实体反引号键，用户用手势 send_rime 打 `。
         // 这里把它解释成「切换造词模式」，不写进 rime 编码（原因见 t9PhraseBuild 注释）。
         if (key == "`" && isT9Schema(service.uiState.value.currentSchemaId)) {
@@ -1329,6 +1407,12 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     }
 
     suspend fun selectCandidateAsync(index: Int, expandedCandidate: RimeCandidate? = null) {
+        // 包裹待选：展开页不该在这个模式下出现（refreshExpandedCandidates 已拦），
+        // 万一残留被点到，按放弃处理而不是把索引套到符号对上
+        if (isPairWrapActive) {
+            exitPairWrap()
+            return
+        }
         // 展开页点选（expandedCandidate 非空）：取词/注释以展开页显示的同一份
         // 全量列表为准（所见即所得）。index 是全量索引，不得用于索引引擎当前页的
         // candidates/candidateComments——部分选拼音（SELECTION 态）或候选超页时
@@ -1633,6 +1717,12 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
     internal fun selectCandidate(index: Int) {
         service.composeViewRef?.let { service.feedbackManager.performKeyPressEffect(view = it) }
+
+        // 包裹待选：候选栏此刻显示的是符号对，点选即包裹上屏（不走引擎选词）
+        if (isPairWrapActive) {
+            selectPairWrap(index)
+            return
+        }
 
         // 计算器模式（仅在数字/常用符号键盘下生效，防止状态残留导致其他键盘候选词点击异常）
         val layoutState = service.keyboardViewModel.keyboardState.value

@@ -90,6 +90,26 @@ object SettingsPreferences {
         getPrefs(context).edit().putBoolean(KEY_AUTO_PAIR_SYMBOLS, enabled).apply()
     }
 
+    /** 成对符号包裹的使用次数（符号对 id → 次数），用于候选排序调频。 */
+    private const val KEY_PAIR_WRAP_COUNTS = "pair_wrap_counts"
+
+    fun getPairWrapCounts(context: Context): Map<String, Int> {
+        val json = getPrefs(context).getString(KEY_PAIR_WRAP_COUNTS, null) ?: return emptyMap()
+        return runCatching {
+            val obj = org.json.JSONObject(json)
+            obj.keys().asSequence().associateWith { obj.optInt(it, 0) }
+        }.getOrNull() ?: emptyMap()
+    }
+
+    /** 记录一次符号对使用（调频）。 */
+    fun bumpPairWrapCount(context: Context, id: String) {
+        val counts = getPairWrapCounts(context).toMutableMap()
+        counts[id] = (counts[id] ?: 0) + 1
+        val obj = org.json.JSONObject()
+        counts.forEach { (key, value) -> obj.put(key, value) }
+        getPrefs(context).edit().putString(KEY_PAIR_WRAP_COUNTS, obj.toString()).apply()
+    }
+
     private const val KEY_AUTO_NUMBER_KEYBOARD = "auto_number_keyboard_for_number_fields"
 
     /** 进入纯数字输入框（号码/验证码等）时自动弹出数字键盘，默认开启。 */

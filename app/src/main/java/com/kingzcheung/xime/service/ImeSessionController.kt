@@ -5,6 +5,7 @@ import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.rime.japanesePreedit
 import com.kingzcheung.xime.rime.T9InputController
 import com.kingzcheung.xime.rime.buildT9DisplayState
+import com.kingzcheung.xime.settings.PairWrap
 import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.keyboard.isT9Schema
@@ -129,26 +130,42 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
             service.dismissInlineSuggestions()
         }
 
+        // 包裹待选：候选栏此刻必须显示符号对，不能被引擎结果覆盖（否则每敲一个键候选就跳回）
+        val pairWrapSymbols = if (service.keyRouter.isPairWrapActive) {
+            PairWrap.sortedSymbols(service)
+        } else null
+
         service.candidateState.value = service.candidateState.value.copy(
             // T9 保持合成显示态同源；非 T9 仅显示层用 preedit 回显，inputText 保留原始键入串
             inputText = if (isT9Schema) displayText else inputText,
             preeditText = displayText,
-            candidates = displayCandidates,
-            candidateComments = displayComments,
-            isComposing = isComposing,
+            candidates = pairWrapSymbols?.map { it.display } ?: displayCandidates,
+            candidateComments = pairWrapSymbols?.let { symbols -> List(symbols.size) { "" } } ?: displayComments,
+            isComposing = pairWrapSymbols != null || isComposing,
             associationCandidates = if ((isAsciiMode || !service.isChineseMode) && pendingEnglish.isEmpty()) emptyList() else service.candidateState.value.associationCandidates,
             isShowingRecentClipboard = false,
-            hasNextPage = hasNextPage,
-            hasPrevPage = hasPrevPage,
+            hasNextPage = pairWrapSymbols == null && hasNextPage,
+            hasPrevPage = pairWrapSymbols == null && hasPrevPage,
             // 候选词变换映射（全键盘 pluginActions / T9 平行 actions；防御空）
-            candidateActions = if (isT9Schema) t9CandidateActions else pluginActions,
+            candidateActions = when {
+                pairWrapSymbols != null -> emptyList()
+                isT9Schema -> t9CandidateActions
+                else -> pluginActions
+            },
             preeditCaretPos = displayCaretOffset(displayText, inputText)
         )
         if (isAsciiMode != service.uiState.value.isAsciiMode) {
             FileLogger.i(XimeInputMethodService.TAG, "applyComposition: ascii ${service.uiState.value.isAsciiMode}->$isAsciiMode")
         }
-        // 展开态时刷新跨页全量候选并重置页码（编码已变化）
-        service.refreshExpandedCandidates()
+        // 展开态时刷新跨页全量候选并重置页码（编码已变化；包裹待选时不进展开页）
+        if (pairWrapSymbols == null) {
+            service.refreshExpandedCandidates()
+        } else {
+            service.candidateState.value = service.candidateState.value.copy(
+                expandedCandidates = emptyList(),
+                expandedActions = emptyList(),
+            )
+        }
         // composing 快照 → 插件（input_changed 事件；T9 与候选栏同源显示态）
         service.pluginEvents.dispatchInputChanged(if (isT9Schema) displayText else inputText)
 
@@ -174,6 +191,25 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
                 service.endComposingInputBox()
             }
         }
+    }
+
+    /**
+     * 包裹待选：把候选栏换成符号对（`左+右` 两项文本）。
+     *
+     * 分页/展开态一律清掉——符号表是全量直接横滑浏览，不参与引擎分页；
+     * `isComposing = true` 让候选栏保持展开（否则会被当成空闲态收起）。
+     */
+    internal fun applyPairWrapDisplay(symbols: List<PairWrap.Symbol>) {
+        service.candidateState.value = service.candidateState.value.copy(
+            candidates = symbols.map { it.display },
+            candidateComments = List(symbols.size) { "" },
+            candidateActions = emptyList(),
+            hasNextPage = false,
+            hasPrevPage = false,
+            expandedCandidates = emptyList(),
+            expandedActions = emptyList(),
+            isComposing = true,
+        )
     }
 
     /** 在输入框模式向编辑器写入编码文本。 */

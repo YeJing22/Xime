@@ -1130,6 +1130,8 @@ object KeysConfigHelper {
         // 新一轮装载：丢掉上一轮的文本/解析树，确保读到的是当前资产与当前 custom 配置
         assetTextCache.clear()
         yamlNodeCache.clear()
+        // 成对符号包裹的符号表/触发符解析缓存（pair_wrap 段）同步失效
+        PairWrap.invalidate()
         try {
             // 键盘手势（从原始 YAML 手动解析）
             val parsed = parseKeyboardFromAssets(context)

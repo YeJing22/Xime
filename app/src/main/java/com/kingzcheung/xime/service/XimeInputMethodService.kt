@@ -482,6 +482,16 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
 
     /** 刷新展开页的跨页全量候选；非展开态清空以省内存。编码变化与展开动作时调用 */
     internal fun refreshExpandedCandidates() {
+        // 包裹待选：候选栏显示的是符号对，展开页不应拉引擎全量候选（点选会套错索引）
+        if (keyRouter.isPairWrapActive) {
+            if (candidateState.value.expandedCandidates.isNotEmpty()) {
+                candidateState.value = candidateState.value.copy(
+                    expandedCandidates = emptyList(),
+                    expandedActions = emptyList()
+                )
+            }
+            return
+        }
         val needFull = keyboardViewModel.candidatePageExpanded.value ||
             keyboardViewModel.singleCharFilter.value
         if (!needFull) {
@@ -3308,6 +3318,22 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         "<" -> ">"
         "《" -> "》"
         else -> null
+    }
+
+    /**
+     * 包裹手势「无候选」分支：上屏一对符号并把光标放到两个符号中间。
+     *
+     * 不依赖「符号自动成对」开关——按包裹手势本身就表达了要一对符号的意图。
+     */
+    internal fun commitPairCentered(symbol: com.kingzcheung.xime.settings.PairWrap.Symbol) {
+        val ic = currentInputConnection
+        if (ic == null) {
+            commitTextAndPredict(symbol.display, isPaste = false)
+            return
+        }
+        val before = ic.getTextBeforeCursor(4096, 0)?.length ?: 0
+        commitTextAndPredict(symbol.left + symbol.right, isPaste = false)
+        runCatching { ic.setSelection(before + symbol.left.length, before + symbol.left.length) }
     }
 
     /**
