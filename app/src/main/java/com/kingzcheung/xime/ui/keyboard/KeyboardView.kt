@@ -675,13 +675,15 @@ fun KeyboardView(
                         }
                     },
                     onCandidateLongPress = { index ->
+                        // 包裹待选：候选栏显示的是符号对，长按只提供「清空使用次数」
+                        val pairWrap = candidateState.value.isPairWrap
                         val railEntry = if (expandedDataMode) railExpanded.getOrNull(index) else null
                         val normalEntry = if (!expandedDataMode && normalFilterActive) railNormal.getOrNull(index) else null
                         val word = railEntry?.second?.text
                             ?: normalEntry?.second
                             ?: candidateState.value.candidates.getOrNull(index)
                         if (!word.isNullOrEmpty()) {
-                            val delete: () -> Unit = {
+                            val deleteEngine: () -> Unit = {
                                 if (railEntry != null) {
                                     callbacks.onGlobalCandidateDelete?.invoke(railEntry.first)
                                 } else if (normalEntry != null) {
@@ -694,9 +696,12 @@ fun KeyboardView(
                                     callbacks.onCandidateDelete?.invoke(index)
                                 }
                             }
+                            // 包裹符号的「删除」= 清空使用次数（不写用户词典）
+                            val delete: () -> Unit =
+                                if (pairWrap) ({ callbacks.onPairWrapReset?.invoke(index) }) else deleteEngine
                             // 单字筛选态显示的是一份过滤后的子列表，与引擎候选页
                             // 不同源；高亮会落到同序号的另一个候选上，故筛选态不排序。
-                            val sortable = normalEntry == null &&
+                            val sortable = !pairWrap && normalEntry == null &&
                                 callbacks.isCandidateSortAvailable?.invoke() == true
                             val barHasPrev = candidateState.value.hasPrevPage
                             val barHasNext = candidateState.value.hasNextPage
@@ -711,15 +716,16 @@ fun KeyboardView(
                             candidateMenu = CandidateMenuTarget(
                                 word = word,
                                 supportsSort = sortable,
-                                canSortUp = if (railEntry != null) railEntry.first > 0
+                                canSortUp = !pairWrap && if (railEntry != null) railEntry.first > 0
                                 else index > 0 || barHasPrev,
-                                canSortDown = if (railEntry != null) {
+                                canSortDown = !pairWrap && if (railEntry != null) {
                                     railEntry.first < candidateState.value.expandedCandidates.lastIndex
                                 } else {
                                     index < candidateState.value.candidates.lastIndex || barHasNext
                                 },
                                 onSort = sortHandler,
                                 onDelete = delete,
+                                pairWrapMode = pairWrap,
                             )
                         }
                     },
@@ -1612,22 +1618,26 @@ fun KeyboardView(
                 ) {
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                         Text(
-                            text = if (menu.supportsSort) "候选操作" else tr(R.string.s_shanchuzizaoci),
+                            text = when {
+                                menu.pairWrapMode -> "符号操作"
+                                menu.supportsSort -> "候选操作"
+                                else -> tr(R.string.s_shanchuzizaoci)
+                            },
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = if (menu.supportsSort) {
-                                "「${menu.word}」"
-                            } else {
-                                tr(R.string.s_jiang_congyonghucidianzhongyichu, menu.word)
+                            text = when {
+                                menu.pairWrapMode -> "「${menu.word}」· 清空使用次数后回到默认顺序"
+                                menu.supportsSort -> "「${menu.word}」"
+                                else -> tr(R.string.s_jiang_congyonghucidianzhongyichu, menu.word)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(12.dp))
-                        if (menu.supportsSort) {
+                        if (menu.supportsSort || menu.pairWrapMode) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1635,7 +1645,7 @@ fun KeyboardView(
                             ) {
                                 CandidateMenuAction(
                                     label = "置顶",
-                                    enabled = true,
+                                    enabled = menu.supportsSort,
                                     onClick = {
                                         onHapticFeedback?.invoke()
                                         dismiss()
@@ -1644,7 +1654,7 @@ fun KeyboardView(
                                 )
                                 CandidateMenuAction(
                                     label = "前移",
-                                    enabled = menu.canSortUp,
+                                    enabled = menu.supportsSort && menu.canSortUp,
                                     onClick = {
                                         onHapticFeedback?.invoke()
                                         dismiss()
@@ -1653,7 +1663,7 @@ fun KeyboardView(
                                 )
                                 CandidateMenuAction(
                                     label = "后移",
-                                    enabled = menu.canSortDown,
+                                    enabled = menu.supportsSort && menu.canSortDown,
                                     onClick = {
                                         onHapticFeedback?.invoke()
                                         dismiss()
@@ -1661,7 +1671,7 @@ fun KeyboardView(
                                     }
                                 )
                                 CandidateMenuAction(
-                                    label = "删除",
+                                    label = if (menu.pairWrapMode) "清空" else "删除",
                                     enabled = true,
                                     destructive = true,
                                     onClick = {
@@ -1929,6 +1939,8 @@ private data class CandidateMenuTarget(
     val canSortDown: Boolean,
     val onSort: ((CandidateSortAction) -> Unit)? = null,
     val onDelete: () -> Unit,
+    /** 包裹候选（成对符号）：排序三项置灰，删除 = 清空使用次数。 */
+    val pairWrapMode: Boolean = false,
 )
 
 /** 操作层里的一个文字动作按钮（排序动作 / 删除）。 */

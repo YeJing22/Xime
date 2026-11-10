@@ -45,6 +45,11 @@ data class KeyboardCallbacks(
     /** 候选展开页长按排序：globalIndex 为跨页全量索引（高亮走全局索引）。 */
     val onGlobalCandidateSort: ((Int, CandidateSortAction) -> Unit)? = null,
     /**
+     * 包裹候选（成对符号）长按「删除」：清空该符号对的使用次数，回到默认顺序。
+     * index 为符号对在候选栏的显示索引（与 [onCandidateSelect] 同一索引空间）。
+     */
+    val onPairWrapReset: ((Int) -> Unit)? = null,
+    /**
      * 当前方案是否启用了手动排序（engine/processors 含 super_sequence）。
      * false/未接入 = 长按仍走原来的「删除自造词」确认弹窗。
      */

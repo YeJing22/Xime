@@ -262,6 +262,10 @@ internal fun rememberImeKeyboardCallbacks(
             onGlobalCandidateSort = { globalIndex, action ->
                 service.keyRouter.sortCandidateGlobal(globalIndex, action)
             },
+            // 包裹候选（成对符号）长按「删除」：清空使用次数，回到默认顺序
+            onPairWrapReset = { index ->
+                service.keyRouter.resetPairWrapCount(index)
+            },
             isCandidateSortAvailable = { service.isCandidateSortAvailable() },
             onRequestExpandedCandidates = { service.refreshExpandedCandidates() },
             onCursorMove = { direction ->

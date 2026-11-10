@@ -28,6 +28,8 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
         t9PluginInjections: List<T9CandidateInjection> = emptyList(),
     ) {
         val inputText = composition.input
+        // 包裹待选：编码一变（九键数字/退格不走 handleKeyPress）就退出，回到普通候选
+        service.keyRouter.onCompositionChangedForPairWrap(inputText)
         val codeInInputBox = SettingsPreferences.getInputTextLocation(service) == SettingsPreferences.INPUT_TEXT_INPUT_BOX
         val preeditText = composition.preedit
         val candidatesWithComments = composition.candidates.toList()
@@ -132,7 +134,7 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
 
         // 包裹待选：候选栏此刻必须显示符号对，不能被引擎结果覆盖（否则每敲一个键候选就跳回）
         val pairWrapSymbols = if (service.keyRouter.isPairWrapActive) {
-            PairWrap.sortedSymbols(service)
+            service.keyRouter.pairWrapSymbolsSorted()
         } else null
 
         service.candidateState.value = service.candidateState.value.copy(
@@ -152,7 +154,8 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
                 isT9Schema -> t9CandidateActions
                 else -> pluginActions
             },
-            preeditCaretPos = displayCaretOffset(displayText, inputText)
+            preeditCaretPos = displayCaretOffset(displayText, inputText),
+            isPairWrap = pairWrapSymbols != null,
         )
         if (isAsciiMode != service.uiState.value.isAsciiMode) {
             FileLogger.i(XimeInputMethodService.TAG, "applyComposition: ascii ${service.uiState.value.isAsciiMode}->$isAsciiMode")
@@ -209,6 +212,7 @@ internal class ImeSessionController(private val service: XimeInputMethodService)
             expandedCandidates = emptyList(),
             expandedActions = emptyList(),
             isComposing = true,
+            isPairWrap = true,
         )
     }
 

@@ -26,4 +26,6 @@ data class CandidateState(
     /** 编码显示串中的光标偏移（字符，-1 = 末尾/非编辑态）。
      *  全键盘组合态滑动编辑时由服务层从 editingCaretPos 映射（快照比对自愈），供气泡竖线与输入框光标。 */
     val preeditCaretPos: Int = -1,
+    /** 包裹待选中：候选栏此刻显示的是符号对（不是引擎候选），长按菜单改走「清空使用次数」。 */
+    val isPairWrap: Boolean = false,
 )

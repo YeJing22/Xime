@@ -86,72 +86,150 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     }
 
     /**
-     * 成对符号包裹模式（九键组合态）。
-     *
-     * 非 null = 正在待选符号，值就是「待包裹的目标」——进入时快照的首选候选。
+     * 成对符号包裹模式（九键）。
      *
      * 触发：手势 `send_rime` 送出 `pair_wrap.trigger`（默认 `\`），在 [handleKeyPress]
-     * 入口截住，不进引擎（与九键造词同一套路）。候选栏随即换成符号对，点选后
-     * 上屏 `左 + 目标 + 右`；没有候选时退化为「上屏一对、光标居中」。
-     * 任何其它按键都会退出该模式。
+     * 入口截住，不进引擎（与九键造词同一套路）。进入后候选栏换成符号对，点选即
+     * 把「进入时快照的首选候选」包成 `左 + 目标 + 右` 上屏；**没有候选时也进模式**，
+     * 此时点选是「上屏一对、光标居中」（等同符号自动成对）。
+     *
+     * 退出：任何改变编码的输入（数字键、退格——它们不走 [handleKeyPress]）由
+     * [onCompositionChangedForPairWrap] 比对编码快照退出；再按一次触发符也退出。
      */
+    @Volatile
+    private var pairWrapActive: Boolean = false
+
+    /** 待包裹的目标（进入时的首选候选）；空 = 只插入一对符号。 */
     @Volatile
     private var pairWrapTarget: String? = null
 
+    /** 进入时的引擎编码快照：编码一变就说明用户在继续输入，退出包裹模式。 */
+    @Volatile
+    private var pairWrapInput: String = ""
+
     /** 包裹待选中（供 [ImeSessionController] 判断候选栏要不要显示符号对）。 */
-    internal val isPairWrapActive: Boolean get() = pairWrapTarget != null
+    internal val isPairWrapActive: Boolean get() = pairWrapActive
+
+    /**
+     * 符号对使用次数（内存权威 + 落盘镜像）。
+     *
+     * 排序只认这份内存计数：候选栏渲染与点选索引必须同源，否则会出现
+     * 「选了引号、顺序却按旧计数排」的错位。初始化时从 prefs 载入一次。
+     */
+    private val pairWrapCounts: MutableMap<String, Int> by lazy {
+        SettingsPreferences.getPairWrapCounts(service).toMutableMap()
+    }
+
+    /** 按「使用次数降序 → 表内顺序」排好的符号对（候选栏渲染与点选共用这一份）。 */
+    internal fun pairWrapSymbolsSorted(): List<PairWrap.Symbol> {
+        val cfg = PairWrap.config(service)
+        val order = cfg.symbols.withIndex().associate { (index, symbol) -> symbol.id to index }
+        return cfg.symbols.sortedWith(
+            compareByDescending<PairWrap.Symbol> { pairWrapCounts[it.id] ?: 0 }
+                .thenBy { order[it.id] ?: 0 }
+        )
+    }
+
+    private fun bumpPairWrapCount(symbol: PairWrap.Symbol) {
+        pairWrapCounts[symbol.id] = (pairWrapCounts[symbol.id] ?: 0) + 1
+        PairWrap.bumpCount(service, symbol)
+        FileLogger.d(
+            XimeInputMethodService.TAG,
+            "PairWrap bump ${symbol.id} -> ${pairWrapCounts[symbol.id]} (head=${pairWrapSymbolsSorted().take(4).joinToString { it.id }})"
+        )
+    }
+
+    private fun resetPairWrapUsage(symbol: PairWrap.Symbol) {
+        pairWrapCounts.remove(symbol.id)
+        PairWrap.resetCount(service, symbol)
+        FileLogger.d(
+            XimeInputMethodService.TAG,
+            "PairWrap reset ${symbol.id} (head=${pairWrapSymbolsSorted().take(4).joinToString { it.id }})"
+        )
+    }
 
     /** 包裹触发符（xime.yaml `pair_wrap.trigger`）。 */
     private fun pairWrapTrigger(): String = PairWrap.config(service).trigger
 
-    /** 触发符语义：模式内再按一次 = 退出；否则快照首选候选进入（无候选则直接上屏一对）。 */
+    /** 触发符语义：模式内再按一次 = 退出；否则快照首选候选进入（无候选则目标为空）。 */
     private fun togglePairWrap() {
-        if (pairWrapTarget != null) {
+        if (pairWrapActive) {
             exitPairWrap()
             return
         }
-        val cfg = PairWrap.config(service)
-        val target = service.candidateState.value.candidates.firstOrNull()
-        if (target.isNullOrEmpty()) {
-            val symbol = PairWrap.sortedSymbols(service, cfg).firstOrNull() ?: return
-            PairWrap.bumpCount(service, symbol)
-            postRimeJob {
-                service.rimeEngine.clearComposition()
-                withContext(Dispatchers.Main) { service.commitPairCentered(symbol) }
-            }
-            return
-        }
-        pairWrapTarget = target
+        pairWrapActive = true
+        pairWrapTarget = service.candidateState.value.candidates.firstOrNull()?.takeIf { it.isNotEmpty() }
+        pairWrapInput = service.rimeEngine.getInput()
+        FileLogger.d(
+            XimeInputMethodService.TAG,
+            "PairWrap enter target=${pairWrapTarget?.take(16)} input='$pairWrapInput' " +
+                "head=${pairWrapSymbolsSorted().take(4).joinToString { it.id }}"
+        )
         service.mainHandler.post {
-            service.sessionController.applyPairWrapDisplay(PairWrap.sortedSymbols(service, cfg))
+            service.sessionController.applyPairWrapDisplay(pairWrapSymbolsSorted())
         }
     }
 
     /** 退出包裹模式：丢弃目标，恢复引擎候选栏。 */
     internal fun exitPairWrap() {
-        if (pairWrapTarget == null) return
-        pairWrapTarget = null
+        if (!pairWrapActive) return
+        clearPairWrapState()
         service.mainHandler.post { service.updateUI() }
     }
 
-    /** 包裹模式点选符号对：上屏 `左+目标+右` 并清掉引擎编码。 */
+    /**
+     * 编码变化时退出包裹模式（[ImeSessionController.applyComposition] 调用）。
+     *
+     * 九键数字键/退格走的是 T9 控制器，不经过 [handleKeyPress]，只能靠编码快照比对：
+     * 编码一变（含退格删到空）就退出，回到普通候选；这次 applyComposition 本身就是刷新，
+     * 所以这里不再 post updateUI。
+     */
+    internal fun onCompositionChangedForPairWrap(input: String) {
+        if (pairWrapActive && input != pairWrapInput) clearPairWrapState()
+    }
+
+    private fun clearPairWrapState() {
+        pairWrapActive = false
+        pairWrapTarget = null
+        pairWrapInput = ""
+    }
+
+    /** 包裹点选符号对：有目标则包住上屏，无目标则上屏一对并把光标放中间。 */
     private fun selectPairWrap(index: Int) {
-        val cfg = PairWrap.config(service)
-        val symbol = PairWrap.sortedSymbols(service, cfg).getOrNull(index)
-        val target = pairWrapTarget
-        if (symbol == null || target == null) {
+        val symbol = pairWrapSymbolsSorted().getOrNull(index)
+        if (symbol == null) {
             exitPairWrap()
             return
         }
-        pairWrapTarget = null
-        PairWrap.bumpCount(service, symbol)
-        val wrapped = symbol.left + target + symbol.right
+        val target = pairWrapTarget
+        clearPairWrapState()
+        bumpPairWrapCount(symbol)
+        FileLogger.d(
+            XimeInputMethodService.TAG,
+            "PairWrap select idx=$index symbol=${symbol.id} target=${target?.take(16)}"
+        )
         postRimeJob {
             service.rimeEngine.clearComposition()
             withContext(Dispatchers.Main) {
-                service.commitText(wrapped)
+                if (target.isNullOrEmpty()) {
+                    service.commitPairCentered(symbol)
+                } else {
+                    service.commitText(symbol.left + target + symbol.right)
+                }
                 service.updateUI()
             }
+        }
+    }
+
+    /**
+     * 包裹候选的「删除」：清空该符号对的使用次数（回到表内默认位置），
+     * 与候选的「删除」共用同一个长按菜单。
+     */
+    internal fun resetPairWrapCount(index: Int) {
+        val symbol = pairWrapSymbolsSorted().getOrNull(index) ?: return
+        resetPairWrapUsage(symbol)
+        service.mainHandler.post {
+            service.sessionController.applyPairWrapDisplay(pairWrapSymbolsSorted())
         }
     }
 
@@ -238,6 +316,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
      */
     internal fun onT9CodeDeletedToEmpty() {
         setT9PhraseBuild(false)
+        // 编码删空 = 这一轮输入结束：包裹模式必须退出，否则接下来的退格会去删已上屏文字
+        if (pairWrapActive) exitPairWrap()
     }
 
     /**

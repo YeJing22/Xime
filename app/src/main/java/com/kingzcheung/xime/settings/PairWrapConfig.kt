@@ -70,19 +70,20 @@ internal object PairWrap {
         return merged
     }
 
-    /** 按使用次数降序（次数相同保持表内原序）排列的符号表。 */
-    fun sortedSymbols(context: Context, config: Config = config(context)): List<Symbol> {
-        val counts = SettingsPreferences.getPairWrapCounts(context)
-        val order = config.symbols.withIndex().associate { (index, symbol) -> symbol.id to index }
-        return config.symbols.sortedWith(
-            compareByDescending<Symbol> { counts[it.id] ?: 0 }
-                .thenBy { order[it.id] ?: 0 }
-        )
-    }
+    /**
+     * 注意：排序（使用次数降序 → 表内顺序）不在这里做。
+     * 候选栏渲染与点选索引必须同源，排序由 [com.kingzcheung.xime.service.ImeKeyRouter]
+     * 用内存计数统一提供（避免「渲染一套顺序、点选又按另一套索引」的错位）。
+     */
 
     /** 记一次使用（调频）。 */
     fun bumpCount(context: Context, symbol: Symbol) {
         SettingsPreferences.bumpPairWrapCount(context, symbol.id)
+    }
+
+    /** 清空该符号对的使用次数（长按候选的「删除」），回到表内默认位置。 */
+    fun resetCount(context: Context, symbol: Symbol) {
+        SettingsPreferences.resetPairWrapCount(context, symbol.id)
     }
 
     private fun parseSection(text: String): Config? = runCatching {

@@ -105,6 +105,17 @@ object SettingsPreferences {
     fun bumpPairWrapCount(context: Context, id: String) {
         val counts = getPairWrapCounts(context).toMutableMap()
         counts[id] = (counts[id] ?: 0) + 1
+        persistPairWrapCounts(context, counts)
+    }
+
+    /** 清空某个符号对的使用次数（回到表内默认位置）。 */
+    fun resetPairWrapCount(context: Context, id: String) {
+        val counts = getPairWrapCounts(context).toMutableMap()
+        if (counts.remove(id) == null) return
+        persistPairWrapCounts(context, counts)
+    }
+
+    private fun persistPairWrapCounts(context: Context, counts: Map<String, Int>) {
         val obj = org.json.JSONObject()
         counts.forEach { (key, value) -> obj.put(key, value) }
         getPrefs(context).edit().putString(KEY_PAIR_WRAP_COUNTS, obj.toString()).apply()
