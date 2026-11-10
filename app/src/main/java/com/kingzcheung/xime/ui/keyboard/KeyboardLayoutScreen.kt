@@ -140,6 +140,7 @@ fun KeyboardLayoutScreen(
         key(uiState.swipeCancelEpoch) {
             // 我方：主题描边（自绘键必须手动补 LocalKeyBorder）
             // 官方：按键级外观的主题色 token（keys.<id> 的 background: accent 等）
+            // 两个 provider 必须在同一个作用域里，缺一个都会让对应能力失效。
             CompositionLocalProvider(
                 LocalKeyBorder provides screenKeyBorder,
                 LocalKeyStyleColors provides keyStyleColors,

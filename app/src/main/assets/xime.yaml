@@ -443,7 +443,7 @@ color_schemes:
 #   - 字符串 "a" → 按槽位默认动作（tap 为 send_rime：走按键路由进 rime，与手敲
 #     该键一致；swipe/长按为 commit），显示也是它。
 #     注意区分两种 commit：显式写 action: commit 的手势一律直接上屏（不经过引擎）；
-#     字符串简写 / 只写 value 的「槽位默认 commit」（含九键/笔画上滑输数字）仍走按键
+#     字符串简写 / 只写 value 的「槽位默认 commit」在 26 键字母区的 tap/上滑仍走按键
 #     路由（与手敲该键一致，保留组合态/候选/全半角/简繁语义）
 #   - { label, action, value }
 #     （对象形式省略 action 时取槽位默认）

@@ -93,6 +93,33 @@ jobs:
         run: |
           cd tools/xime-plugin
           cargo run --quiet -- build --all --plugins-dir ../../plugins --out ../../build/plugin-js
+          cargo run --quiet -- build test-fixture --out ../../build/plugin-js
+
+      - name: Run Unit Tests
+        run: ./gradlew :app:testDebugUnitTest :plugin-core:testDebugUnitTest --no-daemon
+        
+      - name: Generate Test Report
+        if: always()
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: '**/build/test-results/testDebugUnitTest/*.xml'
+          fail_on_failure: true
+          
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/
+          retention-days: 7
+          
+      - name: Build P2P native libs
+        # .gitignore 忽略 jniLibs，正式包必须由源码现场编译；
+        # 否则 P2pNative.loaded=false，设备互联整页是空的。
+        run: bash scripts/build-p2p-android.sh
+
+      - name: Build Debug APKs
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Build Debug APK (arm64-v8a)
         run: ./gradlew assembleDebug --no-daemon
