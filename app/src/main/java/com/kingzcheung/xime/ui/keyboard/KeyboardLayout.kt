@@ -44,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -182,6 +183,9 @@ fun KeyboardLayout(
     var landscapeSplitKeyboardEnabled by remember {
         mutableStateOf(SettingsPreferences.isLandscapeSplitKeyboardEnabled(context))
     }
+    var letterSizeLevel by remember(context) {
+        mutableIntStateOf(SettingsPreferences.getQwertyLetterSizeLevel(context))
+    }
 
     // 监听设置变化
     DisposableEffect(context) {
@@ -192,6 +196,8 @@ fun KeyboardLayout(
                     SettingsPreferences.KEY_LANDSCAPE_SPLIT_KEYBOARD_ENABLED ->
                         landscapeSplitKeyboardEnabled =
                             SettingsPreferences.isLandscapeSplitKeyboardEnabled(context)
+                    SettingsPreferences.KEY_QWERTY_LETTER_SIZE_LEVEL ->
+                        letterSizeLevel = SettingsPreferences.getQwertyLetterSizeLevel(context)
                 }
             }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -248,6 +254,7 @@ fun KeyboardLayout(
 
     CompositionLocalProvider(
         LocalKeyCornerRadius provides qwertyCornerRadius,
+        LocalQwertyLetterScale provides (SettingsPreferences.qwertyLetterSizePercent(letterSizeLevel) / 100f),
         // 键面提示档与主键盘同一规则（退格的「清空」等提示的放大倍率与画法）
         LocalSwipeHintCorner provides swipeHintCornerFor(isLandscape, tabletParams),
         // 平板键面提示统一放大（字母上标/退格"清空"等所有键组件一致），手机为 1f
@@ -1293,12 +1300,6 @@ private fun EnterCell(env: QwertyRowEnv, modifier: Modifier) {
         shadowEnabled = env.shadowEnabled,
         shadowElevation = env.shadowElevation,
         shadowShapeRadius = env.shadowShapeRadius,
-        // 回车是跨行键（数字键盘右列跨 4 行、全键盘竖排跨 3 行）：关掉"按键越高字越大"，
-        // 否则键高直接顶到缩放上限，出现"一把键盘里 enter 特别大"。
-        // 官方 #1254 统一了回车键字号（不再从 env.ctrlFontSize 传参），
-        // 我方仍固定 16sp，与同屏数字键/功能键同一档（已真机验收的观感，勿改）。
-        adaptiveContentScale = false,
-        fontSize = 16.sp,
     )
 }
 
@@ -1725,6 +1726,8 @@ private fun DummyKeyButton(
     )
 }
 
+private val LocalQwertyLetterScale = compositionLocalOf { 1f }
+
 @Composable
 fun KeyboardRowWithConfig(
     keys: List<String>,
@@ -1790,6 +1793,13 @@ fun KeyboardRowWithConfig(
                 commitValue
             } else {
                 KeysConfigHelper.getKeyDisplayLabel(key, isAsciiMode)
+            }
+            val labelScale = if (key.length == 1 && key[0].lowercaseChar() in 'a'..'z' &&
+                displayText.length == 1 && displayText[0].lowercaseChar() in 'a'..'z'
+            ) {
+                LocalQwertyLetterScale.current
+            } else {
+                1f
             }
 
             // tap 动作接线：非 COMMIT/SEND_RIME 的动作（复制/粘贴/面板切换等）走手势分发，
@@ -1882,6 +1892,7 @@ fun KeyboardRowWithConfig(
                         onLongPressSelect = onLongPressSelect,
                         longPressItems = longPressLabels,
                         fontSize = config.fontSize,
+                        labelScale = labelScale,
                         swipeFontSize = config.swipeFontSize,
                         shadowEnabled = config.shadowEnabled,
                         shadowElevation = config.shadowElevation,
@@ -1911,6 +1922,7 @@ fun KeyboardRowWithConfig(
                     onLongPressSelect = onLongPressSelect,
                     longPressItems = longPressLabels,
                     fontSize = config.fontSize,
+                    labelScale = labelScale,
                     swipeFontSize = config.swipeFontSize,
                     shadowEnabled = config.shadowEnabled,
                     shadowElevation = config.shadowElevation,
@@ -2193,6 +2205,18 @@ private fun LandscapeKeyboardContent(
 }
 
 
+/**
+ * 空格键抬手是否算作点击（上屏空格）。
+ *
+ * 父层光标手势接管本次横向滑动后，拖拽位移已被父层消费，不能再补一个空格；
+ * 已判为滑动或长按已触发时同理由对应分支处理。见 issue #1262。
+ */
+internal fun shouldCommitSpaceTap(
+    longPressTriggered: Boolean,
+    swipeDirection: String?,
+    cursorGestureActive: Boolean,
+): Boolean = !longPressTriggered && swipeDirection == null && !cursorGestureActive
+
 /** QWERTY 空格键 */
 @Composable
 private fun SpaceKey(
@@ -2229,6 +2253,8 @@ private fun SpaceKey(
     val currentLongPressItems by rememberUpdatedState(longPressItems)
     val currentLongPressDrawableIds by rememberUpdatedState(longPressDrawableIds)
     val view = LocalView.current
+    // 父层光标手势是否已接管本次横向滑动（接管后不再算点击，见 issue #1262）
+    val cursorGestureActive = LocalCursorGestureActive.current
     var buttonBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
     val currentOnVoiceModeChange by rememberUpdatedState(onVoiceModeChange)
     val currentOnTap by rememberUpdatedState(onTap)
@@ -2313,8 +2339,11 @@ private fun SpaceKey(
                                     }
                                     if (isRelease) {
                                         completed = true
-                                        if (currentOnTap != null) currentOnTap?.invoke()
-                                        else currentOnKeyPress("space")
+                                        // 横向拖动已被父层光标手势接管时，抬手不算点击
+                                        if (!cursorGestureActive.value) {
+                                            if (currentOnTap != null) currentOnTap?.invoke()
+                                            else currentOnKeyPress("space")
+                                        }
                                     }
                                     continue
                                 }
@@ -2345,7 +2374,7 @@ private fun SpaceKey(
                             longPressJob.cancel()
                             onSwipeStateChange?.invoke(SwipeState(), buttonBounds)
                             // 没等到抬手就结束（触摸流取消/协程被重挂）时兜底上屏空格
-                            if (!completed && !triggered) {
+                            if (!completed && !triggered && !cursorGestureActive.value) {
                                 if (currentOnTap != null) currentOnTap?.invoke()
                                 else currentOnKeyPress("space")
                             }
@@ -2384,7 +2413,7 @@ private fun SpaceKey(
 
                     if (dir != null && currentOnSwipe != null) {
                         currentOnSwipe?.invoke(dir)
-                    } else if (!longPressTriggered) {
+                    } else if (shouldCommitSpaceTap(longPressTriggered, dir, cursorGestureActive.value)) {
                         if (currentOnTap != null) currentOnTap?.invoke() else currentOnKeyPress("space")
                     }
                 }

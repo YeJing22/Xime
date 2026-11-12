@@ -1,8 +1,8 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -87,27 +87,13 @@ val LocalHintExtraScale = staticCompositionLocalOf { 1f }
  *  独立于 shadow.shape_radius，为统一配置化而设。 */
 val LocalKeyCornerRadius = staticCompositionLocalOf { 8.dp }
 
-/**
- * 按键内容随按键实际高度放大的**上限**。
- *
- * 官方原为 1.5。1.5 的问题：全键盘字母键（键高 > 84dp 时）直接顶格放大到 24sp，
- * 而同屏的功能键走 [KeyButton]（不做自适应）保持 16sp，"同一把键盘两种字号"非常明显；
- * 数字键盘右列跨 4 行的 enter 同样顶格。
- *
- * **现取 1.0 = 彻底关闭自适应放大**：所有键按各自字号原样渲染，同屏不再有字差。
- * 1.0 时 [adaptiveKeyContentScale] 恒返回 1f，下游的 `× contentScale` 全部变成空操作，
- * 滑动提示（[adaptiveHintScale]）也回到基准尺寸。
- * 想恢复"大键字稍大"只改这一个数即可（1.15 约 18sp、1.3 约 21sp）。
- */
-internal const val MAX_ADAPTIVE_KEY_CONTENT_SCALE = 1f
-
 /** 按键内容随按键实际高度放大；手机尺寸下保持原字号。 */
 internal fun adaptiveKeyContentScale(
     keyHeightDp: Float,
     referenceHeightDp: Float = 56f,
 ): Float {
     if (!keyHeightDp.isFinite() || keyHeightDp <= 0f) return 1f
-    return (keyHeightDp / referenceHeightDp).coerceIn(1f, MAX_ADAPTIVE_KEY_CONTENT_SCALE)
+    return (keyHeightDp / referenceHeightDp).coerceIn(1f, 1.5f)
 }
 
 /** 滑动提示在大按键上比主字符增长稍快，避免视觉上仍然偏小。 */
@@ -138,35 +124,6 @@ internal fun shouldSuppressCursorMove(
     abs(dragOffsetX) > abs(dragOffsetY) &&
     abs(dragOffsetX) > horizontalThreshold
 
-/**
- * 点击结算的横向位移阈值（px）。
- *
- * 父层接管光标手势时与其**激活阈值同源**（用户设置，默认 30dp）；父层未接管
- * （[CursorGestureState] 为 null）时退回 [fallbackPx]（60dp 兜底口径）。
- *
- * 同源的必要性：父层按 30dp 开始移动光标，若本层仍按 60dp 判「不算滑动」，
- * 30~60dp 之间就会既移动光标又补一次点击。
- */
-internal fun resolveClickCancelPx(state: CursorGestureState?, fallbackPx: Float): Float =
-    state?.activationPx() ?: fallbackPx
-
-/** 父层光标手势是否已接管本次横向滑动（接管时本键一律不上屏）。 */
-internal fun cursorGestureTookOver(state: CursorGestureState?): Boolean =
-    state?.isActive() == true
-
-/**
- * 边沿位移的延迟提交窗口（ms）。
- *
- * 位移已超过 touch slop（已经不像干净点击）但还没到激活阈值时，先等这段时间再上屏，
- * 给父层光标手势留出「抢占」窗口——手指在抬起瞬间越过激活线时，按键层往往已经先
- * 结算了点击（Main pass 子层先收到事件），延迟窗口让父层的判定先落地。
- * 纯点按（位移 < slop）不走延迟，不影响打字速度。
- */
-internal const val DEFERRED_CLICK_WINDOW_MS = 40L
-
-/** 判定「已不像干净点击」的位移下限，取 touch slop 量级（约 8dp）。 */
-internal val DEFERRED_CLICK_MIN_DP = 8.dp
-
 data class SwipeState(
     val isSwiping: Boolean = false,
     val swipeText: String? = null,
@@ -182,13 +139,12 @@ data class SwipeState(
     val longPressDrawableIds: List<Int> = emptyList(),
 )
 
-private val shadowColorCache = HashMap<Color, Color>()
-
 /** 按键描边（由上层主题 key_background.border_color 提供）；null = 不描边。 */
 val LocalKeyBorder = staticCompositionLocalOf<BorderStroke?> { null }
 
+private val shadowColorCache = HashMap<Color, Color>()
+
 internal fun crispShadowColor(backgroundColor: Color): Color {
-    if (backgroundColor.alpha <= 0f) return Color.Transparent
     return shadowColorCache.getOrPut(backgroundColor) {
         val r = backgroundColor.red
         val g = backgroundColor.green
@@ -273,15 +229,11 @@ fun KeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 父层光标手势的激活阈值已改为用户可调（SettingsPreferences.getCursorDragActivationDp，
-    // 20~60dp）：父层先接管时事件被 consume，本键自动取消点击，不会"光标动了又打字"。
-    // 这里保留 60dp 作为父层未接管（onCursorMove 为空）时的兜底口径。
+    // 与 KeyboardView 光标手势激活阈值（activationThresholdPx = 60dp）对齐，
+    // 消除 30~60dp 位移区间"点击被取消但光标手势未激活"的死区（打字吃键）。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
     // 父层光标手势已接管横向滑动时，本键不再判定点击（否则会"移动光标 + 打出一个字母"）
     val cursorGestureActive = LocalCursorGestureActive.current
-    val cursorGestureState = LocalCursorGestureState.current
-    val deferredClickMinPx = with(density) { DEFERRED_CLICK_MIN_DP.toPx() }
-    val scope = rememberCoroutineScope()
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
         if (shadowEnabled) {
@@ -328,23 +280,11 @@ fun KeyButton(
                             isSwipeDown = false
                         },
                         onDragEnd = {
-                            val cancelThreshold = resolveClickCancelPx(
-                                cursorGestureState, horizontalClickCancelThreshold
-                            )
                             val shouldClick = !cursorGestureActive.value &&
-                            !cursorGestureTookOver(cursorGestureState) &&
                             !hasTriggeredSwipeUp && !hasTriggeredSwipeDown &&
-                            abs(dragOffsetX) < cancelThreshold
+                            abs(dragOffsetX) < horizontalClickCancelThreshold
                             if (shouldClick) {
-                                // 边沿位移延迟提交，给父层光标手势留抢占窗口
-                                if (cursorGestureState != null && abs(dragOffsetX) >= deferredClickMinPx) {
-                                    scope.launch {
-                                        delay(DEFERRED_CLICK_WINDOW_MS)
-                                        if (!cursorGestureTookOver(cursorGestureState)) currentOnClick()
-                                    }
-                                } else {
-                                    currentOnClick()
-                                }
+                                currentOnClick()
                             }
                             isPressed = false
                             currentOnRelease?.invoke()
@@ -555,14 +495,7 @@ fun SwipeableKeyButton(
     a11yDescription: String? = null,
     /** TalkBack 状态播报 */
     a11yState: String? = null,
-    /**
-     * 是否按按键实际高度自适应放大字号（见 [adaptiveKeyContentScale]）。
-     *
-     * 跨行键（数字键盘右列的 enter、全键盘竖排 delete 等）高度是普通键的 2~4 倍，
-     * 自适应会让其字号顶格，与同屏其他键严重不一致 —— 这类键传 false，字号按
-     * [fontSize]/默认值固定。普通键保持 true。
-     */
-    adaptiveContentScale: Boolean = true,
+    labelScale: Float = 1f,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var dragOffsetY by remember { mutableStateOf(0f) }
@@ -606,53 +539,29 @@ fun SwipeableKeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 父层接管光标手势时改用父层的激活阈值（同一份用户设置，默认 30dp），
-    // 只有父层未接管（onCursorMove 为空 / 非主键盘页）时才退回 60dp 兜底。
+    // 与 KeyboardView 光标手势激活阈值（activationThresholdPx = 60dp）对齐，
+    // 消除 30~60dp 位移区间"点击被取消但光标手势未激活"的死区（打字吃键）。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
-    val cursorGestureState = LocalCursorGestureState.current
-    val deferredClickMinPx = with(density) { DEFERRED_CLICK_MIN_DP.toPx() }
     // 左/右滑触发阈值
     val swipeLeftThreshold = with(density) { (-50).dp.toPx() }
     val swipeRightThreshold = with(density) { 50.dp.toPx() }
-    // 横向接管阈值：必须低于父层光标手势的**最小**激活阈值
-    // （SettingsPreferences.MIN_CURSOR_DRAG_ACTIVATION_DP = 20dp），这样无论用户把光标
-    // 灵敏度调到多高，配置了左右滑的键都优先接管横向滑动，不会被父层光标手势抢走。
-    // 14dp 仍高于系统 touch slop（约 8dp），不会因手指抖动误触发。
-    val horizontalSwipeSuppressThreshold = with(density) { 14.dp.toPx() }
+    // 横向接管阈值：低于父层光标手势激活阈值（60dp），使配置了左右滑的键优先接管横向滑动
+    val horizontalSwipeSuppressThreshold = with(density) { 30.dp.toPx() }
     val suppressCursorMove = LocalSuppressCursorMove.current
 
     /**
      * 本次手势的唯一点击出口：点击分支与拖拽兜底共用，先到者生效。
      * 只有被判成滑动（含 `action: none`）或横向光标手势时才不点击。
-     *
-     * 三层把关：①已判滑动；②父层光标手势已接管；③横向峰值达到与父层同源的阈值。
-     * 边沿位移（已超 slop 但未达阈值）延迟 [DEFERRED_CLICK_WINDOW_MS] 提交，
-     * 让父层在抬手瞬间的判定先落地。
      */
     fun emitClick(atX: Float, atY: Float) {
         if (clickEmitted) return
+        // 被判成滑动（含 action: none）或横向光标手势时本就不该上屏
         val swiped = hasTriggeredSwipeUp || hasTriggeredSwipeDown ||
             hasTriggeredSwipeLeft || hasTriggeredSwipeRight
-        val tookOverByCursor = cursorGestureTookOver(cursorGestureState)
-        val cancelThreshold = resolveClickCancelPx(cursorGestureState, horizontalClickCancelThreshold)
-        if (swiped || tookOverByCursor || gesturePeakDx >= cancelThreshold) {
-            // 封口：本次手势不再补点
-            clickEmitted = true
-            return
-        }
+        if (swiped || gesturePeakDx >= horizontalClickCancelThreshold) return
         clickEmitted = true
-        val commit = {
-            KeyTapLogger.recordTap(currentText, atX, atY, buttonBounds, density.density)
-            currentOnClick()
-        }
-        if (cursorGestureState != null && gesturePeakDx >= deferredClickMinPx) {
-            scope.launch {
-                delay(DEFERRED_CLICK_WINDOW_MS)
-                if (!cursorGestureTookOver(cursorGestureState)) commit()
-            }
-        } else {
-            commit()
-        }
+        KeyTapLogger.recordTap(currentText, atX, atY, buttonBounds, density.density)
+        currentOnClick()
     }
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
@@ -732,10 +641,9 @@ fun SwipeableKeyButton(
                         dragOffsetX += dragAmount.x
                         dragOffsetY += dragAmount.y
                         // 横向净位移峰值（横向分量占优时），与父层光标手势同口径
-                        // 主轴比与父层一致取 2:1（原 4:1），斜向滑动同样计入峰值
                         val peakDx = change.position.x - lastPressOffset.x
                         val peakDy = change.position.y - lastPressOffset.y
-                        if (abs(peakDx) > abs(peakDy) * 2f) {
+                        if (abs(peakDx) > abs(peakDy) * 4f) {
                             gesturePeakDx = maxOf(gesturePeakDx, abs(peakDx))
                         }
 
@@ -947,8 +855,7 @@ fun SwipeableKeyButton(
             .keySemantics(a11yDescription, a11yState) { currentOnClick() },
         contentAlignment = if (layoutMode == ButtonLayout.COMPACT) Alignment.TopStart else Alignment.Center
     ) {
-        // 跨行键（enter/竖排 delete）关掉自适应，避免键高带来的"顶格大字"
-        val contentScale = if (adaptiveContentScale) adaptiveKeyContentScale(maxHeight.value) else 1f
+        val contentScale = adaptiveKeyContentScale(maxHeight.value)
         val hintScale = adaptiveHintScale(contentScale)
         val hintOffset = adaptiveHintOffsetDp(contentScale).dp
         val hintExtraScale = LocalHintExtraScale.current
@@ -972,7 +879,7 @@ fun SwipeableKeyButton(
                     Text(
                         text = text,
                         color = textColor,
-                        fontSize = ((if (fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) fontSize.value else if (text.length > 2) 13f else 16f) * contentScale).sp,
+                        fontSize = ((if (fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) fontSize.value else if (text.length > 2) 13f else 16f) * contentScale * labelScale).sp,
                         fontWeight = if (text.length > 2) FontWeight.Medium else FontWeight.Normal,
                         textAlign = TextAlign.Start,
                         maxLines = 1,
@@ -1048,7 +955,7 @@ fun SwipeableKeyButton(
                     Text(
                         text = text,
                         color = textColor,
-                        fontSize = ((if (fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) fontSize.value else if (text.length > 2) 14f else 18f) * contentScale).sp,
+                        fontSize = ((if (fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) fontSize.value else if (text.length > 2) 14f else 18f) * contentScale * labelScale).sp,
                         // 平板大键（hintExtraScale > 1）单字母也用 Medium，避免大键面上 Normal 显细
                         fontWeight = if (text.length > 2 || hintExtraScale > 1f) FontWeight.Medium else FontWeight.Normal,
                         textAlign = TextAlign.Center,
@@ -1252,7 +1159,6 @@ fun IconKeyButton(
     var isPressed by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val currentOnClick by rememberUpdatedState(onClick)
-    val cursorGestureState = LocalCursorGestureState.current
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
         if (shadowEnabled) {
@@ -1297,8 +1203,7 @@ fun IconKeyButton(
                         onRelease?.invoke()
                     },
                     onTap = {
-                        // 父层光标手势已接管时不上屏（图标键无拖拽兜底，这里只做二次保险）
-                        if (!cursorGestureTookOver(cursorGestureState)) onClick()
+                        onClick()
                     }
                 )
             }
@@ -1412,11 +1317,8 @@ fun SwipeableIconKeyButton(
     val swipeDownThreshold = with(density) { 50.dp.toPx() }
     val swipeLeftThreshold = with(density) { (-50).dp.toPx() }
     val swipeRightThreshold = with(density) { 50.dp.toPx() }
-    // 横向接管阈值：必须低于父层光标手势的**最小**激活阈值
-    // （SettingsPreferences.MIN_CURSOR_DRAG_ACTIVATION_DP = 20dp），这样无论用户把光标
-    // 灵敏度调到多高，配置了左右滑的键都优先接管横向滑动，不会被父层光标手势抢走。
-    // 14dp 仍高于系统 touch slop（约 8dp），不会因手指抖动误触发。
-    val horizontalSwipeSuppressThreshold = with(density) { 14.dp.toPx() }
+    // 横向接管阈值：低于父层光标手势激活阈值（60dp），使配置了左右滑的键优先接管横向滑动
+    val horizontalSwipeSuppressThreshold = with(density) { 30.dp.toPx() }
     val suppressCursorMove = LocalSuppressCursorMove.current
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
@@ -1425,32 +1327,9 @@ fun SwipeableIconKeyButton(
     val clearActionThreshold = with(density) { (-50).dp.toPx() }
     val undoActionThreshold = with(density) { 50.dp.toPx() }
     // 水平位移超过该值视为横向手势（如键盘区滑动移动光标），不再触发点击。
-    // 父层接管光标手势时改用父层的激活阈值（同一份用户设置，默认 30dp），
-    // 只有父层未接管时才退回 60dp 兜底。
+    // 与 KeyboardView 光标手势激活阈值（activationThresholdPx = 60dp）对齐，
+    // 消除 30~60dp 位移区间"点击被取消但光标手势未激活"的死区（打字吃键）。
     val horizontalClickCancelThreshold = with(density) { 60.dp.toPx() }
-    val cursorGestureState = LocalCursorGestureState.current
-    val deferredClickMinPx = with(density) { DEFERRED_CLICK_MIN_DP.toPx() }
-
-    /**
-     * 图标键（退格 / 回车 / 空格）的唯一点击出口，口径与 [SwipeableKeyButton.emitClick] 一致：
-     * 已判滑动 / 父层光标手势已接管 / 横向峰值达同源阈值 → 不上屏；
-     * 边沿位移延迟 [DEFERRED_CLICK_WINDOW_MS] 提交。
-     *
-     * 图标键误触的代价比字母键更大（退格、回车），所以这里同样要过三层判据。
-     */
-    fun emitIconClick() {
-        if (cursorGestureTookOver(cursorGestureState)) return
-        val cancelThreshold = resolveClickCancelPx(cursorGestureState, horizontalClickCancelThreshold)
-        if (gesturePeakDx >= cancelThreshold) return
-        if (cursorGestureState != null && gesturePeakDx >= deferredClickMinPx) {
-            scope.launch {
-                delay(DEFERRED_CLICK_WINDOW_MS)
-                if (!cursorGestureTookOver(cursorGestureState)) currentOnClick()
-            }
-        } else {
-            currentOnClick()
-        }
-    }
     
     LaunchedEffect(isLongPress, repeatLongPress) {
         if (isLongPress && onLongClick != null) {
@@ -1521,9 +1400,7 @@ fun SwipeableIconKeyButton(
                         }
                     },
                     onTap = {
-                        if (!dragActivated && !isDragging && !hasTriggeredLongPress &&
-                            !cursorGestureTookOver(cursorGestureState)
-                        ) {
+                        if (!dragActivated && !isDragging && !hasTriggeredLongPress) {
                             onClick()
                         }
                         hasTriggeredLongPress = false
@@ -1566,13 +1443,11 @@ fun SwipeableIconKeyButton(
                             hasTriggeredSwipe = true
                             onSwipe()
                         } else if (
-                            gesturePeakDx < resolveClickCancelPx(
-                                cursorGestureState, horizontalClickCancelThreshold
-                            ) &&
+                            gesturePeakDx < horizontalClickCancelThreshold &&
                             !hasTriggeredLongPress &&
                             !hasTriggeredSwipeLeft && !hasTriggeredSwipeRight
                         ) {
-                            emitIconClick()
+                            currentOnClick()
                         }
                         dragActivated = false
                         isPressed = false
@@ -1596,16 +1471,14 @@ fun SwipeableIconKeyButton(
                     },
                     onDragCancel = {
                         // 拖拽被取消且没被判成滑动/长按：兜底点击，避免静默丢键
-                        if (gesturePeakDx < resolveClickCancelPx(
-                                cursorGestureState, horizontalClickCancelThreshold
-                            ) &&
+                        if (gesturePeakDx < horizontalClickCancelThreshold &&
                             !hasTriggeredLongPress &&
                             !hasTriggeredSwipe && !hasTriggeredSwipeDown &&
                             !hasTriggeredSwipeLeft && !hasTriggeredSwipeRight &&
                             !hasReachedClearThreshold && !hasReachedUndoThreshold &&
                             !isSwipingUp
                         ) {
-                            emitIconClick()
+                            currentOnClick()
                         }
                         dragActivated = false
                         isPressed = false
@@ -1630,10 +1503,9 @@ fun SwipeableIconKeyButton(
                         dragOffsetY += dragAmount.y
                         dragOffsetX += dragAmount.x
                         // 横向净位移峰值（横向分量占优时），与父层光标手势同口径
-                        // 主轴比与父层一致取 2:1（原 4:1），斜向滑动同样计入峰值
                         val peakDx = change.position.x - lastPressOffset.x
                         val peakDy = change.position.y - lastPressOffset.y
-                        if (abs(peakDx) > abs(peakDy) * 2f) {
+                        if (abs(peakDx) > abs(peakDy) * 4f) {
                             gesturePeakDx = maxOf(gesturePeakDx, abs(peakDx))
                         }
 
@@ -1884,8 +1756,7 @@ fun SwipeableKeyButtonLandscape(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
-    /** 是否按按键实际高度自适应放大字号（跨行键传 false），语义同 [SwipeableKeyButton]。 */
-    adaptiveContentScale: Boolean = true,
+    labelScale: Float = 1f,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var dragOffsetY by remember { mutableStateOf(0f) }
@@ -1928,14 +1799,12 @@ fun SwipeableKeyButtonLandscape(
     // 横向接管阈值：低于父层光标手势激活阈值（60dp），使配置了左右滑的键优先接管横向滑动
     val horizontalSwipeSuppressThreshold = with(density) { 18.dp.toPx() }
     val suppressCursorMove = LocalSuppressCursorMove.current
-    val cursorGestureState = LocalCursorGestureState.current
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
 
     /**
      * 本次手势的唯一点击出口：点击分支、拖拽兜底共用，先到者生效。
-     * 已判为滑动（任一方向）或父层光标手势已接管时不点击，
-     * 避免「上滑后又补一个 tap」「移动光标又打出一个字母」。
+     * 已判为滑动（任一方向）时不点击，避免「上滑后又补一个 tap」。
      */
     fun emitClick() {
         if (clickEmitted) return
@@ -1945,7 +1814,7 @@ fun SwipeableKeyButtonLandscape(
         )
         // 无论是否上屏都封口：一次手势最多一次点击，滑过之后不再补点
         clickEmitted = true
-        if (shouldClick && !cursorGestureTookOver(cursorGestureState)) currentOnClick()
+        if (shouldClick) currentOnClick()
     }
 
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
@@ -2232,19 +2101,18 @@ fun SwipeableKeyButtonLandscape(
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
             .clip(keyClipShape)
-            .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor),
+            .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor)
+            .border(LocalKeyBorder.current ?: BorderStroke(0.dp, Color.Transparent), keyClipShape),
         contentAlignment = Alignment.TopStart
     ) {
-        val contentScale = if (adaptiveContentScale) {
-            adaptiveKeyContentScale(
-                keyHeightDp = maxHeight.value,
-                referenceHeightDp = 44f,
-            )
-        } else 1f
+        val contentScale = adaptiveKeyContentScale(
+            keyHeightDp = maxHeight.value,
+            referenceHeightDp = 44f,
+        )
         val hintScale = adaptiveHintScale(contentScale)
         val effectiveFontSize = (
             if (fontSize != androidx.compose.ui.unit.TextUnit.Unspecified) fontSize.value else 14f
-        ) * contentScale
+        ) * contentScale * labelScale
         val effectiveSwipeFontSize = swipeFontSize.value * hintScale
 
         Box(

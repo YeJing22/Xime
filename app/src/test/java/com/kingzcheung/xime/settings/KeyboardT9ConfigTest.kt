@@ -172,15 +172,10 @@ class KeyboardT9ConfigTest {
         val bindings = KeysConfigHelper.parseKeyboardYamlSection(text, "t9")!!
         assertEquals("分词", bindings["1"]?.tap?.label)
         assertEquals("ABC", bindings["2"]?.tap?.label)
-        assertEquals(
-            listOf("A", "B", "C"),
-            bindings["2"]?.longPress?.values?.map { it.label.ifEmpty { it.value } },
-        )
-        // Y/N 单字母不被 YAML 解析为布尔
-        assertEquals(
-            listOf("W", "X", "Y", "Z"),
-            bindings["9"]?.longPress?.values?.map { it.label.ifEmpty { it.value } },
-        )
+        // 我方自改：九键数字键的长按候选已整体删除（内置字母表兜底不再存在），
+        // 只认用户显式配置的 long_press。上游原断言 A/B/C 与 W/X/Y/Z 不再适用。
+        assertNull(bindings["2"]?.longPress?.values)
+        assertNull(bindings["9"]?.longPress?.values)
         // 手势内置默认不变：上滑直接输入键面数字
         assertEquals("2", bindings["2"]?.swipeUp?.value)
     }
